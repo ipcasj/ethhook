@@ -39,6 +39,9 @@ ethhook-domain = { path = "../domain" }
 # Async utilities
 futures-util = "0.3"
 
+# Random number generation (for jitter in exponential backoff)
+rand = "0.8"
+
 # URL parsing
 url = "2.5"
 

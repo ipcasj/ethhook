@@ -601,6 +601,7 @@ dependencies = [
  "futures-util",
  "hex",
  "prometheus",
+ "rand",
  "redis 0.27.6",
  "serde",
  "serde_json",
