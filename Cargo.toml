@@ -1,7 +1,7 @@
 [workspace]
 members = [
     # Services - will be uncommented as we build them
-    # "crates/event-ingestor",      # Day 3-5
+    "crates/event-ingestor",         # ✓ Day 3 - IN PROGRESS!
     # "crates/message-processor",    # Week 2
     # "crates/webhook-delivery",     # Week 2
     # "crates/admin-api",            # Week 3
