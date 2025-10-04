@@ -251,19 +251,118 @@ impl WebSocketClient {
             self.chain_name, block_number, block.hash
         );
 
-        // Fetch block with transactions
-        // Note: In production, we'd fetch receipts in parallel for better performance
-        // For now, we'll implement a simple version that demonstrates the flow
-        
-        // TODO: Implement eth_getBlockByNumber to get transactions
-        // TODO: For each transaction, call eth_getTransactionReceipt to get logs
-        // TODO: Parse logs and convert to ProcessedEvent
-        
-        // Placeholder: Return empty for now, will implement in next iteration
-        debug!(
-            "[{}] Block #{} processed successfully (placeholder)",
-            self.chain_name, block_number
+        // Fetch block with full transaction details
+        let block_with_txs = match self.get_block_with_transactions(&block.number).await? {
+            Some(b) => b,
+            None => {
+                warn!("[{}] Block {} not found, skipping", self.chain_name, block_number);
+                return Ok(None);
+            }
+        };
+
+        let tx_count = block_with_txs.transactions.len();
+        debug!("[{}] Block {} has {} transactions", self.chain_name, block_number, tx_count);
+
+        // Collect all events from all transactions
+        let mut all_events = Vec::new();
+
+        // Process each transaction to extract logs
+        for (tx_index, tx) in block_with_txs.transactions.iter().enumerate() {
+            debug!(
+                "[{}] Fetching receipt for tx #{}: {}",
+                self.chain_name, tx_index, tx.hash
+            );
+
+            // Fetch transaction receipt (contains event logs)
+            if let Some(logs) = self.get_transaction_receipt(&tx.hash).await? {
+                debug!(
+                    "[{}] Transaction {} emitted {} logs",
+                    self.chain_name, tx.hash, logs.len()
+                );
+
+                // Convert each log to ProcessedEvent
+                for log in logs {
+                    // Parse log index from hex
+                    let log_index = u64::from_str_radix(
+                        log.log_index.trim_start_matches("0x"),
+                        16,
+                    )
+                    .unwrap_or(0);
+
+                    let event = ProcessedEvent {
+                        chain_id: self.chain_id,
+                        block_number,
+                        block_hash: block.hash.clone(),
+                        transaction_hash: tx.hash.clone(),
+                        log_index,
+                        contract_address: log.address.clone(),
+                        topics: log.topics.clone(),
+                        data: log.data.clone(),
+                        timestamp,
+                    };
+
+                    all_events.push(event);
+                }
+            }
+        }
+
+        info!(
+            "[{}] Block {} processed: {} transactions, {} events",
+            self.chain_name, block_number, tx_count, all_events.len()
         );
+
+        if all_events.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(all_events))
+        }
+    }
+
+    /// Fetch block with full transaction details
+    /// 
+    /// Sends JSON-RPC request:
+    /// ```json
+    /// {
+    ///   "jsonrpc": "2.0",
+    ///   "method": "eth_getBlockByNumber",
+    ///   "params": ["0x112a880", true],
+    ///   "id": 2
+    /// }
+    /// ```
+    /// 
+    /// The `true` parameter means "return full transaction objects, not just hashes"
+    async fn get_block_with_transactions(
+        &mut self,
+        block_number: &str,
+    ) -> Result<Option<crate::types::BlockWithTransactions>> {
+        let request = json!({
+            "jsonrpc": "2.0",
+            "method": "eth_getBlockByNumber",
+            "params": [block_number, true],
+            "id": 2
+        });
+
+        debug!("[{}] Sending eth_getBlockByNumber request", self.chain_name);
+
+        // Send request
+        self.stream
+            .send(Message::Text(request.to_string()))
+            .await
+            .context("Failed to send getBlockByNumber request")?;
+
+        // Wait for response
+        if let Some(msg) = self.stream.next().await {
+            let msg = msg.context("Failed to receive getBlockByNumber response")?;
+
+            if let Message::Text(text) = msg {
+                debug!("[{}] Received getBlockByNumber response", self.chain_name);
+                
+                let response: crate::types::BlockResponse = serde_json::from_str(&text)
+                    .context("Failed to parse getBlockByNumber response")?;
+
+                return Ok(response.result);
+            }
+        }
 
         Ok(None)
     }

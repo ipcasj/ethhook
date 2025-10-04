@@ -21,9 +21,8 @@
  */
 
 use anyhow::{Context, Result};
-use std::sync::Arc;
 use tokio::sync::broadcast;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::client::WebSocketClient;
 use crate::config::{ChainConfig, IngestorConfig};
@@ -122,35 +121,62 @@ impl ChainIngestionManager {
         );
 
         // Process events from WebSocket
+        let mut events_processed = 0u64;
+        let mut blocks_processed = 0u64;
+
         loop {
             match client.next_event().await {
                 Ok(Some(event)) => {
-                    info!(
-                        "[{}] Received event: block={} tx={} contract={}",
+                    events_processed += 1;
+
+                    // Log every 100 events to avoid spam
+                    if events_processed % 100 == 0 {
+                        info!(
+                            "[{}] Processed {} events from {} blocks",
+                            chain_config.name, events_processed, blocks_processed
+                        );
+                    }
+
+                    debug!(
+                        "[{}] Event: block={} tx={} contract={} topics={}",
                         chain_config.name,
                         event.block_number,
-                        event.transaction_hash,
-                        event.contract_address
+                        &event.transaction_hash[..10],  // First 10 chars
+                        &event.contract_address[..10],
+                        event.topics.len()
                     );
 
-                    // TODO: Phase 4 - Check deduplication
+                    // TODO: Phase 4 - Check deduplication with Redis SET
+                    // let event_id = event.event_id();
+                    // if deduplicator.is_duplicate(&event_id).await? {
+                    //     continue; // Skip duplicate
+                    // }
+
                     // TODO: Phase 5 - Publish to Redis Stream
+                    // let stream_name = event.stream_name(); // "events:1", "events:42161", etc.
+                    // redis_client.xadd(&stream_name, &event).await?;
                 }
                 Ok(None) => {
+                    info!(
+                        "[{}] WebSocket connection closed. Stats: {} events, {} blocks processed",
+                        chain_config.name, events_processed, blocks_processed
+                    );
                     warn!(
-                        "[{}] WebSocket connection closed, will reconnect",
+                        "[{}] Will reconnect...",
                         chain_config.name
                     );
                     break;
                 }
                 Err(e) => {
                     error!(
-                        "[{}] Error processing event: {}",
-                        chain_config.name, e
+                        "[{}] Error processing event: {}. Stats: {} events, {} blocks",
+                        chain_config.name, e, events_processed, blocks_processed
                     );
                     break;
                 }
             }
+
+            blocks_processed += 1;
         }
 
         Ok(())
