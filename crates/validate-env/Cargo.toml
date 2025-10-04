@@ -1,0 +1,16 @@
+[package]
+name = "validate-env"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "validate-env"
+path = "src/main.rs"
+
+[[bin]]
+name = "test-connections"
+path = "src/test_connections.rs"
+
+[dependencies]
+dotenvy = "0.15"
+tokio = { version = "1.42", features = ["full"] }

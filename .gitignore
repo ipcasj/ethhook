@@ -1,0 +1,70 @@
+# Rust
+target/
+**/*.rs.bk
+*.pdb
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+*.sql.bak
+
+# Logs
+*.log
+logs/
+
+# Documentation build
+book/
+
+# Docker
+.dockerignore
+
+# Testing
+coverage/
+*.profraw
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# =============================================================================
+# PRIVATE DOCUMENTATION - Business Strategy & Personal Notes
+# =============================================================================
+# These files contain competitive intelligence and should NOT be public
+
+# Business Strategy Documents (Revenue, Pricing, Market Analysis)
+docs/BUSINESS_PROJECTIONS.md
+docs/3_WEEK_ROADMAP.md
+docs/RPC_PROVIDER_STRATEGY.md
+docs/MULTI_CHAIN_STRATEGY.md
+
+# Development Session Notes (Personal Progress Tracking)
+DAY2_SUMMARY.md
+KICKOFF_SUMMARY.md
+SESSION_SUMMARY_OCT3.md
+TOMORROW_CHECKLIST.md
+PROJECT_STATUS.md
+ENV_VALIDATION_RESULTS.md
+GITHUB_READINESS.md
+
+# Private folder for keeping business docs organized
+.private/
+
+# Temporary/Duplicate Files
+validate_env.rs
+EthHook Architecture - Real-time Ethereum/
+*.pdf
+

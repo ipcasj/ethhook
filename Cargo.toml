@@ -1,0 +1,104 @@
+[workspace]
+members = [
+    # Services - will be uncommented as we build them
+    # "crates/event-ingestor",      # Day 3-5
+    # "crates/message-processor",    # Week 2
+    # "crates/webhook-delivery",     # Week 2
+    # "crates/admin-api",            # Week 3
+    
+    # Foundation crates
+    "crates/common",                 # ✓ Day 2 - DONE!
+    "crates/domain",                 # ✓ Exists
+    "crates/config",                 # ✓ Exists
+    "crates/validate-env",           # Validation tool
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["EthHook Contributors"]
+license = "MIT"
+repository = "https://github.com/yourusername/ethhook"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-util = "0.7"
+
+# HTTP server and client
+axum = { version = "0.7", features = ["macros", "ws"] }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+tower = { version = "0.4", features = ["limit", "timeout"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
+
+# Blockchain
+ethers = { version = "2.0", features = ["ws", "rustls"] }
+# Alternative: alloy (next-gen, more modern)
+# alloy-provider = "0.1"
+# alloy-rpc-types = "0.1"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+
+# Redis
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager", "streams"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Authentication & Security
+jsonwebtoken = "9.2"
+bcrypt = "0.15"
+hmac = "0.12"
+sha2 = "0.10"
+rand = "0.8"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+
+# Configuration
+config = "0.14"
+dotenvy = "0.15"
+
+# Observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+opentelemetry = { version = "0.21", features = ["trace", "metrics"] }
+opentelemetry-otlp = "0.14"
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+
+# Rate limiting
+governor = "0.6"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUIDs
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Utilities
+hex = "0.4"
+bytes = "1.5"
+futures = "0.3"
+
+# Testing
+mockall = "0.12"
+mockito = "1.2"
+testcontainers = "0.15"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+debug = true

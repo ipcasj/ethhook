@@ -1,0 +1,10 @@
+[package]
+name = "ethhook-config"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+config = { workspace = true }
+dotenvy = { workspace = true }
+anyhow = { workspace = true }
