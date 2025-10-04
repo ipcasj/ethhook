@@ -21,16 +21,19 @@
  */
 
 use anyhow::{Context, Result};
-use tokio::sync::broadcast;
+use std::sync::Arc;
+use tokio::sync::{broadcast, Mutex};
 use tracing::{debug, error, info, warn};
 
 use crate::client::WebSocketClient;
 use crate::config::{ChainConfig, IngestorConfig};
+use crate::deduplicator::Deduplicator;
 
 /// Manages ingestion across multiple chains
 pub struct ChainIngestionManager {
     config: IngestorConfig,
     shutdown_tx: broadcast::Sender<()>,
+    deduplicator: Arc<Mutex<Deduplicator>>,
 }
 
 impl ChainIngestionManager {
@@ -38,9 +41,18 @@ impl ChainIngestionManager {
     pub async fn new(config: IngestorConfig) -> Result<Self> {
         let (shutdown_tx, _) = broadcast::channel(1);
 
+        // Initialize Redis deduplicator
+        let deduplicator = Deduplicator::new(
+            &config.redis_url(),
+            config.dedup_ttl_seconds,
+        )
+        .await
+        .context("Failed to initialize Redis deduplicator")?;
+
         Ok(Self {
             config,
             shutdown_tx,
+            deduplicator: Arc::new(Mutex::new(deduplicator)),
         })
     }
 
@@ -54,6 +66,7 @@ impl ChainIngestionManager {
         for chain in &self.config.chains {
             let chain_config = chain.clone();
             let mut shutdown_rx = self.shutdown_tx.subscribe();
+            let deduplicator = Arc::clone(&self.deduplicator);
 
             // Spawn independent task for this chain
             let handle = tokio::spawn(async move {
@@ -70,7 +83,7 @@ impl ChainIngestionManager {
                     }
 
                     // Attempt to ingest events
-                    if let Err(e) = Self::ingest_chain_with_retry(&chain_config).await {
+                    if let Err(e) = Self::ingest_chain_with_retry(&chain_config, &deduplicator).await {
                         error!(
                             "[{}] Ingestion failed: {}. Retrying in {} seconds...",
                             chain_config.name, e, chain_config.reconnect_delay_secs
@@ -104,8 +117,13 @@ impl ChainIngestionManager {
     /// 1. Connect to WebSocket
     /// 2. Subscribe to new blocks
     /// 3. Process events as they arrive
-    /// 4. Reconnect on failure
-    async fn ingest_chain_with_retry(chain_config: &ChainConfig) -> Result<()> {
+    /// 4. Check deduplication
+    /// 5. Publish to Redis Stream (Phase 5)
+    /// 6. Reconnect on failure
+    async fn ingest_chain_with_retry(
+        chain_config: &ChainConfig,
+        deduplicator: &Arc<Mutex<Deduplicator>>,
+    ) -> Result<()> {
         // Connect to WebSocket
         let mut client = WebSocketClient::connect(
             &chain_config.ws_url,
@@ -146,11 +164,26 @@ impl ChainIngestionManager {
                         event.topics.len()
                     );
 
-                    // TODO: Phase 4 - Check deduplication with Redis SET
-                    // let event_id = event.event_id();
-                    // if deduplicator.is_duplicate(&event_id).await? {
-                    //     continue; // Skip duplicate
-                    // }
+                    // Phase 4: Check deduplication with Redis SET
+                    let event_id = event.event_id();
+                    let mut dedup = deduplicator.lock().await;
+                    
+                    match dedup.is_duplicate(&event_id).await {
+                        Ok(true) => {
+                            debug!("[{}] Skipping duplicate event: {}", chain_config.name, event_id);
+                            continue;
+                        }
+                        Ok(false) => {
+                            debug!("[{}] New event: {}", chain_config.name, event_id);
+                            // Continue processing
+                        }
+                        Err(e) => {
+                            error!("[{}] Deduplication error: {}. Processing anyway.", chain_config.name, e);
+                            // Continue processing to avoid dropping events due to Redis issues
+                        }
+                    }
+                    
+                    drop(dedup); // Release lock
 
                     // TODO: Phase 5 - Publish to Redis Stream
                     // let stream_name = event.stream_name(); // "events:1", "events:42161", etc.
