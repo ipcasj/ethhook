@@ -68,6 +68,7 @@ mod config;
 mod deduplicator;
 mod ingestion;
 mod metrics;
+mod publisher;
 mod types;
 
 use crate::config::IngestorConfig;

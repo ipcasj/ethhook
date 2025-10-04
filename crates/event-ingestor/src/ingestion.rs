@@ -28,12 +28,14 @@ use tracing::{debug, error, info, warn};
 use crate::client::WebSocketClient;
 use crate::config::{ChainConfig, IngestorConfig};
 use crate::deduplicator::Deduplicator;
+use crate::publisher::StreamPublisher;
 
 /// Manages ingestion across multiple chains
 pub struct ChainIngestionManager {
     config: IngestorConfig,
     shutdown_tx: broadcast::Sender<()>,
     deduplicator: Arc<Mutex<Deduplicator>>,
+    publisher: Arc<Mutex<StreamPublisher>>,
 }
 
 impl ChainIngestionManager {
@@ -49,10 +51,16 @@ impl ChainIngestionManager {
         .await
         .context("Failed to initialize Redis deduplicator")?;
 
+        // Initialize Redis Stream publisher
+        let publisher = StreamPublisher::new(&config.redis_url())
+            .await
+            .context("Failed to initialize Redis Stream publisher")?;
+
         Ok(Self {
             config,
             shutdown_tx,
             deduplicator: Arc::new(Mutex::new(deduplicator)),
+            publisher: Arc::new(Mutex::new(publisher)),
         })
     }
 
@@ -67,6 +75,7 @@ impl ChainIngestionManager {
             let chain_config = chain.clone();
             let mut shutdown_rx = self.shutdown_tx.subscribe();
             let deduplicator = Arc::clone(&self.deduplicator);
+            let publisher = Arc::clone(&self.publisher);
 
             // Spawn independent task for this chain
             let handle = tokio::spawn(async move {
@@ -83,7 +92,7 @@ impl ChainIngestionManager {
                     }
 
                     // Attempt to ingest events
-                    if let Err(e) = Self::ingest_chain_with_retry(&chain_config, &deduplicator).await {
+                    if let Err(e) = Self::ingest_chain_with_retry(&chain_config, &deduplicator, &publisher).await {
                         error!(
                             "[{}] Ingestion failed: {}. Retrying in {} seconds...",
                             chain_config.name, e, chain_config.reconnect_delay_secs
@@ -123,6 +132,7 @@ impl ChainIngestionManager {
     async fn ingest_chain_with_retry(
         chain_config: &ChainConfig,
         deduplicator: &Arc<Mutex<Deduplicator>>,
+        publisher: &Arc<Mutex<StreamPublisher>>,
     ) -> Result<()> {
         // Connect to WebSocket
         let mut client = WebSocketClient::connect(
@@ -185,9 +195,27 @@ impl ChainIngestionManager {
                     
                     drop(dedup); // Release lock
 
-                    // TODO: Phase 5 - Publish to Redis Stream
-                    // let stream_name = event.stream_name(); // "events:1", "events:42161", etc.
-                    // redis_client.xadd(&stream_name, &event).await?;
+                    // Phase 5: Publish to Redis Stream
+                    let mut pub_client = publisher.lock().await;
+                    match pub_client.publish(&event).await {
+                        Ok(stream_id) => {
+                            debug!(
+                                "[{}] Published to stream: {} (stream_id: {})",
+                                chain_config.name,
+                                event.stream_name(),
+                                stream_id
+                            );
+                        }
+                        Err(e) => {
+                            error!(
+                                "[{}] Failed to publish event to Redis Stream: {}",
+                                chain_config.name, e
+                            );
+                            // Note: We don't return error here to avoid stopping ingestion
+                            // if Redis Stream publishing fails temporarily
+                        }
+                    }
+                    drop(pub_client); // Release lock
                 }
                 Ok(None) => {
                     info!(
@@ -232,6 +260,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore] // Requires Redis - run with: cargo test -- --ignored
     async fn test_manager_creation() {
         let config = IngestorConfig {
             chains: vec![],
