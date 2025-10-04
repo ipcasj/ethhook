@@ -31,6 +31,7 @@ use rand::Rng;
 use crate::client::WebSocketClient;
 use crate::config::{ChainConfig, IngestorConfig};
 use crate::deduplicator::Deduplicator;
+use crate::metrics;
 use crate::publisher::StreamPublisher;
 
 /// Circuit breaker states for connection management
@@ -281,11 +282,23 @@ impl ChainIngestionManager {
                 Ok(c) => {
                     info!("[{}] Connected and subscribed to newHeads", chain_config.name);
                     health.record_success();
+                    // Record reconnection metric
+                    metrics::WEBSOCKET_RECONNECTS
+                        .with_label_values(&[&chain_config.name])
+                        .inc();
+                    // Update circuit breaker state metric
+                    metrics::CIRCUIT_BREAKER_STATE
+                        .with_label_values(&[&chain_config.name])
+                        .set(0); // 0 = Closed
                     c
                 }
                 Err(e) => {
                     error!("[{}] Connection failed: {}", chain_config.name, e);
                     health.record_failure();
+                    // Record error metric
+                    metrics::PROCESSING_ERRORS
+                        .with_label_values(&[&chain_config.name, "connection_failed"])
+                        .inc();
                     continue;
                 }
             };
@@ -310,6 +323,21 @@ impl ChainIngestionManager {
                 Err(e) => {
                     error!("[{}] Event processing failed: {}", chain_config.name, e);
                     health.record_failure();
+                    
+                    // Update metrics after failure
+                    metrics::CONSECUTIVE_FAILURES
+                        .with_label_values(&[&chain_config.name])
+                        .set(health.consecutive_failures as i64);
+                    
+                    // Update circuit breaker state
+                    let state_value = match health.circuit_state {
+                        CircuitState::Closed => 0,
+                        CircuitState::Open => 1,
+                        CircuitState::HalfOpen => 2,
+                    };
+                    metrics::CIRCUIT_BREAKER_STATE
+                        .with_label_values(&[&chain_config.name])
+                        .set(state_value);
                 }
             }
         }
@@ -358,6 +386,11 @@ impl ChainIngestionManager {
                         Ok(Some(event)) => {
                             events_processed += 1;
                             health.record_success();
+                            
+                            // Record event received metric
+                            metrics::EVENTS_RECEIVED
+                                .with_label_values(&[&chain_config.name])
+                                .inc();
 
                             // Log every 100 events to avoid spam
                             if events_processed % 100 == 0 {
@@ -383,6 +416,10 @@ impl ChainIngestionManager {
                             let should_process = match dedup.is_duplicate(&event_id).await {
                                 Ok(true) => {
                                     debug!("[{}] Skipping duplicate: {}", chain_config.name, event_id);
+                                    // Record deduplication metric
+                                    metrics::EVENTS_DEDUPLICATED
+                                        .with_label_values(&[&chain_config.name])
+                                        .inc();
                                     false
                                 }
                                 Ok(false) => {
@@ -391,6 +428,9 @@ impl ChainIngestionManager {
                                 }
                                 Err(e) => {
                                     error!("[{}] Deduplication error: {}. Processing anyway.", chain_config.name, e);
+                                    metrics::PROCESSING_ERRORS
+                                        .with_label_values(&[&chain_config.name, "deduplication_error"])
+                                        .inc();
                                     true
                                 }
                             };
@@ -410,12 +450,19 @@ impl ChainIngestionManager {
                                         event.stream_name(),
                                         stream_id
                                     );
+                                    // Record successful publish metric
+                                    metrics::EVENTS_PUBLISHED
+                                        .with_label_values(&[&chain_config.name])
+                                        .inc();
                                 }
                                 Err(e) => {
                                     error!(
                                         "[{}] Failed to publish: {}",
                                         chain_config.name, e
                                     );
+                                    metrics::PROCESSING_ERRORS
+                                        .with_label_values(&[&chain_config.name, "publish_failed"])
+                                        .inc();
                                 }
                             }
                             drop(pub_client);
@@ -427,6 +474,9 @@ impl ChainIngestionManager {
                                 "[{}] WebSocket closed. Stats: {} events, {} blocks",
                                 chain_config.name, events_processed, blocks_processed
                             );
+                            metrics::PROCESSING_ERRORS
+                                .with_label_values(&[&chain_config.name, "websocket_closed"])
+                                .inc();
                             return Err(anyhow!("WebSocket connection closed"));
                         }
                         Err(e) => {
@@ -434,6 +484,9 @@ impl ChainIngestionManager {
                                 "[{}] Error processing event: {}. Stats: {} events, {} blocks",
                                 chain_config.name, e, events_processed, blocks_processed
                             );
+                            metrics::PROCESSING_ERRORS
+                                .with_label_values(&[&chain_config.name, "processing_error"])
+                                .inc();
                             return Err(e);
                         }
                     }

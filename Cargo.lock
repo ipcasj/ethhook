@@ -600,6 +600,7 @@ dependencies = [
  "ethhook-domain",
  "futures-util",
  "hex",
+ "lazy_static",
  "prometheus",
  "rand",
  "redis 0.27.6",

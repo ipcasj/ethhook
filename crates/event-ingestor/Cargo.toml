@@ -42,6 +42,9 @@ futures-util = "0.3"
 # Random number generation (for jitter in exponential backoff)
 rand = "0.8"
 
+# Static initialization for metrics
+lazy_static = "1.5"
+
 # URL parsing
 url = "2.5"
 

@@ -99,8 +99,9 @@ async fn main() -> Result<()> {
 
     // Initialize metrics server (Prometheus)
     // This starts an HTTP server on :9090/metrics for Prometheus to scrape
+    let metrics_port = config.metrics_port;
     let metrics_handle = tokio::spawn(async move {
-        if let Err(e) = metrics::start_metrics_server().await {
+        if let Err(e) = metrics::start_metrics_server(metrics_port).await {
             warn!("Metrics server failed: {}", e);
         }
     });
