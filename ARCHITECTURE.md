@@ -49,7 +49,7 @@
                        |
                        v
               BLOCKCHAIN NETWORKS (EVM Chains)
-```markdown
+```
 
 ### Microservices Architecture
 
@@ -110,7 +110,7 @@ WHERE e.is_active = true
   AND e.contract_address = $1
   AND ($2 = ANY(e.event_topics) OR e.event_topics IS NULL)
 ORDER BY e.priority DESC;
-```markdown
+```
 
 #### 3. Webhook Delivery Service
 
