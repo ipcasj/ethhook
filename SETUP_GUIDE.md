@@ -57,7 +57,7 @@ ls -la
 
 ### Infura (Backup Provider) - Optional but Recommended
 
-1. **Visit**: [https://www.infurcp a.io/](https://www.infura.io/)
+1. **Visit**: [https://www.infura.io/](https://www.infura.io/)
 2. **Sign up**: Use email (free)
 3. **Create Project**: Click "Create New Project"
 4. **Enable Networks**: In project settings, enable:
@@ -221,12 +221,8 @@ code .
 
 # Key files to review:
 # 1. ARCHITECTURE.md - System design and architecture
-# 2. ARCHITECTURE.md - System design and implementation guide
-# 3. docs/MULTI_CHAIN_STRATEGY.md - Why we support 4 chains
-# 4. docs/RPC_PROVIDER_STRATEGY.md - Why we use Alchemy/Infura
-# 5. docs/BUSINESS_PROJECTIONS.md - Revenue and growth projections
-# 6. crates/domain/src/ - Domain models (User, Application, Endpoint, etc.)
-# 7. crates/config/src/lib.rs - Configuration management
+# 2. crates/domain/src/ - Domain models (User, Application, Endpoint, etc.)
+# 3. crates/config/src/lib.rs - Configuration management
 ```
 
 ---
@@ -411,28 +407,17 @@ curl "https://eth-mainnet.g.alchemy.com/v2/$(grep ETH_RPC_HTTP .env | cut -d'/' 
 
 ## Resources
 
-### Documentation
-
-- [Rust Book](https://doc.rust-lang.org/book/) - Learn Rust fundamentals
-- [Tokio Tutorial](https://tokio.rs/tokio/tutorial) - Async runtime
-- [sqlx Docs](https://docs.rs/sqlx/) - Database library
-- [Axum Docs](https://docs.rs/axum/) - Web framework
-- [ethers-rs Book](https://gakonst.com/ethers-rs/) - Ethereum library
-
 ### EthHook Docs
 
-- `ARCHITECTURE.md` - System design
 - `ARCHITECTURE.md` - System design and architecture
-- `docs/RPC_PROVIDER_STRATEGY.md` - Why we use RPC providers
-- `docs/BUSINESS_PROJECTIONS.md` - Revenue projections
-- `docs/MULTI_CHAIN_STRATEGY.md` - Multi-chain strategy
+- `README.md` - Project overview and quick start
 
 ### Getting Help
 
-- **Project Issues**: Check GitHub issues (if repo is on GitHub)
+- **Issues**: [GitHub Issues](https://github.com/ipcasj/ethhook/issues)
 - **Rust Questions**: [Rust Users Forum](https://users.rust-lang.org/)
 - **Blockchain Questions**: [Ethereum Stack Exchange](https://ethereum.stackexchange.com/)
-- **Discord**: Join Rust or Ethereum dev communities
+- **Email**: [ihorpetroff@gmail.com](mailto:ihorpetroff@gmail.com)
 
 ---
 

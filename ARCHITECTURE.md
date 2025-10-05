@@ -7,22 +7,9 @@
 ### Key Features
 
 1. **High Performance**: Rust's zero-cost abstractions enable sub-500ms event delivery
-2. **Open Source**: Core platform is open source and self-hostable
+2. **Open Source**: Core platform is open source and self-hostable  
 3. **Developer Friendly**: Clean API design, comprehensive documentation, and SDKs
-4. **Reliable**: Built-in retries, deduplication, and deliv│  Webhook Delivery │                           │
-│  │ (10 pods)        │                           │
-│  └──────────────────┘                           │
-└─────────────────────────────────────────────────┘
-        │                        │
-        ▼                        ▼
-┌──────────────┐        ┌──────────────┐
-│  Managed     │        │  Managed     │
-│  PostgreSQL  │        │  Redis       │
-└──────────────┘        └──────────────┘
-
----
-
-## Security Best Practices
+4. **Reliable**: Built-in retries, deduplication, and guaranteed delivery
 5. **Observable**: Prometheus metrics, structured logging, and distributed tracing
 
 ---
@@ -31,51 +18,38 @@
 
 ### High-Level Architecture
 
-┌─────────────────────────────────────────────────────────────┐
-│                      CLIENT APPLICATIONS                    │
-│              (dApps, Analytics, NFT Platforms)              │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ HTTPS Webhooks
-                          │ (HMAC Signed)
-┌─────────────────────────┴───────────────────────────────────┐
-│                     ETHHOOK PLATFORM                        │
-│                                                             │
-│  ┌────────────────┐      ┌─────────────────┐                │
-│  │  Leptos Portal │◄────►│   Admin API     │                │
-│  │   (WASM SPA)   │      │  (Axum REST)    │                │
-│  └────────────────┘      └────────┬────────┘                │
-│                                   │                         │
-│  ┌────────────────────────────────┼────────────────────|    │
-│  │              DATA LAYER        │                    │    │
-│  │  ┌──────────────┐    ┌─────────▼──────-┐            │    │
-│  │  │  PostgreSQL  │    │      Redis      │            │    │
-│  │  │  (sqlx)      │    │  Streams/Queues │            │    │
-│  │  └──────────────┘    └─────────────────┘            │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │            EVENT PROCESSING PIPELINE                 │   │
-│  │                                                      |   │
-│  │  ┌─────────────┐   ┌──────────────┐   ┌───────────┐  │   │
-│  │  │   Event     │──►│   Message    │──►│  Webhook  │  │   │
-│  │  │  Ingestor   │   │  Processor   │   │ Delivery  │  │   │
-│  │  │ (ethers-rs) │   │ (Fan-out)    │   │ (reqwest) │  │   │
-│  │  └──────┬──────┘   └──────────────┘   └───────────┘  │   │
-│  │         │                                            │   │
-│  └─────────┼────────────────────────────────────────────┘   │
-│            │                                                │
-└────────────┼────────────────────────────────────────────────┘
-             │ WebSocket / HTTP
-             │
-┌────────────▼─────────────────────────────────────────────────┐
-│    RPC PROVIDERS (Alchemy Primary + Infura Backup)           │
-│    Multi-chain: Ethereum, Arbitrum, Optimism, Base           │
-└────────────────────────┬─────────────────────────────────────┘
-                         │
-                         ▼
-┌──────────────────────────────────────────────────────────────┐
-│              BLOCKCHAIN NETWORKS (EVM Chains)                │
-└──────────────────────────────────────────────────────────────┘
+```
+                     CLIENT APPLICATIONS
+              (dApps, Analytics, NFT Platforms)
+                            |
+                            | HTTPS Webhooks
+                            | (HMAC Signed)
+                            v
+              ╔═══════════════════════════════╗
+              ║      ETHHOOK PLATFORM         ║
+              ║                               ║
+              ║  [Leptos Portal] <-> [Admin API]  ║
+              ║   (WASM SPA)        (Axum REST)   ║
+              ║                         |         ║
+              ║        DATA LAYER       |         ║
+              ║    [PostgreSQL] [Redis]           ║
+              ║      (sqlx)   (Streams/Queues)    ║
+              ║                                   ║
+              ║   EVENT PROCESSING PIPELINE       ║
+              ║                                   ║
+              ║  [Event     ] -> [Message   ] -> [Webhook ]  ║
+              ║  [Ingestor  ]    [Processor]    [Delivery]  ║
+              ║  [(ethers-rs)]   [(Fan-out)]    [(reqwest)] ║
+              ║        |                                     ║
+              ╚════════|═════════════════════════════════════╝
+                       | WebSocket / HTTP
+                       v
+           RPC PROVIDERS (Alchemy Primary + Infura Backup)
+           Multi-chain: Ethereum, Arbitrum, Optimism, Base
+                       |
+                       v
+              BLOCKCHAIN NETWORKS (EVM Chains)
+```
 
 ### Microservices Architecture
 
@@ -489,170 +463,54 @@ INSERT INTO subscription_limits VALUES
 
 ---
 
-## Development Roadmap
-
-### Phase 1: MVP (Weeks 1-4)
-
-**Goal**: Working prototype with core functionality
-
-- [ ] **Week 1: Foundation**
-  - Set up Cargo workspace with 4 services
-  - Implement shared crate with domain models
-  - PostgreSQL schema migration scripts
-  - Docker Compose for local development
-  - Basic CI/CD with GitHub Actions
-
-- [ ] **Week 2: Event Pipeline**
-  - Event Ingestor: WebSocket connection to Infura
-  - Message Processor: Redis consumer + fan-out
-  - Webhook Delivery: Basic HTTP POST (no retries)
-  - End-to-end test: Ethereum event → webhook delivery
-
-- [ ] **Week 3: Admin API**
-  - User registration/login (JWT)
-  - CRUD for Applications
-  - CRUD for Endpoints
-  - Event history endpoint
-  - Postman/OpenAPI documentation
-
-- [ ] **Week 4: Reliability**
-  - Webhook retries with exponential backoff
-  - HMAC signature implementation
-  - Deduplication logic
-  - Basic observability (logs + metrics)
-
-**Deliverable**: CLI-manageable webhook service
-
-### Phase 2: Production Readiness (Weeks 5-8)
-
-**Goal**: SaaS-grade reliability and security
-
-- [ ] **Week 5: Security Hardening**
-  - Rate limiting per endpoint
-  - API key authentication
-  - Input validation everywhere
-  - Security audit (basic pen testing)
-
-- [ ] **Week 6: Observability**
-  - Prometheus metrics on all services
-  - Grafana dashboards
-  - Structured logging with tracing
-  - OpenTelemetry distributed tracing
-  - Alerting rules
-
-- [ ] **Week 7: Performance**
-  - Database query optimization
-  - Connection pooling tuning
-  - Load testing (k6 or Locust)
-  - Horizontal scaling tests
-  - Caching strategy
-
-- [ ] **Week 8: Multi-Tenancy**
-  - Subscription tier enforcement
-  - Usage tracking and limits
-  - Billing integration prep
-  - Multi-provider RPC (resilience)
-
-**Deliverable**: Production-ready backend
-
-### Phase 3: SaaS Launch (Weeks 9-12)
-
-**Goal**: Customer-facing product
-
-- [ ] **Week 9-10: Frontend (Leptos)**
-  - Authentication UI
-  - Dashboard with usage stats
-  - Application/Endpoint management
-  - Real-time event viewer
-  - Account settings
-
-- [ ] **Week 11: Payment & Billing**
-  - Stripe integration
-  - Subscription upgrade/downgrade flows
-  - Usage-based billing logic
-  - Invoice generation
-
-- [ ] **Week 12: Launch Prep**
-  - Documentation website (mdBook)
-  - Example integrations (Python, JS, Go SDKs)
-  - Blog post / Product Hunt launch
-  - Initial marketing materials
-
-**Deliverable**: Public beta launch
-
-### Phase 4: Growth Features (Months 4-6)
-
-- [ ] Multi-chain support (Polygon, Arbitrum, BSC)
-- [ ] Advanced filtering (decoded event parameters)
-- [ ] Webhooks for multiple event types (blocks, txs, traces)
-- [ ] Custom event parsing rules
-- [ ] Analytics dashboard for users
-- [ ] Team collaboration features
-- [ ] SLA guarantees for Enterprise tier
-
----
-
 ## Deployment Architecture (DigitalOcean)
 
 ### Recommended Setup
 
 ### Option A: App Platform (Easiest)
 
-┌─────────────────────────────────────────────────┐
-│         DigitalOcean App Platform               │
-│                                                 │
-│  ┌──────────────┐  ┌──────────────┐             │
-│  │ Event        │  │ Message      │             │
-│  │ Ingestor     │  │ Processor    │             │
-│  │ (Worker)     │  │ (Worker)     │             │
-│  └──────────────┘  └──────────────┘             │
-│                                                 │
-│  ┌──────────────┐  ┌──────────────┐             │
-│  │ Webhook      │  │ Admin API    │             │
-│  │ Delivery     │  │ (Web Service)│             │
-│  │ (Worker)     │  └──────────────┘             │
-│  └──────────────┘                               │
-│                                                 │
-│  ┌──────────────┐  ┌──────────────┐             │
-│  │ Leptos Portal│  │ Managed      │             │
-│  │ (Static)     │  │ PostgreSQL   │             │
-│  └──────────────┘  └──────────────┘             │
-│                                                 │
-│                    ┌──────────────┐             │
-│                    │ Managed Redis│             │
-│                    └──────────────┘             │
-└─────────────────────────────────────────────────┘
+```
+╔═══════════════════════════════════════════╗
+║      DigitalOcean App Platform            ║
+║                                           ║
+║  [Event Ingestor]  [Message Processor]    ║
+║    (Worker)           (Worker)            ║
+║                                           ║
+║  [Webhook Delivery]  [Admin API]          ║
+║    (Worker)          (Web Service)        ║
+║                                           ║
+║  [Leptos Portal]  [Managed PostgreSQL]    ║
+║    (Static)                               ║
+║                                           ║
+║                   [Managed Redis]         ║
+║                                           ║
+╚═══════════════════════════════════════════╝
+```
 
 ### Option B: Kubernetes (Scalable)
 
-┌─────────────────────────────────────────────────┐
-│      DigitalOcean Kubernetes Cluster            │
-│                                                 │
-│  ┌────────────────────────────────────────┐     │
-│  │  Ingress (Nginx)                       │     │
-│  └────────┬───────────────────────────────┘     │
-│           │                                     │
-│  ┌────────┴─────────┐  ┌──────────────────┐     │
-│  │ Admin API        │  │ Leptos Portal    │     │
-│  │ (3 pods)         │  │ (Cloudflare CDN) │     │
-│  └──────────────────┘  └──────────────────┘     │
-│                                                 │
-│  ┌──────────────────┐  ┌──────────────────┐     │
-│  │ Event Ingestor   │  │ Message Processor│     │
-│  │ (2 pods)         │  │ (5 pods)         │     │
-│  └──────────────────┘  └──────────────────┘     │
-│                                                 │
-│  ┌──────────────────┐                           │
-│  │ Webhook Delivery │                           │
-│  │ (10 pods)        │                           │
-│  └──────────────────┘                           │
-└─────────────────────────────────────────────────┘
-        │                        │
-        ▼                        ▼
-┌──────────────┐        ┌──────────────┐
-│  Managed     │        │  Managed     │
-│  PostgreSQL  │        │  Redis       │
-└──────────────┘        └──────────────┘
+```
+╔═══════════════════════════════════════════╗
+║   DigitalOcean Kubernetes Cluster         ║
+║                                           ║
+║          [Ingress (Nginx)]                ║
+║                 |                         ║
+║    ┌────────────┴────────────────┐        ║
+║    v                             v        ║
+║  [Admin API]         [Leptos Portal]      ║
+║  (3 pods)            (Cloudflare CDN)     ║
+║                                           ║
+║  [Event Ingestor]    [Message Processor]  ║
+║  (2 pods)            (5 pods)             ║
+║                                           ║
+║  [Webhook Delivery]                       ║
+║  (10 pods)                                ║
+║                                           ║
+╚═══════════════════════════════════════════╝
+        |                        |
+        v                        v
+  [Managed PostgreSQL]    [Managed Redis]
+```
 
 ---
 
@@ -754,65 +612,8 @@ curl -X POST https://api.ethhook.io/api/v1/applications/550e8400/endpoints \
 
 ---
 
-## Competitive Analysis & Differentiation
-
-### Why EthHook is Better
-
-**1. Performance** (Rust vs Node.js)
-
-- **Latency**: 10x lower (50ms vs 500ms average)
-- **Throughput**: 50k events/sec vs 5k events/sec
-- **Cost**: 5x lower infrastructure costs
-
-**2. Transparency** (Open Source)
-
-- Core engine is MIT licensed
-- Self-hosting option for enterprises
-- Community contributions welcome
-
-### 3. Developer Experience
-
-- Best-in-class documentation
-- Interactive testing tools
-- Comprehensive SDKs (Rust, Python, JS, Go)
-- Real-time event debugger in dashboard
-
-#### 4. Pricing
-
-- Free tier: 10k events/month (vs 1-5k competitors)
-- Starter: $9/month for 100k events
-- No hidden fees or RPC costs
-
-#### 5. Reliability
-
-- 99.9% SLA for Pro tier
-- Multi-provider RPC redundancy
-- Guaranteed delivery with retries
-- Real-time status page
-
----
-
-## Next Steps
-
-1. **Answer clarifying questions** (see top of document)
-2. **Set up Cargo workspace** with initial project structure
-3. **Implement Phase 1** (MVP in 4 weeks)
-4. **Deploy to DigitalOcean** with Docker Compose
-5. **Launch private beta** with first 50 users
-
----
-
-## Resources & References
+## Resources
 
 - [Ethereum JSON-RPC Specification](https://ethereum.github.io/execution-apis/api-documentation/)
-- [Webhook Best Practices](https://webhooks.fyi/)
-- [Rust Async Book](https://rust-lang.github.io/async-book/)
 - [Tokio Documentation](https://tokio.rs/)
-- [Axum Examples](https://github.com/tokio-rs/axum/tree/main/examples)
-- [ethers-rs Book](https://gakonst.com/ethers-rs/)
-
----
-
-**Document Version**: 2.0  
-**Last Updated**: October 2, 2025  
-**Author**: Igor (with AI assistance)
+- [Axum Web Framework](https://github.com/tokio-rs/axum)

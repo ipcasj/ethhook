@@ -4,7 +4,14 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![PRs Welcom## 📞 Support
+
+- 🐛 [Issue Tracker](https://github.com/ipcasj/ethhook/issues)
+- 📧 Email: [ihorpetroff@gmail.com](mailto:ihorpetroff@gmail.com)
+
+---
+
+Built with 🦀 Rust://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ## 🚀 What is EthHook?
 
@@ -28,11 +35,9 @@ EthHook is a high-performance, self-hostable webhook service that delivers real-
 
 EthHook consists of 4 Rust microservices:
 
-```
 Ethereum → Event Ingestor → Redis → Message Processor → Redis → Webhook Delivery → Your App
                                            ↓
                                       PostgreSQL ← Admin API ← Leptos Portal
-```
 
 1. **Event Ingestor**: WebSocket listener for Ethereum events
 2. **Message Processor**: Event filtering, fan-out, and queuing
@@ -84,7 +89,7 @@ cargo watch -x 'run --bin admin-api'
 docker compose up -d
 ```
 
-Access the dashboard at http://localhost:3000
+Access the dashboard at [http://localhost:3000](http://localhost:3000)
 
 ## 📖 Documentation
 
@@ -139,12 +144,10 @@ k6 run tests/load/webhook_delivery.js
 
 EthHook exposes Prometheus metrics on `/metrics`:
 
-```
 ethhook_events_ingested_total
 ethhook_webhooks_sent_total{status="success|failure"}
 ethhook_webhook_delivery_latency_seconds
 ethhook_active_endpoints
-```
 
 Import the Grafana dashboard from `monitoring/grafana-dashboard.json`.
 
@@ -231,44 +234,11 @@ def handle_webhook():
 
 ## � Documentation
 
-**Start here**:
-- **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Get running in 30 minutes
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System design and technical architecture
-- **[docs/3_WEEK_ROADMAP.md](./docs/3_WEEK_ROADMAP.md)** - Day-by-day implementation plan
+## 📚 Documentation
 
-**Strategy & Business**:
-- **[docs/RPC_PROVIDER_STRATEGY.md](./docs/RPC_PROVIDER_STRATEGY.md)** - Why we use Alchemy/Infura (not self-hosted nodes)
-- **[docs/MULTI_CHAIN_STRATEGY.md](./docs/MULTI_CHAIN_STRATEGY.md)** - Why we support 4 chains from day 1
-- **[docs/BUSINESS_PROJECTIONS.md](./docs/BUSINESS_PROJECTIONS.md)** - Revenue model and growth projections
-
-**Session Notes**:
-- **[SESSION_SUMMARY_OCT3.md](./SESSION_SUMMARY_OCT3.md)** - Latest decisions and progress
-
-## 🗓️ Roadmap
-
-### Week 1: Foundation & Event Pipeline (Oct 2-8)
-
-- [x] **Day 1**: Strategic planning and documentation
-- [ ] **Day 2**: Common crate (database, Redis, errors, auth)
-- [ ] **Day 3-5**: Event Ingestor service (WebSocket → Redis)
-- [ ] **Day 6-7**: Testing and Week 1 demo
-
-### Week 2: Processing & Delivery (Oct 9-15)
-
-- [ ] **Day 8-9**: Message Processor (Redis → PostgreSQL → Queue)
-- [ ] **Day 10-12**: Webhook Delivery (Queue → HTTP POST)
-- [ ] **Day 13-14**: Testing and Week 2 demo
-
-### Week 3: API & Launch (Oct 16-23)
-
-- [ ] **Day 15-17**: Admin API (REST + JWT auth)
-- [ ] **Day 18-19**: Integration testing
-- [ ] **Day 20-21**: Deployment to DigitalOcean
-- [ ] **Day 22-23**: Documentation and launch prep
-
-**Target**: Production-ready MVP by October 23, 2025
-
-See **[docs/3_WEEK_ROADMAP.md](./docs/3_WEEK_ROADMAP.md)** for detailed tasks with time estimates.
+- [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Installation and configuration
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - System design and architecture
+- [CONTRIBUTING.md](./CONTRIBUTING.md) - Contribution guidelines
 
 ## 🤝 Contributing
 
@@ -298,11 +268,9 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 ## 📞 Support
 
-- 📚 [Documentation](https://docs.ethhook.io)
-- 💬 [Discord Community](https://discord.gg/ethhook)
-- 🐛 [Issue Tracker](https://github.com/yourusername/ethhook/issues)
-- 📧 Email: support@ethhook.io
+- 🐛 [Issue Tracker](https://github.com/ipcasj/ethhook/issues)
+- 📧 Email: [ihorpetroff@gmail.com](mailto:ihorpetroff@gmail.com)
 
 ---
 
-**Built with ❤️ and 🦀 by Igor**
+Built with 🦀 Rust
