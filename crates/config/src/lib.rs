@@ -314,11 +314,14 @@ mod tests {
     #[test]
     fn test_config_validation() {
         // Test JWT secret validation
-        env::set_var("JWT_SECRET", "short");
-        env::set_var("DATABASE_URL", "postgresql://localhost/test");
-        env::set_var("REDIS_URL", "redis://localhost");
-        env::set_var("ETH_MAINNET_WS", "wss://test");
-        env::set_var("ETH_MAINNET_HTTP", "https://test");
+        // SAFETY: Test code only - setting test environment variables
+        unsafe {
+            env::set_var("JWT_SECRET", "short");
+            env::set_var("DATABASE_URL", "postgresql://localhost/test");
+            env::set_var("REDIS_URL", "redis://localhost");
+            env::set_var("ETH_MAINNET_WS", "wss://test");
+            env::set_var("ETH_MAINNET_HTTP", "https://test");
+        }
         
         let result = Config::load();
         assert!(result.is_err());

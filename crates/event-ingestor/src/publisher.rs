@@ -127,21 +127,33 @@ impl StreamPublisher {
         
         // XADD events:1 * chain_id 1 block_number 18000000 ...
         // "*" means Redis auto-generates the entry ID (timestamp-based)
+        // 
+        // Performance optimization: Use string references to avoid clones
+        // - event.block_hash.as_str() instead of clone() (saves ~66 bytes)
+        // - event.transaction_hash.as_str() instead of clone() (saves ~66 bytes)
+        // - event.contract_address.as_str() instead of clone() (saves ~42 bytes)
+        // - event.data.as_str() instead of clone() (saves ~100+ bytes)
+        // Total savings: ~300 bytes per event
+        let chain_id_str = event.chain_id.to_string();
+        let block_number_str = event.block_number.to_string();
+        let log_index_str = event.log_index.to_string();
+        let timestamp_str = event.timestamp.to_string();
+        
         let stream_id: String = self
             .client
             .xadd(
                 &stream_name,
                 "*", // Auto-generate ID
                 &[
-                    ("chain_id", event.chain_id.to_string()),
-                    ("block_number", event.block_number.to_string()),
-                    ("block_hash", event.block_hash.clone()),
-                    ("tx_hash", event.transaction_hash.clone()),
-                    ("log_index", event.log_index.to_string()),
-                    ("contract", event.contract_address.clone()),
-                    ("topics", topics_json),
-                    ("data", event.data.clone()),
-                    ("timestamp", event.timestamp.to_string()),
+                    ("chain_id", chain_id_str.as_str()),
+                    ("block_number", block_number_str.as_str()),
+                    ("block_hash", event.block_hash.as_str()),
+                    ("tx_hash", event.transaction_hash.as_str()),
+                    ("log_index", log_index_str.as_str()),
+                    ("contract", event.contract_address.as_str()),
+                    ("topics", topics_json.as_str()),
+                    ("data", event.data.as_str()),
+                    ("timestamp", timestamp_str.as_str()),
                 ],
             )
             .await
