@@ -68,3 +68,8 @@ validate_env.rs
 EthHook Architecture - Real-time Ethereum/
 *.pdf
 
+
+# Internal audit/analysis docs (publish after MVP release)
+CODEBASE_AUDIT_REPORT.md
+docs/ASYNC_LOOP_PATTERN.md
+.copilot/
