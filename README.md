@@ -4,14 +4,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PRs Welcom## 📞 Support
-
-- 🐛 [Issue Tracker](https://github.com/ipcasj/ethhook/issues)
-- 📧 Email: [ihorpetroff@gmail.com](mailto:ihorpetroff@gmail.com)
-
----
-
-Built with 🦀 Rust://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 ## 🚀 What is EthHook?
 

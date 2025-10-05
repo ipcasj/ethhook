@@ -18,28 +18,28 @@
 
 ### High-Level Architecture
 
-```
+```plaintext
                      CLIENT APPLICATIONS
               (dApps, Analytics, NFT Platforms)
                             |
                             | HTTPS Webhooks
                             | (HMAC Signed)
                             v
-              ╔═══════════════════════════════╗
-              ║      ETHHOOK PLATFORM         ║
-              ║                               ║
-              ║  [Leptos Portal] <-> [Admin API]  ║
-              ║   (WASM SPA)        (Axum REST)   ║
-              ║                         |         ║
-              ║        DATA LAYER       |         ║
-              ║    [PostgreSQL] [Redis]           ║
-              ║      (sqlx)   (Streams/Queues)    ║
-              ║                                   ║
-              ║   EVENT PROCESSING PIPELINE       ║
-              ║                                   ║
+              ╔═══════════════════════════════===============╗
+              ║      ETHHOOK PLATFORM                        ║ 
+              ║                                              ║
+              ║  [Leptos Portal] <-> [Admin API]             ║
+              ║   (WASM SPA)        (Axum REST)              ║
+              ║                         |                    ║
+              ║        DATA LAYER       |                    ║
+              ║    [PostgreSQL] [Redis]                      ║
+              ║      (sqlx)   (Streams/Queues)               ║
+              ║                                              ║
+              ║   EVENT PROCESSING PIPELINE                  ║
+              ║                                              ║
               ║  [Event     ] -> [Message   ] -> [Webhook ]  ║
-              ║  [Ingestor  ]    [Processor]    [Delivery]  ║
-              ║  [(ethers-rs)]   [(Fan-out)]    [(reqwest)] ║
+              ║  [Ingestor  ]    [Processor]    [Delivery]   ║
+              ║  [(ethers-rs)]   [(Fan-out)]    [(reqwest)]  ║
               ║        |                                     ║
               ╚════════|═════════════════════════════════════╝
                        | WebSocket / HTTP
@@ -49,7 +49,7 @@
                        |
                        v
               BLOCKCHAIN NETWORKS (EVM Chains)
-```
+```markdown
 
 ### Microservices Architecture
 
@@ -110,7 +110,7 @@ WHERE e.is_active = true
   AND e.contract_address = $1
   AND ($2 = ANY(e.event_topics) OR e.event_topics IS NULL)
 ORDER BY e.priority DESC;
-```
+```markdown
 
 #### 3. Webhook Delivery Service
 
@@ -469,7 +469,7 @@ INSERT INTO subscription_limits VALUES
 
 ### Option A: App Platform (Easiest)
 
-```
+```plaintext
 ╔═══════════════════════════════════════════╗
 ║      DigitalOcean App Platform            ║
 ║                                           ║
@@ -489,7 +489,7 @@ INSERT INTO subscription_limits VALUES
 
 ### Option B: Kubernetes (Scalable)
 
-```
+```plaintext
 ╔═══════════════════════════════════════════╗
 ║   DigitalOcean Kubernetes Cluster         ║
 ║                                           ║
