@@ -30,7 +30,7 @@ docker --version  # Should show 20.0+ or higher
 
 ```bash
 # Navigate to your projects directory
-cd ~/rust_projects/capstone0
+cd ~/your_projects_directory/ethhook
 
 # Verify files are present
 ls -la
