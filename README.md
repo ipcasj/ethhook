@@ -220,11 +220,13 @@ def handle_webhook():
 #### Java (Spring Boot)
 
 ```java
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.Map;
 
 @RestController
 public class WebhookController {
@@ -232,7 +234,7 @@ public class WebhookController {
     private static final String WEBHOOK_SECRET = "your_webhook_secret";
     
     @PostMapping("/webhooks/nft")
-    public String handleWebhook(
+    public ResponseEntity<String> handleWebhook(
             @RequestHeader("X-EthHook-Signature") String signature,
             @RequestBody String payload) {
         
@@ -240,25 +242,31 @@ public class WebhookController {
             // Verify signature
             Mac hmac = Mac.getInstance("HmacSHA256");
             SecretKeySpec secretKey = new SecretKeySpec(
-                WEBHOOK_SECRET.getBytes(), "HmacSHA256");
+                WEBHOOK_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             hmac.init(secretKey);
             
-            byte[] hash = hmac.doFinal(payload.getBytes());
+            byte[] hash = hmac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             String expected = "sha256=" + bytesToHex(hash);
             
-            if (!MessageDigest.isEqual(signature.getBytes(), expected.getBytes())) {
-                return "Invalid signature";
+            if (!MessageDigest.isEqual(
+                    signature.getBytes(StandardCharsets.UTF_8), 
+                    expected.getBytes(StandardCharsets.UTF_8))) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid signature");
             }
             
             // Parse JSON and process event
             // ObjectMapper mapper = new ObjectMapper();
             // Map<String, Object> event = mapper.readValue(payload, Map.class);
+            // String txHash = ((Map<String, Object>) event.get("data"))
+            //     .get("transaction_hash").toString();
             System.out.println("NFT Transfer received");
             
-            return "OK";
+            return ResponseEntity.ok("OK");
             
         } catch (Exception e) {
-            return "Error: " + e.getMessage();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error: " + e.getMessage());
         }
     }
     
@@ -279,11 +287,17 @@ const express = require('express');
 const crypto = require('crypto');
 
 const app = express();
-app.use(express.json());
+
+// Use express.raw() to get the raw body for signature verification
+app.use(express.json({
+    verify: (req, res, buf) => {
+        req.rawBody = buf.toString('utf8');
+    }
+}));
 
 app.post('/webhooks/nft', (req, res) => {
     const signature = req.headers['x-ethhook-signature'];
-    const payload = JSON.stringify(req.body);
+    const payload = req.rawBody;
     
     // Verify signature
     const hmac = crypto.createHmac('sha256', 'your_webhook_secret');
@@ -308,7 +322,11 @@ import express, { Request, Response } from 'express';
 import crypto from 'crypto';
 
 const app = express();
-app.use(express.json());
+
+// Extend Request type to include rawBody
+interface WebhookRequest extends Request {
+    rawBody?: string;
+}
 
 interface WebhookEvent {
     id: string;
@@ -323,9 +341,16 @@ interface WebhookEvent {
     };
 }
 
-app.post('/webhooks/nft', (req: Request, res: Response) => {
+// Use express.json() with verify to capture raw body
+app.use(express.json({
+    verify: (req: WebhookRequest, res, buf) => {
+        req.rawBody = buf.toString('utf8');
+    }
+}));
+
+app.post('/webhooks/nft', (req: WebhookRequest, res: Response) => {
     const signature = req.headers['x-ethhook-signature'] as string;
-    const payload = JSON.stringify(req.body);
+    const payload = req.rawBody!;
     
     // Verify signature
     const hmac = crypto.createHmac('sha256', 'your_webhook_secret');
@@ -352,6 +377,7 @@ package main
 import (
     "crypto/hmac"
     "crypto/sha256"
+    "crypto/subtle"
     "encoding/hex"
     "encoding/json"
     "fmt"
@@ -387,9 +413,11 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
     // Verify signature
     mac := hmac.New(sha256.New, []byte(webhookSecret))
     mac.Write(body)
-    expected := "sha256=" + hex.EncodeToString(mac.Sum(nil))
+    expectedHash := mac.Sum(nil)
+    expected := "sha256=" + hex.EncodeToString(expectedHash)
     
-    if !hmac.Equal([]byte(signature), []byte(expected)) {
+    // Use constant-time comparison to prevent timing attacks
+    if subtle.ConstantTimeCompare([]byte(signature), []byte(expected)) != 1 {
         http.Error(w, "Invalid signature", http.StatusUnauthorized)
         return
     }
@@ -417,6 +445,7 @@ func main() {
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 [ApiController]
 [Route("webhooks")]
@@ -425,28 +454,34 @@ public class WebhookController : ControllerBase
     private const string WebhookSecret = "your_webhook_secret";
     
     [HttpPost("nft")]
-    public IActionResult HandleWebhook([FromBody] WebhookEvent webhookEvent)
+    public async Task<IActionResult> HandleWebhook()
     {
         // Get signature from header
         var signature = Request.Headers["X-EthHook-Signature"].ToString();
         
-        // Read raw body
+        // Read raw body (must be done before model binding)
+        Request.EnableBuffering();
+        using var reader = new StreamReader(Request.Body, leaveOpen: true);
+        var payload = await reader.ReadToEndAsync();
         Request.Body.Position = 0;
-        using var reader = new StreamReader(Request.Body);
-        var payload = reader.ReadToEnd();
         
         // Verify signature
         using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(WebhookSecret));
         var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(payload));
-        var expected = "sha256=" + BitConverter.ToString(hash)
-            .Replace("-", "").ToLower();
+        var expected = "sha256=" + Convert.ToHexString(hash).ToLower();
         
-        if (signature != expected)
+        // Constant-time comparison
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(signature),
+                Encoding.UTF8.GetBytes(expected)))
         {
             return Unauthorized("Invalid signature");
         }
         
+        // Parse JSON
+        var webhookEvent = JsonSerializer.Deserialize<WebhookEvent>(payload);
         Console.WriteLine($"NFT Transfer: {webhookEvent.Data.TransactionHash}");
+        
         return Ok("OK");
     }
 }
