@@ -84,14 +84,6 @@ docker compose up -d
 
 Access the dashboard at [http://localhost:3000](http://localhost:3000)
 
-## 📖 Documentation
-
-- [Architecture Overview](ARCHITECTURE.md)
-- [API Reference](docs/API.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-- [Webhook Security](docs/WEBHOOKS.md)
-- [Configuration](docs/CONFIGURATION.md)
-
 ## 🔧 Configuration
 
 Create a `.env` file:
@@ -165,8 +157,6 @@ doctl apps create --spec .do/app.yaml
 # Apply manifests
 kubectl apply -f k8s/
 ```
-
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
 
 ## 💡 Usage Example
 

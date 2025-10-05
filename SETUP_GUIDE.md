@@ -297,47 +297,6 @@ cargo build
 
 ---
 
-## What's Next?
-
-Now that your environment is set up, you're ready to start building!
-
-### Step 1: Common Crate
-
-**Goal**: Build shared utilities all services will use
-
-**Includes**:
-
-1. Database connection pool (`sqlx::PgPool`)
-2. Redis client with connection manager
-3. Error types (`anyhow` + custom enum)
-4. JWT token helpers (`jsonwebtoken`)
-5. HMAC signature helpers (`sha2` + `hmac`)
-6. Password hashing (`bcrypt`)
-7. Logging setup (`tracing-subscriber`)
-
-### Step 2: Event Ingestor Service
-
-**Goal**: Connect to 4 blockchains, stream events to Redis
-
-**You'll build**:
-
-- WebSocket connections to Ethereum, Arbitrum, Optimism, Base
-- Event deduplication logic
-- Redis Stream publisher
-- Circuit breaker pattern
-- Prometheus metrics
-
-### Step 3: Complete the Platform
-
-Continue building the remaining services:
-
-- Message Processor (fan-out to endpoints)
-- Webhook Delivery (HTTP POST with retries)
-- Admin API (REST with JWT auth)
-- Testing & deployment
-
----
-
 ## Quick Reference
 
 ### Common Commands
@@ -441,21 +400,6 @@ Before starting development, verify:
 
 ---
 
-## What You've Accomplished
+**Questions or issues?** Review the troubleshooting section above.
 
-✅ **Infrastructure**: PostgreSQL, Redis, Prometheus, Grafana running  
-✅ **RPC Providers**: Free accounts with Alchemy and Infura  
-✅ **Database**: Schema created with 9 tables  
-✅ **Configuration**: Environment variables set up  
-✅ **Codebase**: Built successfully, tests passing  
-✅ **Multi-chain**: Ready to connect to 4 blockchains  
-
-**Next**: Implement Common crate (database pool, Redis client, error types, auth helpers)
-
-**Time investment so far**: ~30 minutes setup → Ready to build a $5,400/year SaaS!
-
----
-
-**Questions or issues?** Review the troubleshooting section above or check the detailed docs in the `docs/` folder.
-
-**Ready to code?** Check `ARCHITECTURE.md` for system design and start building! 🚀
+**Ready to code?** Check [ARCHITECTURE.md](ARCHITECTURE.md) for system design and start building! 🚀
