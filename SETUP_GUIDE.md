@@ -19,7 +19,7 @@ Before starting, ensure you have:
 Check versions:
 
 ```bash
-rust --version    # Should show 1.75.0 or higher
+rustc --version   # Should show 1.75.0 or higher
 cargo --version   # Should show 1.75.0 or higher
 docker --version  # Should show 20.0+ or higher
 ```
