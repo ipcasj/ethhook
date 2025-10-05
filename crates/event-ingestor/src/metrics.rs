@@ -89,16 +89,27 @@ lazy_static::lazy_static! {
 /// 
 /// Modern implementation with:
 /// - Bounded concurrency (max 100 concurrent connections)
-/// - Graceful shutdown capability
+/// - Graceful shutdown with tokio::select! (event-driven, not polling)
 /// - Connection timeouts (30 seconds)
 /// - Structured concurrency with JoinSet
 /// - Proper resource cleanup
+/// 
+/// ## Why `loop {}` instead of threads?
+/// 
+/// This uses an async event loop, NOT a thread:
+/// - Runs on tokio's thread pool (shared with other tasks)
+/// - Yields to other tasks when waiting (tokio::select! is cooperative)
+/// - Zero CPU usage when idle (unlike threads)
+/// - Single task can handle thousands of connections
 /// 
 /// ## Endpoints
 /// 
 /// - `GET /metrics` - Prometheus metrics
 /// - `GET /health` - Health check
-pub async fn start_metrics_server(port: u16) -> Result<()> {
+pub async fn start_metrics_server(
+    port: u16,
+    mut shutdown: tokio::sync::broadcast::Receiver<()>,
+) -> Result<()> {
     let addr: SocketAddr = ([0, 0, 0, 0], port).into();
     let listener = TcpListener::bind(addr)
         .await
@@ -120,7 +131,7 @@ pub async fn start_metrics_server(port: u16) -> Result<()> {
         while tasks.try_join_next().is_some() {}
 
         tokio::select! {
-            // Accept new connections
+            // Accept new connections (event-driven, yields when no connections)
             accept_result = listener.accept() => {
                 match accept_result {
                     Ok((stream, peer_addr)) => {
@@ -161,10 +172,38 @@ pub async fn start_metrics_server(port: u16) -> Result<()> {
                 }
             }
             
-            // Graceful shutdown would go here if we had a shutdown signal
-            // For now, this runs indefinitely (killed by parent process shutdown)
+            // Graceful shutdown (event-driven, not polling!)
+            _ = shutdown.recv() => {
+                info!("Metrics server received shutdown signal");
+                break; // Exit loop gracefully
+            }
         }
     }
+    
+    // Wait for all in-flight requests to complete (with timeout)
+    info!("Waiting for {} in-flight metrics requests to complete...", tasks.len());
+    
+    let shutdown_timeout = std::time::Duration::from_secs(5);
+    let shutdown_deadline = tokio::time::Instant::now() + shutdown_timeout;
+    
+    while !tasks.is_empty() {
+        tokio::select! {
+            _ = tokio::time::sleep_until(shutdown_deadline) => {
+                let remaining = tasks.len();
+                if remaining > 0 {
+                    info!("Forcefully terminating {} remaining metrics requests after {:?}", 
+                          remaining, shutdown_timeout);
+                }
+                break;
+            }
+            _ = tasks.join_next() => {
+                // Task completed, continue waiting for others
+            }
+        }
+    }
+    
+    info!("Metrics server shut down gracefully");
+    Ok(())
 }
 
 /// Handle HTTP request for metrics or health endpoint

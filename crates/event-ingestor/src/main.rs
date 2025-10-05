@@ -97,11 +97,15 @@ async fn main() -> Result<()> {
         info!("   - {} (chain_id: {})", chain.name, chain.chain_id);
     }
 
+    // Create shutdown broadcast channel for coordinated shutdown
+    let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
+    
     // Initialize metrics server (Prometheus)
     // This starts an HTTP server on :9090/metrics for Prometheus to scrape
     let metrics_port = config.metrics_port;
-    let metrics_handle = tokio::spawn(async move {
-        if let Err(e) = metrics::start_metrics_server(metrics_port).await {
+    let metrics_shutdown = shutdown_tx.subscribe();
+    let mut metrics_handle = tokio::spawn(async move {
+        if let Err(e) = metrics::start_metrics_server(metrics_port, metrics_shutdown).await {
             warn!("Metrics server failed: {}", e);
         }
     });
@@ -112,7 +116,7 @@ async fn main() -> Result<()> {
     
     // Start ingesting events from all chains
     // Each chain runs independently; if one fails, others continue
-    let ingestion_handle = {
+    let mut ingestion_handle = {
         let manager = Arc::clone(&manager);
         tokio::spawn(async move {
             if let Err(e) = manager.start_all_chains().await {
@@ -125,21 +129,33 @@ async fn main() -> Result<()> {
     info!("   - Press Ctrl+C to shutdown gracefully");
 
     // Wait for shutdown signal (Ctrl+C or SIGTERM)
-    tokio::select! {
+    let shutdown_reason = tokio::select! {
         _ = signal::ctrl_c() => {
-            info!("📡 Received shutdown signal");
+            "Received Ctrl+C signal"
         }
-        _ = ingestion_handle => {
-            warn!("Ingestion stopped unexpectedly");
+        _ = &mut ingestion_handle => {
+            "Ingestion stopped unexpectedly"
         }
-        _ = metrics_handle => {
-            warn!("Metrics server stopped unexpectedly");
+        _ = &mut metrics_handle => {
+            "Metrics server stopped unexpectedly"
         }
-    }
+    };
 
-    // Graceful shutdown
+    // Graceful shutdown - signal all services to stop
+    info!("📡 {}", shutdown_reason);
     info!("🛑 Shutting down Event Ingestor...");
+    
+    // Broadcast shutdown signal to all services
+    let _ = shutdown_tx.send(());
+    
+    // Shutdown ingestion manager
     manager.shutdown().await?;
+    
+    // Wait for metrics server to finish (with timeout)
+    let _ = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        metrics_handle
+    ).await;
     
     info!("👋 Event Ingestor stopped");
     Ok(())
