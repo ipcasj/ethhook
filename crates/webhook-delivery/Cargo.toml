@@ -1,0 +1,37 @@
+[package]
+name = "ethhook-webhook-delivery"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Workspace dependencies
+ethhook-common = { path = "../common" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# HTTP client
+reqwest = { workspace = true }
+
+# Redis
+redis = { workspace = true }
+
+# Database (for logging delivery attempts)
+sqlx = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }
+dotenvy = { workspace = true }
+chrono = { workspace = true }
+rand = "0.8"
