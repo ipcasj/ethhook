@@ -11,7 +11,9 @@ use uuid::Uuid;
 
 /// Extractor for API key authentication
 pub struct ApiKeyAuth {
+    #[allow(dead_code)]
     pub application_id: Uuid,
+    #[allow(dead_code)]
     pub user_id: Uuid,
 }
 
@@ -97,6 +99,7 @@ impl IntoResponse for ApiKeyError {
 }
 
 /// Middleware to inject database pool into request extensions
+#[allow(dead_code)]
 pub async fn inject_db_pool(
     pool: PgPool,
 ) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response> + Send>>

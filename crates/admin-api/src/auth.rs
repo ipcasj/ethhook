@@ -15,6 +15,7 @@ use uuid::Uuid;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
     pub sub: Uuid, // user_id
+    #[allow(dead_code)]
     pub email: String,
     pub exp: i64, // expiration timestamp
     pub iat: i64, // issued at timestamp
@@ -78,6 +79,7 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
 /// Extractor for authenticated user
 pub struct AuthUser {
     pub user_id: Uuid,
+    #[allow(dead_code)]
     pub email: String,
 }
 

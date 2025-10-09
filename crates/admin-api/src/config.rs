@@ -17,12 +17,15 @@ pub struct Config {
     pub jwt_expiration_hours: i64,
 
     /// API key configuration
+    #[allow(dead_code)]
     pub api_key_prefix: String,
 
     /// Rate limiting
+    #[allow(dead_code)]
     pub rate_limit_per_minute: u32,
 
     /// CORS configuration
+    #[allow(dead_code)]
     pub cors_allowed_origins: Vec<String>,
 }
 

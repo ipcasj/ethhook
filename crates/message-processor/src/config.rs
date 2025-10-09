@@ -34,6 +34,7 @@ pub struct ProcessorConfig {
     pub block_time_ms: usize,
 
     /// Metrics server port (for Prometheus)
+    #[allow(dead_code)]
     pub metrics_port: u16,
 }
 
@@ -41,6 +42,7 @@ pub struct ProcessorConfig {
 #[derive(Debug, Clone)]
 pub struct ChainToProcess {
     /// Chain ID (1 = Ethereum, 42161 = Arbitrum, etc.)
+    #[allow(dead_code)]
     pub chain_id: u64,
 
     /// Stream name (e.g., "events:1")

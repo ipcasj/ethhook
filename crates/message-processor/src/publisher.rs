@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 /*!
  * Delivery Job Publisher
  *
@@ -190,6 +191,7 @@ impl DeliveryPublisher {
     /// # Returns
     ///
     /// Number of jobs published
+    #[allow(dead_code)]
     pub async fn publish_batch(
         &mut self,
         jobs: Vec<(&MatchedEndpoint, &StreamEvent)>,

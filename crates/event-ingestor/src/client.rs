@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 /*!
  * WebSocket Client Module
  *
@@ -65,6 +66,7 @@ pub struct WebSocketClient {
     chain_name: String,
 
     /// WebSocket URL for reconnection
+    #[allow(dead_code)]
     ws_url: String,
 
     /// Subscription ID returned by eth_subscribe

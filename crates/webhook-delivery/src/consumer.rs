@@ -120,6 +120,8 @@ impl JobConsumer {
     }
 
     /// Get queue length (number of pending jobs)
+    /// Reserved for future monitoring/metrics
+    #[allow(dead_code)]
     pub async fn queue_length(&mut self) -> Result<usize> {
         let length: usize = self
             .client
@@ -133,6 +135,8 @@ impl JobConsumer {
     /// Re-queue a job for retry (add to left side of queue)
     ///
     /// Used when delivery fails and should be retried.
+    /// Reserved for future manual retry functionality
+    #[allow(dead_code)]
     pub async fn requeue(&mut self, mut job: DeliveryJob) -> Result<()> {
         // Increment attempt counter
         job.attempt += 1;

@@ -162,6 +162,7 @@ impl EndpointMatcher {
     /// Get endpoint statistics
     ///
     /// Returns total number of active endpoints for monitoring.
+    #[allow(dead_code)]
     pub async fn stats(&self) -> Result<EndpointStats> {
         let row = sqlx::query(
             r#"
@@ -186,6 +187,7 @@ impl EndpointMatcher {
 
 /// Endpoint statistics
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct EndpointStats {
     pub active_endpoints: usize,
     pub inactive_endpoints: usize,

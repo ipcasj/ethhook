@@ -38,7 +38,8 @@ pub struct DeliveryConfig {
     /// Circuit breaker timeout (seconds)
     pub circuit_breaker_timeout_secs: u64,
 
-    /// Metrics server port
+    /// Metrics server port (reserved for future Prometheus metrics)
+    #[allow(dead_code)]
     pub metrics_port: u16,
 }
 

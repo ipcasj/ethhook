@@ -171,6 +171,8 @@ impl CircuitBreakerManager {
     }
 
     /// Get current state for an endpoint
+    /// Reserved for future monitoring/metrics
+    #[allow(dead_code)]
     pub async fn get_state(&self, endpoint_id: Uuid) -> CircuitState {
         let endpoints = self.endpoints.lock().await;
 
@@ -181,6 +183,8 @@ impl CircuitBreakerManager {
     }
 
     /// Get statistics for monitoring
+    /// Reserved for future Prometheus metrics endpoint
+    #[allow(dead_code)]
     pub async fn stats(&self) -> CircuitBreakerStats {
         let endpoints = self.endpoints.lock().await;
 
@@ -206,6 +210,8 @@ impl CircuitBreakerManager {
 }
 
 /// Circuit breaker statistics
+/// Reserved for future Prometheus metrics endpoint
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CircuitBreakerStats {
     pub total_endpoints: usize,

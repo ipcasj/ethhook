@@ -131,7 +131,7 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          - x86_64-unknown-linux-musl
+          # TODO: Add x86_64-unknown-linux-musl when we have proper OpenSSL setup
     
     steps:
       - uses: actions/checkout@v4
@@ -140,10 +140,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      
-      - name: Install musl tools
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools musl-dev pkg-config libssl-dev
       
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -165,12 +161,6 @@ jobs:
       
       - name: Build workspace
         run: cargo build --workspace --release --target ${{ matrix.target }}
-        env:
-          # For MUSL: vendor OpenSSL and configure for static linking
-          OPENSSL_STATIC: 1
-          OPENSSL_VENDORED: 1
-          # Tell pkg-config to allow cross-compilation
-          PKG_CONFIG_ALLOW_CROSS: 1
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

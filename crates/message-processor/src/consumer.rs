@@ -277,6 +277,7 @@ impl StreamConsumer {
     ///
     /// Returns number of messages that were delivered but not acknowledged.
     /// Useful for monitoring stuck consumers.
+    #[allow(dead_code)]
     pub async fn pending_count(&mut self, stream_name: &str) -> Result<usize> {
         // XPENDING stream_name group_name
 
