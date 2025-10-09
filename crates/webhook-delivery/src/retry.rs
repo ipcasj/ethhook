@@ -46,7 +46,7 @@ pub fn is_retryable_error(status: Option<u16>) -> bool {
         None => true,
 
         // 2xx - success, don't retry
-        Some(status) if status >= 200 && status < 300 => false,
+        Some(status) if (200..300).contains(&status) => false,
 
         // 4xx - client error
         Some(400) => false, // Bad Request - permanent
@@ -56,10 +56,10 @@ pub fn is_retryable_error(status: Option<u16>) -> bool {
         Some(405) => false, // Method Not Allowed - permanent
         Some(410) => false, // Gone - permanent
         Some(429) => true,  // Too Many Requests - retry after backoff
-        Some(status) if status >= 400 && status < 500 => false, // Other 4xx - permanent
+        Some(status) if (400..500).contains(&status) => false, // Other 4xx - permanent
 
         // 5xx - server error, retry
-        Some(status) if status >= 500 && status < 600 => true,
+        Some(status) if (500..600).contains(&status) => true,
 
         // Unknown status - retry to be safe
         Some(_) => true,

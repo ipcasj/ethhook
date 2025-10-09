@@ -111,8 +111,10 @@ impl RedisClient {
         id: &str,
         count: usize,
     ) -> Result<Vec<StreamEntry>> {
-        let result: RedisResult<Vec<(String, Vec<(String, Vec<(String, String)>)>)>> =
-            redis::cmd("XREAD")
+        // Type alias for complex Redis XREAD response
+        type XReadResult = Vec<(String, Vec<(String, Vec<(String, String)>)>)>;
+        
+        let result: RedisResult<XReadResult> = redis::cmd("XREAD")
                 .arg("COUNT")
                 .arg(count)
                 .arg("STREAMS")

@@ -675,9 +675,8 @@ mod tests {
         // Check that all values are within expected range
         for &backoff_secs in &backoffs {
             assert!(
-                backoff_secs >= 12 && backoff_secs <= 20,
-                "Backoff {} seconds out of range [12, 20]",
-                backoff_secs
+                (12..=20).contains(&backoff_secs),
+                "Backoff {backoff_secs} seconds out of range [12, 20]"
             );
         }
     }

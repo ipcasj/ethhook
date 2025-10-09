@@ -26,7 +26,7 @@
  */
 
 use anyhow::{Context, Result};
-use redis::{AsyncCommands, RedisError};
+use redis::RedisError;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
@@ -130,7 +130,7 @@ impl StreamConsumer {
                     );
                     Ok(())
                 } else {
-                    Err(anyhow::anyhow!("Failed to create consumer group: {}", e))
+                    Err(anyhow::anyhow!("Failed to create consumer group: {e}"))
                 }
             }
         }
@@ -158,7 +158,11 @@ impl StreamConsumer {
     ) -> Result<Vec<StreamEntry>> {
         // XREADGROUP GROUP group_name consumer_name BLOCK block_ms COUNT count STREAMS stream_name >
         // > = read only new messages not yet delivered to any consumer
-        let result: Vec<(String, Vec<(String, Vec<(String, String)>)>)> = redis::cmd("XREADGROUP")
+        
+        // Type alias for complex Redis XREADGROUP response
+        type XReadGroupResult = Vec<(String, Vec<(String, Vec<(String, String)>)>)>;
+        
+        let result: XReadGroupResult = redis::cmd("XREADGROUP")
             .arg("GROUP")
             .arg(&self.group_name)
             .arg(&self.consumer_name)
@@ -275,8 +279,11 @@ impl StreamConsumer {
     /// Useful for monitoring stuck consumers.
     pub async fn pending_count(&mut self, stream_name: &str) -> Result<usize> {
         // XPENDING stream_name group_name
-        let result: (usize, Option<String>, Option<String>, Vec<(String, usize)>) =
-            redis::cmd("XPENDING")
+        
+        // Type alias for complex Redis XPENDING response
+        type XPendingResult = (usize, Option<String>, Option<String>, Vec<(String, usize)>);
+        
+        let result: XPendingResult = redis::cmd("XPENDING")
                 .arg(stream_name)
                 .arg(&self.group_name)
                 .query_async(&mut self.client)

@@ -292,7 +292,7 @@ async fn test_get_user_profile_authenticated() {
             Request::builder()
                 .method("GET")
                 .uri("/api/v1/users/me")
-                .header("authorization", format!("Bearer {}", token))
+                .header("authorization", format!("Bearer {token}"))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -374,7 +374,7 @@ async fn test_complete_application_workflow() {
             Request::builder()
                 .method("POST")
                 .uri("/api/v1/applications")
-                .header("authorization", format!("Bearer {}", token))
+                .header("authorization", format!("Bearer {token}"))
                 .header("content-type", "application/json")
                 .body(Body::from(create_app_payload.to_string()))
                 .unwrap(),
@@ -384,7 +384,7 @@ async fn test_complete_application_workflow() {
 
     if create_app_response.status() != StatusCode::CREATED {
         let error_body = get_json_response(create_app_response).await;
-        eprintln!("Application creation failed: {:?}", error_body);
+        eprintln!("Application creation failed: {error_body:?}");
         panic!("Expected 201 CREATED, got different status");
     }
 
@@ -402,7 +402,7 @@ async fn test_complete_application_workflow() {
             Request::builder()
                 .method("GET")
                 .uri("/api/v1/applications")
-                .header("authorization", format!("Bearer {}", token))
+                .header("authorization", format!("Bearer {token}"))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -421,8 +421,8 @@ async fn test_complete_application_workflow() {
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(&format!("/api/v1/applications/{}", app_id))
-                .header("authorization", format!("Bearer {}", token))
+                .uri(format!("/api/v1/applications/{app_id}"))
+                .header("authorization", format!("Bearer {token}"))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -441,8 +441,8 @@ async fn test_complete_application_workflow() {
         .oneshot(
             Request::builder()
                 .method("PUT")
-                .uri(&format!("/api/v1/applications/{}", app_id))
-                .header("authorization", format!("Bearer {}", token))
+                .uri(format!("/api/v1/applications/{app_id}"))
+                .header("authorization", format!("Bearer {token}"))
                 .header("content-type", "application/json")
                 .body(Body::from(update_payload.to_string()))
                 .unwrap(),
@@ -460,8 +460,8 @@ async fn test_complete_application_workflow() {
         .oneshot(
             Request::builder()
                 .method("DELETE")
-                .uri(&format!("/api/v1/applications/{}", app_id))
-                .header("authorization", format!("Bearer {}", token))
+                .uri(format!("/api/v1/applications/{app_id}"))
+                .header("authorization", format!("Bearer {token}"))
                 .body(Body::empty())
                 .unwrap(),
         )

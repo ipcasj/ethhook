@@ -45,7 +45,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 mod config;
 mod consumer;
@@ -70,7 +70,7 @@ async fn main() -> Result<()> {
     info!("📋 Configuration loaded:");
     info!(
         "   - Database: {}",
-        config.database_url.split('@').last().unwrap_or("***")
+        config.database_url.split('@').next_back().unwrap_or("***")
     );
     info!("   - Redis: {}:{}", config.redis_host, config.redis_port);
     info!("   - Consumer Group: {}", config.consumer_group);

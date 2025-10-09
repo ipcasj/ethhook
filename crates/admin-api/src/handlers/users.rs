@@ -59,7 +59,7 @@ pub async fn register(
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("Validation error: {}", e),
+                error: format!("Validation error: {e}"),
             }),
         )
     })?;
@@ -69,7 +69,7 @@ pub async fn register(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to hash password: {}", e),
+                error: format!("Failed to hash password: {e}"),
             }),
         )
     })?;
@@ -91,7 +91,7 @@ pub async fn register(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to create user: {}", e),
+                error: format!("Failed to create user: {e}"),
             }),
         )
     })?;
@@ -107,7 +107,7 @@ pub async fn register(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to generate token: {}", e),
+                error: format!("Failed to generate token: {e}"),
             }),
         )
     })?;
@@ -117,7 +117,7 @@ pub async fn register(
             id: user.id,
             email: user.email,
             name: user.name.unwrap_or_default(),
-            created_at: user.created_at.unwrap_or_else(|| chrono::Utc::now()),
+            created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
         },
         token,
     }))
@@ -134,7 +134,7 @@ pub async fn login(
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("Validation error: {}", e),
+                error: format!("Validation error: {e}"),
             }),
         )
     })?;
@@ -160,7 +160,7 @@ pub async fn login(
         _ => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Database error: {}", e),
+                error: format!("Database error: {e}"),
             }),
         ),
     })?;
@@ -195,7 +195,7 @@ pub async fn login(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to generate token: {}", e),
+                error: format!("Failed to generate token: {e}"),
             }),
         )
     })?;
@@ -205,7 +205,7 @@ pub async fn login(
             id: user.id,
             email: user.email,
             name: user.name.unwrap_or_default(),
-            created_at: user.created_at.unwrap_or_else(|| chrono::Utc::now()),
+            created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
         },
         token,
     }))
@@ -230,7 +230,7 @@ pub async fn get_profile(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to fetch user: {}", e),
+                error: format!("Failed to fetch user: {e}"),
             }),
         )
     })?;
@@ -239,7 +239,7 @@ pub async fn get_profile(
         id: user.id,
         email: user.email,
         name: user.name.unwrap_or_default(),
-        created_at: user.created_at.unwrap_or_else(|| chrono::Utc::now()),
+        created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
     }))
 }
 
@@ -261,7 +261,7 @@ pub async fn update_profile(
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("Validation error: {}", e),
+                error: format!("Validation error: {e}"),
             }),
         )
     })?;
@@ -292,7 +292,7 @@ pub async fn update_profile(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to update user: {}", e),
+                error: format!("Failed to update user: {e}"),
             }),
         )
     })?;
@@ -301,6 +301,6 @@ pub async fn update_profile(
         id: user.id,
         email: user.email,
         name: user.name.unwrap_or_default(),
-        created_at: user.created_at.unwrap_or_else(|| chrono::Utc::now()),
+        created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
     }))
 }

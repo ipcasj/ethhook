@@ -81,13 +81,13 @@ pub async fn create_endpoint(
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("Validation error: {}", e),
+                error: format!("Validation error: {e}"),
             }),
         )
     })?;
 
     // Verify application belongs to user
-    let app = sqlx::query!(
+    let _app = sqlx::query!(
         "SELECT id FROM applications WHERE id = $1 AND user_id = $2",
         payload.application_id,
         auth_user.user_id
@@ -98,7 +98,7 @@ pub async fn create_endpoint(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Database error: {}", e),
+                error: format!("Database error: {e}"),
             }),
         )
     })?
@@ -140,7 +140,7 @@ pub async fn create_endpoint(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to create endpoint: {}", e),
+                error: format!("Failed to create endpoint: {e}"),
             }),
         )
     })?;
@@ -157,8 +157,8 @@ pub async fn create_endpoint(
             contract_addresses: endpoint.contract_addresses.unwrap_or_default(),
             event_signatures: endpoint.event_signatures.unwrap_or_default(),
             is_active: endpoint.is_active.unwrap_or(true),
-            created_at: endpoint.created_at.unwrap_or_else(|| chrono::Utc::now()),
-            updated_at: endpoint.updated_at.unwrap_or_else(|| chrono::Utc::now()),
+            created_at: endpoint.created_at.unwrap_or_else(chrono::Utc::now),
+            updated_at: endpoint.updated_at.unwrap_or_else(chrono::Utc::now),
         }),
     ))
 }
@@ -170,7 +170,7 @@ pub async fn list_endpoints(
     Path(app_id): Path<Uuid>,
 ) -> Result<Json<EndpointListResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify application belongs to user
-    let app = sqlx::query!(
+    let _app = sqlx::query!(
         "SELECT id FROM applications WHERE id = $1 AND user_id = $2",
         app_id,
         auth_user.user_id
@@ -181,7 +181,7 @@ pub async fn list_endpoints(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Database error: {}", e),
+                error: format!("Database error: {e}"),
             }),
         )
     })?
@@ -212,7 +212,7 @@ pub async fn list_endpoints(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to fetch endpoints: {}", e),
+                error: format!("Failed to fetch endpoints: {e}"),
             }),
         )
     })?;
@@ -230,8 +230,8 @@ pub async fn list_endpoints(
             contract_addresses: ep.contract_addresses.unwrap_or_default(),
             event_signatures: ep.event_signatures.unwrap_or_default(),
             is_active: ep.is_active.unwrap_or(true),
-            created_at: ep.created_at.unwrap_or_else(|| chrono::Utc::now()),
-            updated_at: ep.updated_at.unwrap_or_else(|| chrono::Utc::now()),
+            created_at: ep.created_at.unwrap_or_else(chrono::Utc::now),
+            updated_at: ep.updated_at.unwrap_or_else(chrono::Utc::now),
         })
         .collect();
 
@@ -262,7 +262,7 @@ pub async fn get_endpoint(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Database error: {}", e),
+                error: format!("Database error: {e}"),
             }),
         )
     })?
@@ -285,8 +285,8 @@ pub async fn get_endpoint(
         contract_addresses: endpoint.contract_addresses.unwrap_or_default(),
         event_signatures: endpoint.event_signatures.unwrap_or_default(),
         is_active: endpoint.is_active.unwrap_or(true),
-        created_at: endpoint.created_at.unwrap_or_else(|| chrono::Utc::now()),
-        updated_at: endpoint.updated_at.unwrap_or_else(|| chrono::Utc::now()),
+        created_at: endpoint.created_at.unwrap_or_else(chrono::Utc::now),
+        updated_at: endpoint.updated_at.unwrap_or_else(chrono::Utc::now),
     }))
 }
 
@@ -302,13 +302,13 @@ pub async fn update_endpoint(
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("Validation error: {}", e),
+                error: format!("Validation error: {e}"),
             }),
         )
     })?;
 
     // Verify endpoint exists and belongs to user
-    let existing = sqlx::query!(
+    let _existing = sqlx::query!(
         r#"
         SELECT e.id
         FROM endpoints e
@@ -324,7 +324,7 @@ pub async fn update_endpoint(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Database error: {}", e),
+                error: format!("Database error: {e}"),
             }),
         )
     })?
@@ -338,7 +338,7 @@ pub async fn update_endpoint(
     })?;
 
     // Build update query
-    let mut updates = vec!["updated_at = NOW()"];
+    let _updates = ["updated_at = NOW()"];
     let mut params = vec![];
 
     if payload.webhook_url.is_some() {
@@ -366,7 +366,7 @@ pub async fn update_endpoint(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Transaction error: {}", e),
+                error: format!("Transaction error: {e}"),
             }),
         )
     })?;
@@ -383,7 +383,7 @@ pub async fn update_endpoint(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
-                    error: format!("Update error: {}", e),
+                    error: format!("Update error: {e}"),
                 }),
             )
         })?;
@@ -401,7 +401,7 @@ pub async fn update_endpoint(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
-                    error: format!("Update error: {}", e),
+                    error: format!("Update error: {e}"),
                 }),
             )
         })?;
@@ -419,7 +419,7 @@ pub async fn update_endpoint(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
-                    error: format!("Update error: {}", e),
+                    error: format!("Update error: {e}"),
                 }),
             )
         })?;
@@ -437,7 +437,7 @@ pub async fn update_endpoint(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
-                    error: format!("Update error: {}", e),
+                    error: format!("Update error: {e}"),
                 }),
             )
         })?;
@@ -455,7 +455,7 @@ pub async fn update_endpoint(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
-                    error: format!("Update error: {}", e),
+                    error: format!("Update error: {e}"),
                 }),
             )
         })?;
@@ -473,7 +473,7 @@ pub async fn update_endpoint(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse {
-                    error: format!("Update error: {}", e),
+                    error: format!("Update error: {e}"),
                 }),
             )
         })?;
@@ -490,7 +490,7 @@ pub async fn update_endpoint(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Update error: {}", e),
+                error: format!("Update error: {e}"),
             }),
         )
     })?;
@@ -499,7 +499,7 @@ pub async fn update_endpoint(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Transaction commit error: {}", e),
+                error: format!("Transaction commit error: {e}"),
             }),
         )
     })?;
@@ -531,7 +531,7 @@ pub async fn delete_endpoint(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to delete endpoint: {}", e),
+                error: format!("Failed to delete endpoint: {e}"),
             }),
         )
     })?;
@@ -579,7 +579,7 @@ pub async fn regenerate_hmac_secret(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to regenerate secret: {}", e),
+                error: format!("Failed to regenerate secret: {e}"),
             }),
         )
     })?
@@ -602,8 +602,8 @@ pub async fn regenerate_hmac_secret(
         contract_addresses: endpoint.contract_addresses.unwrap_or_default(),
         event_signatures: endpoint.event_signatures.unwrap_or_default(),
         is_active: endpoint.is_active.unwrap_or(true),
-        created_at: endpoint.created_at.unwrap_or_else(|| chrono::Utc::now()),
-        updated_at: endpoint.updated_at.unwrap_or_else(|| chrono::Utc::now()),
+        created_at: endpoint.created_at.unwrap_or_else(chrono::Utc::now),
+        updated_at: endpoint.updated_at.unwrap_or_else(chrono::Utc::now),
     }))
 }
 

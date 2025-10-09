@@ -113,7 +113,7 @@ pub async fn start_metrics_server(
     let addr: SocketAddr = ([0, 0, 0, 0], port).into();
     let listener = TcpListener::bind(addr)
         .await
-        .with_context(|| format!("Failed to bind metrics server to {}", addr))?;
+        .with_context(|| format!("Failed to bind metrics server to {addr}"))?;
 
     info!("Metrics server listening on http://{}", addr);
     info!("Available endpoints:");
@@ -271,7 +271,7 @@ mod tests {
         let _ = WEBSOCKET_RECONNECTS.with_label_values(&["ethereum"]).get();
 
         // If we get here without panicking, metrics are properly registered
-        assert!(true);
+        // Test passes if no panic occurs
     }
 
     #[test]

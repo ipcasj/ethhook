@@ -22,7 +22,7 @@ async fn main() {
             successes += 1;
         }
         Err(e) => {
-            println!("   ❌ PostgreSQL: Failed - {}\n", e);
+            println!("   ❌ PostgreSQL: Failed - {e}\n");
             failures += 1;
         }
     }
@@ -35,14 +35,14 @@ async fn main() {
             successes += 1;
         }
         Err(e) => {
-            println!("   ❌ Redis: Failed - {}\n", e);
+            println!("   ❌ Redis: Failed - {e}\n");
             failures += 1;
         }
     }
 
     // Summary
     println!("═══════════════════════════════════════════════");
-    println!("Results: {} passed, {} failed", successes, failures);
+    println!("Results: {successes} passed, {failures} failed");
 
     if failures == 0 {
         println!("✅ All services are reachable!");
@@ -66,7 +66,7 @@ async fn test_postgres() -> Result<(), String> {
 
     println!(
         "   Connecting to: {}",
-        database_url.split('@').last().unwrap()
+        database_url.split('@').next_back().unwrap()
     );
 
     // Use a simple TCP check
@@ -77,7 +77,7 @@ async fn test_postgres() -> Result<(), String> {
 
             match tokio::net::TcpStream::connect((host, port)).await {
                 Ok(_) => Ok(()),
-                Err(e) => Err(format!("Connection failed: {}", e)),
+                Err(e) => Err(format!("Connection failed: {e}")),
             }
         } else {
             Err("Could not parse host:port".to_string())
@@ -102,13 +102,13 @@ async fn test_redis() -> Result<(), String> {
 
         match tokio::net::TcpStream::connect((host, port)).await {
             Ok(_) => Ok(()),
-            Err(e) => Err(format!("Connection failed: {}", e)),
+            Err(e) => Err(format!("Connection failed: {e}")),
         }
     } else {
         // Default to localhost:6379
         match tokio::net::TcpStream::connect(("localhost", 6379)).await {
             Ok(_) => Ok(()),
-            Err(e) => Err(format!("Connection failed: {}", e)),
+            Err(e) => Err(format!("Connection failed: {e}")),
         }
     }
 }

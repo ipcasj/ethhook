@@ -64,7 +64,7 @@ pub async fn create_application(
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("Validation error: {}", e),
+                error: format!("Validation error: {e}"),
             }),
         )
     })?;
@@ -92,7 +92,7 @@ pub async fn create_application(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to create application: {}", e),
+                error: format!("Failed to create application: {e}"),
             }),
         )
     })?;
@@ -106,8 +106,8 @@ pub async fn create_application(
             description: app.description,
             api_key: app.api_key.unwrap_or_default(),
             is_active: app.is_active.unwrap_or(true),
-            created_at: app.created_at.unwrap_or_else(|| chrono::Utc::now()),
-            updated_at: app.updated_at.unwrap_or_else(|| chrono::Utc::now()),
+            created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
+            updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
         }),
     ))
 }
@@ -133,7 +133,7 @@ pub async fn list_applications(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to fetch applications: {}", e),
+                error: format!("Failed to fetch applications: {e}"),
             }),
         )
     })?;
@@ -148,8 +148,8 @@ pub async fn list_applications(
             description: app.description,
             api_key: app.api_key.unwrap_or_default(),
             is_active: app.is_active.unwrap_or(true),
-            created_at: app.created_at.unwrap_or_else(|| chrono::Utc::now()),
-            updated_at: app.updated_at.unwrap_or_else(|| chrono::Utc::now()),
+            created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
+            updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
         })
         .collect();
 
@@ -180,7 +180,7 @@ pub async fn get_application(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Database error: {}", e),
+                error: format!("Database error: {e}"),
             }),
         )
     })?
@@ -200,8 +200,8 @@ pub async fn get_application(
         description: app.description,
         api_key: app.api_key.unwrap_or_default(),
         is_active: app.is_active.unwrap_or(true),
-        created_at: app.created_at.unwrap_or_else(|| chrono::Utc::now()),
-        updated_at: app.updated_at.unwrap_or_else(|| chrono::Utc::now()),
+        created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
+        updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
     }))
 }
 
@@ -217,13 +217,13 @@ pub async fn update_application(
         (
             StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("Validation error: {}", e),
+                error: format!("Validation error: {e}"),
             }),
         )
     })?;
 
     // Check if application exists and belongs to user
-    let existing = sqlx::query!(
+    let _existing = sqlx::query!(
         "SELECT id FROM applications WHERE id = $1 AND user_id = $2",
         app_id,
         auth_user.user_id
@@ -234,7 +234,7 @@ pub async fn update_application(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Database error: {}", e),
+                error: format!("Database error: {e}"),
             }),
         )
     })?
@@ -261,7 +261,7 @@ pub async fn update_application(
         ));
     }
     if let Some(is_active) = payload.is_active {
-        params.push(format!("is_active = {}", is_active));
+        params.push(format!("is_active = {is_active}"));
     }
 
     if !params.is_empty() {
@@ -270,8 +270,7 @@ pub async fn update_application(
     }
 
     query.push_str(&format!(
-        " WHERE id = '{}' RETURNING id, user_id, name, description, api_key, is_active, created_at, updated_at",
-        app_id
+        " WHERE id = '{app_id}' RETURNING id, user_id, name, description, api_key, is_active, created_at, updated_at"
     ));
 
     let app = sqlx::query_as::<
@@ -293,7 +292,7 @@ pub async fn update_application(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to update application: {}", e),
+                error: format!("Failed to update application: {e}"),
             }),
         )
     })?;
@@ -327,7 +326,7 @@ pub async fn delete_application(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to delete application: {}", e),
+                error: format!("Failed to delete application: {e}"),
             }),
         )
     })?;
@@ -370,7 +369,7 @@ pub async fn regenerate_api_key(
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to regenerate API key: {}", e),
+                error: format!("Failed to regenerate API key: {e}"),
             }),
         )
     })?
@@ -390,8 +389,8 @@ pub async fn regenerate_api_key(
         description: app.description,
         api_key: app.api_key.unwrap_or_default(),
         is_active: app.is_active.unwrap_or(true),
-        created_at: app.created_at.unwrap_or_else(|| chrono::Utc::now()),
-        updated_at: app.updated_at.unwrap_or_else(|| chrono::Utc::now()),
+        created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
+        updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
     }))
 }
 
@@ -409,7 +408,22 @@ fn generate_api_key() -> String {
         })
         .collect();
 
-    format!("ethk_{}", key)
+    format!("ethk_{key}")
+}
+
+/// Generate a secure HMAC secret (64 characters)
+fn generate_hmac_secret() -> String {
+    use rand::Rng;
+    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const SECRET_LEN: usize = 64;
+
+    let mut rng = rand::thread_rng();
+    (0..SECRET_LEN)
+        .map(|_| {
+            let idx = rng.gen_range(0..CHARSET.len());
+            CHARSET[idx] as char
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -449,19 +463,4 @@ mod tests {
         assert_eq!(key1.len(), 37); // "ethk_" + 32
         assert_eq!(key2.len(), 37);
     }
-}
-
-/// Generate a secure HMAC secret (64 characters)
-fn generate_hmac_secret() -> String {
-    use rand::Rng;
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    const SECRET_LEN: usize = 64;
-
-    let mut rng = rand::thread_rng();
-    (0..SECRET_LEN)
-        .map(|_| {
-            let idx = rng.gen_range(0..CHARSET.len());
-            CHARSET[idx] as char
-        })
-        .collect()
 }

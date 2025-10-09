@@ -163,7 +163,7 @@ pub fn verify_hmac(payload: &str, signature_hex: &str, secret: &str) -> bool {
     let computed = sign_hmac(payload, secret);
 
     // Constant-time comparison to prevent timing attacks
-    computed.as_bytes().len() == signature_hex.as_bytes().len()
+    computed.len() == signature_hex.len()
         && computed
             .as_bytes()
             .iter()

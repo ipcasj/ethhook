@@ -147,7 +147,7 @@ async fn test_stream_publishing() {
                 (k.clone(), String::from_utf8_lossy(bytes).to_string())
             }
             redis::Value::SimpleString(s) => (k.clone(), s.clone()),
-            _ => (k.clone(), format!("{:?}", v)),
+            _ => (k.clone(), format!("{v:?}")),
         })
         .collect();
 

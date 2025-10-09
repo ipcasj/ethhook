@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
     info!("📋 Configuration loaded:");
     info!(
         "   - Database: {}",
-        config.database_url.split('@').last().unwrap_or("***")
+        config.database_url.split('@').next_back().unwrap_or("***")
     );
     info!("   - Redis: {}:{}", config.redis_host, config.redis_port);
     info!("   - Queue: {}", config.queue_name);

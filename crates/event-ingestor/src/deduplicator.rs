@@ -198,11 +198,11 @@ mod tests {
 
         // First time: should NOT be duplicate
         let is_dup1 = dedup.is_duplicate(event_id).await.expect("Failed");
-        assert_eq!(is_dup1, false, "First event should not be duplicate");
+        assert!(!is_dup1, "First event should not be duplicate");
 
         // Second time: SHOULD be duplicate
         let is_dup2 = dedup.is_duplicate(event_id).await.expect("Failed");
-        assert_eq!(is_dup2, true, "Second event should be duplicate");
+        assert!(is_dup2, "Second event should be duplicate");
 
         // Stats should show 1 tracked event
         let stats = dedup.stats().await.expect("Failed to get stats");
@@ -228,10 +228,10 @@ mod tests {
         let event4 = "event:42161:0xaaa:0"; // Different chain_id
 
         // All should be unique
-        assert_eq!(dedup.is_duplicate(event1).await.unwrap(), false);
-        assert_eq!(dedup.is_duplicate(event2).await.unwrap(), false);
-        assert_eq!(dedup.is_duplicate(event3).await.unwrap(), false);
-        assert_eq!(dedup.is_duplicate(event4).await.unwrap(), false);
+        assert!(!dedup.is_duplicate(event1).await.unwrap());
+        assert!(!dedup.is_duplicate(event2).await.unwrap());
+        assert!(!dedup.is_duplicate(event3).await.unwrap());
+        assert!(!dedup.is_duplicate(event4).await.unwrap());
 
         // Stats should show 4 tracked events
         let stats = dedup.stats().await.expect("Failed to get stats");

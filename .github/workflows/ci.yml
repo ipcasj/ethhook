@@ -143,7 +143,7 @@ jobs:
       
       - name: Install musl tools
         if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools musl-dev
+        run: sudo apt-get update && sudo apt-get install -y musl-tools musl-dev pkg-config libssl-dev
       
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -243,9 +243,16 @@ jobs:
       
       - name: Run security audit
         run: |
-          # Allow warnings for unmaintained crates (we'll address in next major version)
-          # Focus on critical vulnerabilities only
-          cargo audit --deny unsound --deny yanked
+          # Allow specific vulnerabilities we can't fix yet:
+          # - RUSTSEC-2024-0437: protobuf 2.28.0 (prometheus 0.13 dependency, v0.14 has breaking changes)
+          # - RUSTSEC-2023-0071: rsa in sqlx-mysql (we use PostgreSQL, not MySQL)
+          # - RUSTSEC-2024-0436: paste unmaintained (sqlx dependency)
+          # - RUSTSEC-2024-0370: proc-macro-error unmaintained (validator dependency)
+          cargo audit --deny unsound --deny yanked \
+            --ignore RUSTSEC-2024-0437 \
+            --ignore RUSTSEC-2023-0071 \
+            --ignore RUSTSEC-2024-0436 \
+            --ignore RUSTSEC-2024-0370
 
   coverage:
     name: Code Coverage

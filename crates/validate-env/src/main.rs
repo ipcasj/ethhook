@@ -9,7 +9,7 @@ fn main() {
 
     // Load .env file
     if let Err(e) = dotenvy::dotenv() {
-        eprintln!("⚠️  Warning: Could not load .env file: {}", e);
+        eprintln!("⚠️  Warning: Could not load .env file: {e}");
         eprintln!("    Make sure .env file exists in the project root\n");
     }
 
@@ -172,14 +172,14 @@ fn main() {
     if !warnings.is_empty() {
         println!("\n⚠️  Warnings ({}):", warnings.len());
         for warning in &warnings {
-            println!("   - {}", warning);
+            println!("   - {warning}");
         }
     }
 
     if !errors.is_empty() {
         println!("\n❌ Errors ({}):", errors.len());
         for error in &errors {
-            println!("   - {}", error);
+            println!("   - {error}");
         }
         println!("\n💡 Fix these errors before running EthHook services.");
         std::process::exit(1);
@@ -200,12 +200,12 @@ fn validate_required(errors: &mut Vec<String>, key: &str, description: &str) {
             println!("  ✓ {}: {}", description, mask_sensitive(key, &value));
         }
         Ok(_) => {
-            errors.push(format!("{} is set but empty", key));
-            println!("  ✗ {}: EMPTY", description);
+            errors.push(format!("{key} is set but empty"));
+            println!("  ✗ {description}: EMPTY");
         }
         Err(_) => {
-            errors.push(format!("{} is required but not set", key));
-            println!("  ✗ {}: NOT SET", description);
+            errors.push(format!("{key} is required but not set"));
+            println!("  ✗ {description}: NOT SET");
         }
     }
 }
@@ -213,11 +213,11 @@ fn validate_required(errors: &mut Vec<String>, key: &str, description: &str) {
 fn validate_optional(warnings: &mut Vec<String>, key: &str, default: &str) {
     match env::var(key) {
         Ok(value) => {
-            println!("  ✓ {}: {}", key, value);
+            println!("  ✓ {key}: {value}");
         }
         Err(_) => {
-            warnings.push(format!("{} not set, will use default: {}", key, default));
-            println!("  ⚠ {}: using default ({})", key, default);
+            warnings.push(format!("{key} not set, will use default: {default}"));
+            println!("  ⚠ {key}: using default ({default})");
         }
     }
 }
@@ -226,26 +226,25 @@ fn validate_numeric(errors: &mut Vec<String>, key: &str, min: u32, max: u32, def
     match env::var(key) {
         Ok(value) => match value.parse::<u32>() {
             Ok(num) if num >= min && num <= max => {
-                println!("  ✓ {}: {}", key, num);
+                println!("  ✓ {key}: {num}");
             }
             Ok(num) => {
                 errors.push(format!(
-                    "{} value {} is out of range ({}-{})",
-                    key, num, min, max
+                    "{key} value {num} is out of range ({min}-{max})"
                 ));
-                println!("  ✗ {}: {} (out of range {}-{})", key, num, min, max);
+                println!("  ✗ {key}: {num} (out of range {min}-{max})");
             }
             Err(_) => {
-                errors.push(format!("{} must be a number, got: {}", key, value));
-                println!("  ✗ {}: {} (not a number)", key, value);
+                errors.push(format!("{key} must be a number, got: {value}"));
+                println!("  ✗ {key}: {value} (not a number)");
             }
         },
         Err(_) => {
             if let Some(def) = default {
-                println!("  ⚠ {}: using default ({})", key, def);
+                println!("  ⚠ {key}: using default ({def})");
             } else {
-                errors.push(format!("{} is required but not set", key));
-                println!("  ✗ {}: NOT SET", key);
+                errors.push(format!("{key} is required but not set"));
+                println!("  ✗ {key}: NOT SET");
             }
         }
     }
@@ -260,7 +259,7 @@ fn validate_rpc_endpoint(
     match env::var(key) {
         Ok(value) if value.starts_with("wss://") || value.starts_with("https://") => {
             if value.contains("YOUR_KEY") || value.contains("YOUR_PROJECT_ID") {
-                warnings.push(format!("{} contains placeholder API key", key));
+                warnings.push(format!("{key} contains placeholder API key"));
                 println!(
                     "  ⚠ {}: {} (contains placeholder)",
                     description,
@@ -272,14 +271,13 @@ fn validate_rpc_endpoint(
         }
         Ok(value) => {
             errors.push(format!(
-                "{} must start with wss:// or https://, got: {}",
-                key, value
+                "{key} must start with wss:// or https://, got: {value}"
             ));
-            println!("  ✗ {}: invalid protocol", description);
+            println!("  ✗ {description}: invalid protocol");
         }
         Err(_) => {
-            errors.push(format!("{} is required", key));
-            println!("  ✗ {}: NOT SET", description);
+            errors.push(format!("{key} is required"));
+            println!("  ✗ {description}: NOT SET");
         }
     }
 }
@@ -290,12 +288,12 @@ fn validate_optional_rpc(warnings: &mut Vec<String>, key: &str, description: &st
             println!("  ✓ {}: {}", description, mask_url(&value));
         }
         Ok(_) => {
-            warnings.push(format!("{} is set but has invalid protocol", key));
-            println!("  ⚠ {}: invalid protocol", description);
+            warnings.push(format!("{key} is set but has invalid protocol"));
+            println!("  ⚠ {description}: invalid protocol");
         }
         Err(_) => {
-            warnings.push(format!("{} not set (backup RPC recommended)", key));
-            println!("  ⚠ {}: not set (backup recommended)", description);
+            warnings.push(format!("{key} not set (backup RPC recommended)"));
+            println!("  ⚠ {description}: not set (backup recommended)");
         }
     }
 }
@@ -307,13 +305,12 @@ fn validate_redis(errors: &mut Vec<String>, key: &str) {
         }
         Ok(value) => {
             errors.push(format!(
-                "{} must start with redis:// or rediss://, got: {}",
-                key, value
+                "{key} must start with redis:// or rediss://, got: {value}"
             ));
             println!("  ✗ REDIS_URL: invalid protocol");
         }
         Err(_) => {
-            errors.push(format!("{} is required", key));
+            errors.push(format!("{key} is required"));
             println!("  ✗ REDIS_URL: NOT SET");
         }
     }
@@ -373,7 +370,7 @@ fn mask_url(url: &str) -> String {
                 &suffix[suffix.len() - 3..]
             )
         } else {
-            format!("{}***", prefix)
+            format!("{prefix}***")
         }
     } else {
         url.to_string()

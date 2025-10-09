@@ -54,7 +54,6 @@
 
 use anyhow::{Context, Result};
 use redis::AsyncCommands;
-use serde_json;
 use tracing::{debug, info, warn};
 
 use crate::types::ProcessedEvent;
@@ -177,7 +176,7 @@ impl StreamPublisher {
     /// - First entry ID
     /// - Last entry ID
     pub async fn stream_info(&mut self, chain_id: u64) -> Result<StreamInfo> {
-        let stream_name = format!("events:{}", chain_id);
+        let stream_name = format!("events:{chain_id}");
 
         // XINFO STREAM events:1
         let info: redis::InfoDict = self
@@ -219,7 +218,7 @@ impl StreamPublisher {
     /// println!("Trimmed {} old events", trimmed);
     /// ```
     pub async fn trim_stream(&mut self, chain_id: u64, max_length: usize) -> Result<usize> {
-        let stream_name = format!("events:{}", chain_id);
+        let stream_name = format!("events:{chain_id}");
 
         // XTRIM events:1 MAXLEN ~ 100000
         // "~" means approximate trimming (more efficient)
@@ -285,13 +284,13 @@ mod tests {
         // Publish event
         let stream_id = publisher.publish(&event).await.expect("Failed to publish");
         assert!(!stream_id.is_empty());
-        println!("Published with stream ID: {}", stream_id);
+        println!("Published with stream ID: {stream_id}");
 
         // Get stream info
         let info = publisher.stream_info(1).await.expect("Failed to get info");
         assert_eq!(info.stream_name, "events:1");
         assert!(info.length > 0);
-        println!("Stream info: {:?}", info);
+        println!("Stream info: {info:?}");
     }
 
     #[tokio::test]
@@ -306,8 +305,8 @@ mod tests {
             let event = ProcessedEvent {
                 chain_id: 1,
                 block_number: 18000000 + i,
-                block_hash: format!("0x{}", i),
-                transaction_hash: format!("0x{}", i),
+                block_hash: format!("0x{i}"),
+                transaction_hash: format!("0x{i}"),
                 log_index: 0,
                 contract_address: "0x123".to_string(),
                 topics: vec![],
@@ -320,7 +319,7 @@ mod tests {
 
         // Trim to keep only 5
         let trimmed = publisher.trim_stream(1, 5).await.expect("Failed to trim");
-        println!("Trimmed {} entries", trimmed);
+        println!("Trimmed {trimmed} entries");
 
         // Verify length
         let info = publisher.stream_info(1).await.expect("Failed to get info");

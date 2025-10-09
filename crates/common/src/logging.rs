@@ -92,7 +92,7 @@ mod tests {
     fn test_tracing_init() {
         // Initialize tracing (only once per test suite)
         // Note: This might fail if already initialized in another test
-        let result = std::panic::catch_unwind(|| {
+        let _result = std::panic::catch_unwind(|| {
             init_tracing();
         });
 
