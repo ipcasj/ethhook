@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -274,9 +274,19 @@ pub async fn update_application(
         app_id
     ));
 
-    let app = sqlx::query_as::<_, (Uuid, Uuid, String, Option<String>, String, bool, chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>)>(
-        &query
-    )
+    let app = sqlx::query_as::<
+        _,
+        (
+            Uuid,
+            Uuid,
+            String,
+            Option<String>,
+            String,
+            bool,
+            chrono::DateTime<chrono::Utc>,
+            chrono::DateTime<chrono::Utc>,
+        ),
+    >(&query)
     .fetch_one(&pool)
     .await
     .map_err(|e| {

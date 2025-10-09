@@ -19,7 +19,7 @@ pub struct Application {
 pub struct CreateApplicationRequest {
     #[validate(length(min = 1, max = 255))]
     pub name: String,
-    
+
     #[validate(length(max = 1000))]
     pub description: Option<String>,
 }
@@ -28,10 +28,10 @@ pub struct CreateApplicationRequest {
 pub struct UpdateApplicationRequest {
     #[validate(length(min = 1, max = 255))]
     pub name: Option<String>,
-    
+
     #[validate(length(max = 1000))]
     pub description: Option<String>,
-    
+
     pub is_active: Option<bool>,
 }
 

@@ -6,7 +6,7 @@
 use redis::aio::ConnectionManager;
 use redis::{AsyncCommands, Client, RedisResult};
 use serde::Serialize;
-use tracing::{info, error};
+use tracing::{error, info};
 
 use crate::error::Result;
 
@@ -30,10 +30,10 @@ impl RedisClient {
     /// Create a new Redis client
     pub async fn new(redis_url: &str) -> Result<Self> {
         info!("Connecting to Redis at {}", redis_url);
-        
+
         let client = Client::open(redis_url)?;
         let manager = ConnectionManager::new(client).await?;
-        
+
         info!("Redis connection established");
         Ok(Self { manager })
     }
@@ -45,9 +45,7 @@ impl RedisClient {
     /// String pong = jedis.ping();
     /// ```
     pub async fn ping(&mut self) -> Result<String> {
-        let result: String = redis::cmd("PING")
-            .query_async(&mut self.manager)
-            .await?;
+        let result: String = redis::cmd("PING").query_async(&mut self.manager).await?;
         Ok(result)
     }
 
@@ -86,7 +84,7 @@ impl RedisClient {
     /// ```
     pub async fn xadd<T: Serialize>(&mut self, stream: &str, data: &T) -> Result<String> {
         let json = serde_json::to_string(data)?;
-        
+
         let id: String = redis::cmd("XADD")
             .arg(stream)
             .arg("*") // Auto-generate ID
@@ -94,7 +92,7 @@ impl RedisClient {
             .arg(json)
             .query_async(&mut self.manager)
             .await?;
-        
+
         Ok(id)
     }
 
@@ -113,7 +111,7 @@ impl RedisClient {
         id: &str,
         count: usize,
     ) -> Result<Vec<StreamEntry>> {
-        let result: RedisResult<Vec<(String, Vec<(String, Vec<(String, String)>)>)>> = 
+        let result: RedisResult<Vec<(String, Vec<(String, Vec<(String, String)>)>)>> =
             redis::cmd("XREAD")
                 .arg("COUNT")
                 .arg(count)
@@ -164,10 +162,8 @@ impl RedisClient {
     /// List<String> result = jedis.brpop(timeout, "queue:webhooks");
     /// ```
     pub async fn brpop(&mut self, list: &str, timeout: usize) -> Result<Option<String>> {
-        let result: Option<(String, String)> = self.manager
-            .brpop(list, timeout as f64)
-            .await?;
-        
+        let result: Option<(String, String)> = self.manager.brpop(list, timeout as f64).await?;
+
         Ok(result.map(|(_, value)| value))
     }
 
@@ -208,10 +204,10 @@ mod tests {
     async fn test_redis_set_get() {
         if let Ok(redis_url) = std::env::var("REDIS_URL") {
             let mut client = RedisClient::new(&redis_url).await.unwrap();
-            
+
             client.set("test:key", "test_value").await.unwrap();
             let value = client.get("test:key").await.unwrap();
-            
+
             assert_eq!(value, Some("test_value".to_string()));
         }
     }
@@ -226,7 +222,7 @@ mod tests {
     async fn test_redis_stream() {
         if let Ok(redis_url) = std::env::var("REDIS_URL") {
             let mut client = RedisClient::new(&redis_url).await.unwrap();
-            
+
             let event = TestEvent {
                 id: 123,
                 message: "test event".to_string(),

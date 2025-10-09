@@ -1,29 +1,29 @@
 /*!
  * Endpoint Matcher
- * 
+ *
  * Queries PostgreSQL to find webhook endpoints that match blockchain events.
- * 
+ *
  * ## Matching Logic
- * 
+ *
  * An endpoint matches an event if:
  * 1. **Active**: endpoint.is_active = true
  * 2. **Contract Match**: endpoint.contract_address = event.contract_address (or NULL for all)
  * 3. **Topic Match**: endpoint.event_topics ⊆ event.topics (or NULL for all)
- * 
+ *
  * ## Query Performance
- * 
+ *
  * Indexes used:
  * - `idx_endpoints_contract_address` (B-tree on contract_address WHERE is_active)
  * - `idx_endpoints_event_topics` (GIN on event_topics WHERE is_active)
- * 
+ *
  * Expected query time: < 5ms for 10,000 endpoints
- * 
+ *
  * ## Example
- * 
+ *
  * Event:
  * - contract: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 (USDC)
  * - topics: ["0xddf252ad...", "0x000...alice", "0x000...bob"]
- * 
+ *
  * Endpoint matches if:
  * - contract_address = 0xA0b... (specific) OR NULL (all contracts)
  * - event_topics = ["0xddf252ad..."] (Transfer signature) OR NULL (all events)
@@ -41,22 +41,22 @@ use crate::consumer::StreamEvent;
 pub struct MatchedEndpoint {
     /// Endpoint UUID
     pub endpoint_id: Uuid,
-    
+
     /// Application UUID (for webhook secret lookup)
     pub application_id: Uuid,
-    
+
     /// Webhook URL to deliver to
     pub url: String,
-    
+
     /// HMAC secret for signature
     pub hmac_secret: String,
-    
+
     /// Rate limit (requests per second)
     pub rate_limit_per_second: i32,
-    
+
     /// Maximum retry attempts
     pub max_retries: i32,
-    
+
     /// HTTP timeout in seconds
     pub timeout_seconds: i32,
 }
@@ -69,30 +69,30 @@ pub struct EndpointMatcher {
 
 impl EndpointMatcher {
     /// Create new endpoint matcher
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `pool` - PostgreSQL connection pool from ethhook_common::create_pool
     pub fn new(pool: PgPool) -> Self {
         info!("✅ Endpoint matcher initialized");
         Self { pool }
     }
-    
+
     /// Find endpoints that match a blockchain event
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `event` - Blockchain event from Redis Stream
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// Vector of matched endpoints with delivery configuration
     pub async fn find_matching_endpoints(
         &self,
         event: &StreamEvent,
     ) -> Result<Vec<MatchedEndpoint>> {
         // Query database for matching endpoints
-        // 
+        //
         // Match conditions:
         // 1. endpoint.is_active = true
         // 2. (endpoint.contract_address = event.contract OR endpoint.contract_address IS NULL)
@@ -106,7 +106,7 @@ impl EndpointMatcher {
         //
         //   endpoint.event_topics = ['0xddf...', '0x111...charlie']
         //   Match: NO (charlie not in event topics)
-        
+
         let rows = sqlx::query(
             r#"
             SELECT 
@@ -134,9 +134,9 @@ impl EndpointMatcher {
         .fetch_all(&self.pool)
         .await
         .context("Failed to query matching endpoints")?;
-        
+
         let mut endpoints = Vec::new();
-        
+
         for row in rows {
             endpoints.push(MatchedEndpoint {
                 endpoint_id: row.get("endpoint_id"),
@@ -148,19 +148,19 @@ impl EndpointMatcher {
                 timeout_seconds: row.get("timeout_seconds"),
             });
         }
-        
+
         debug!(
             "Found {} matching endpoints for event {} (contract: {})",
             endpoints.len(),
             event.transaction_hash,
             &event.contract_address[..10]
         );
-        
+
         Ok(endpoints)
     }
-    
+
     /// Get endpoint statistics
-    /// 
+    ///
     /// Returns total number of active endpoints for monitoring.
     pub async fn stats(&self) -> Result<EndpointStats> {
         let row = sqlx::query(
@@ -175,7 +175,7 @@ impl EndpointMatcher {
         .fetch_one(&self.pool)
         .await
         .context("Failed to get endpoint stats")?;
-        
+
         Ok(EndpointStats {
             active_endpoints: row.get::<i64, _>("active_endpoints") as usize,
             inactive_endpoints: row.get::<i64, _>("inactive_endpoints") as usize,
@@ -202,7 +202,7 @@ mod tests {
         let pool = sqlx::PgPool::connect("postgresql://localhost/ethhook_test")
             .await
             .unwrap();
-        
+
         let _matcher = EndpointMatcher::new(pool);
     }
 
@@ -212,9 +212,9 @@ mod tests {
         let pool = sqlx::PgPool::connect("postgresql://localhost/ethhook_test")
             .await
             .unwrap();
-        
+
         let matcher = EndpointMatcher::new(pool);
-        
+
         let event = StreamEvent {
             chain_id: 1,
             block_number: 18000000,
@@ -228,9 +228,9 @@ mod tests {
             data: "0x".to_string(),
             timestamp: 1696800000,
         };
-        
+
         let endpoints = matcher.find_matching_endpoints(&event).await.unwrap();
-        
+
         // Should return endpoints that match USDC Transfer events
         println!("Found {} matching endpoints", endpoints.len());
     }

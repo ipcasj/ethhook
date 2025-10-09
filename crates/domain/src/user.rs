@@ -40,10 +40,10 @@ pub enum SubscriptionStatus {
 pub struct CreateUserRequest {
     #[validate(email)]
     pub email: String,
-    
+
     #[validate(length(min = 8))]
     pub password: String,
-    
+
     pub full_name: Option<String>,
 }
 
@@ -51,7 +51,7 @@ pub struct CreateUserRequest {
 pub struct LoginRequest {
     #[validate(email)]
     pub email: String,
-    
+
     pub password: String,
 }
 

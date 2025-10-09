@@ -143,7 +143,7 @@ jobs:
       
       - name: Install musl tools
         if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools musl-dev
       
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -165,6 +165,10 @@ jobs:
       
       - name: Build workspace
         run: cargo build --workspace --release --target ${{ matrix.target }}
+        env:
+          # Use vendored OpenSSL for musl builds
+          OPENSSL_STATIC: 1
+          OPENSSL_VENDORED: 1
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -238,7 +242,10 @@ jobs:
         run: cargo install cargo-audit
       
       - name: Run security audit
-        run: cargo audit
+        run: |
+          # Allow warnings for unmaintained crates (we'll address in next major version)
+          # Focus on critical vulnerabilities only
+          cargo audit --deny unsound --deny yanked
 
   coverage:
     name: Code Coverage

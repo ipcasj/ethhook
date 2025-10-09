@@ -1,18 +1,18 @@
 /*!
  * WebSocket Client Module
- * 
+ *
  * Manages WebSocket connections to RPC providers (Alchemy, Infura).
- * 
+ *
  * ## How WebSocket Subscription Works
- * 
+ *
  * 1. **Connect**: Open persistent WebSocket connection to RPC provider
  * 2. **Subscribe**: Send `eth_subscribe("newHeads")` JSON-RPC request
  * 3. **Receive**: Get real-time notifications for every new block
  * 4. **Parse**: Extract block data and fetch transaction receipts
  * 5. **Extract**: Pull out event logs from receipts
- * 
+ *
  * ## Example Flow
- * 
+ *
  * ```text
  * Client                          Alchemy
  * ──────                          ───────
@@ -28,21 +28,21 @@
  *   │<───── New Block #18000002 ─────┤
  *   ...
  * ```
- * 
+ *
  * ## Performance Characteristics
- * 
+ *
  * - **Latency**: < 100ms from block mined to notification
  * - **Throughput**: Handles Ethereum mainnet (12s block time) easily
  * - **Cost**: Free (included in Alchemy/Infura free tier)
  * - **Reliability**: Auto-reconnect with exponential backoff
  */
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use futures_util::{SinkExt, StreamExt};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{
-    connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream,
+    MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message,
 };
 use tracing::{debug, error, info, warn};
 
@@ -51,37 +51,37 @@ use crate::types::{Log, ProcessedEvent, ReceiptResponse, SubscriptionMessage};
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 /// WebSocket client for blockchain event ingestion
-/// 
+///
 /// This client maintains a persistent WebSocket connection to an RPC provider
 /// and subscribes to real-time block updates.
 pub struct WebSocketClient {
     /// WebSocket stream for sending/receiving messages
     stream: WsStream,
-    
+
     /// Chain ID for this connection (1 = Ethereum, 42161 = Arbitrum, etc.)
     chain_id: u64,
-    
+
     /// Chain name for logging
     chain_name: String,
-    
+
     /// WebSocket URL for reconnection
     ws_url: String,
-    
+
     /// Subscription ID returned by eth_subscribe
     subscription_id: Option<String>,
 }
 
 impl WebSocketClient {
     /// Connect to RPC provider and subscribe to new block headers
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `ws_url` - WebSocket URL (e.g., "wss://eth-mainnet.g.alchemy.com/v2/YOUR_KEY")
     /// * `chain_id` - Chain ID (1 = Ethereum, 42161 = Arbitrum, etc.)
     /// * `chain_name` - Human-readable chain name for logging
-    /// 
+    ///
     /// # Example
-    /// 
+    ///
     /// ```no_run
     /// let client = WebSocketClient::connect(
     ///     "wss://eth-mainnet.g.alchemy.com/v2/YOUR_KEY",
@@ -114,7 +114,7 @@ impl WebSocketClient {
     }
 
     /// Subscribe to new block headers using eth_subscribe
-    /// 
+    ///
     /// Sends JSON-RPC request:
     /// ```json
     /// {
@@ -148,8 +148,8 @@ impl WebSocketClient {
             let msg = msg.context("Failed to receive subscription response")?;
 
             if let Message::Text(text) = msg {
-                let response: Value = serde_json::from_str(&text)
-                    .context("Failed to parse subscription response")?;
+                let response: Value =
+                    serde_json::from_str(&text).context("Failed to parse subscription response")?;
 
                 if let Some(sub_id) = response["result"].as_str() {
                     self.subscription_id = Some(sub_id.to_string());
@@ -170,15 +170,15 @@ impl WebSocketClient {
     }
 
     /// Process incoming messages and yield processed events
-    /// 
+    ///
     /// This is the main event loop. It:
     /// 1. Receives block header notifications from WebSocket
     /// 2. Fetches full transaction receipts for the block
     /// 3. Extracts event logs from receipts
     /// 4. Yields ProcessedEvent for each log
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// An async stream of ProcessedEvent that can be consumed with:
     /// ```no_run
     /// while let Some(event) = client.next_event().await? {
@@ -220,9 +220,9 @@ impl WebSocketClient {
     }
 
     /// Process a block and extract all event logs
-    /// 
+    ///
     /// # Steps
-    /// 
+    ///
     /// 1. Parse block number from hex string
     /// 2. Fetch block with full transaction details
     /// 3. For each transaction, fetch receipt (contains logs)
@@ -233,18 +233,12 @@ impl WebSocketClient {
         block: &crate::types::Block,
     ) -> Result<Option<Vec<ProcessedEvent>>> {
         // Parse block number from hex string (e.g., "0x112a880" -> 18000000)
-        let block_number = u64::from_str_radix(
-            block.number.trim_start_matches("0x"),
-            16,
-        )
-        .context("Failed to parse block number")?;
+        let block_number = u64::from_str_radix(block.number.trim_start_matches("0x"), 16)
+            .context("Failed to parse block number")?;
 
         // Parse timestamp from hex string
-        let timestamp = u64::from_str_radix(
-            block.timestamp.trim_start_matches("0x"),
-            16,
-        )
-        .context("Failed to parse timestamp")?;
+        let timestamp = u64::from_str_radix(block.timestamp.trim_start_matches("0x"), 16)
+            .context("Failed to parse timestamp")?;
 
         info!(
             "[{}] Processing block #{} (hash: {})",
@@ -255,13 +249,19 @@ impl WebSocketClient {
         let block_with_txs = match self.get_block_with_transactions(&block.number).await? {
             Some(b) => b,
             None => {
-                warn!("[{}] Block {} not found, skipping", self.chain_name, block_number);
+                warn!(
+                    "[{}] Block {} not found, skipping",
+                    self.chain_name, block_number
+                );
                 return Ok(None);
             }
         };
 
         let tx_count = block_with_txs.transactions.len();
-        debug!("[{}] Block {} has {} transactions", self.chain_name, block_number, tx_count);
+        debug!(
+            "[{}] Block {} has {} transactions",
+            self.chain_name, block_number, tx_count
+        );
 
         // Collect all events from all transactions
         let mut all_events = Vec::new();
@@ -277,17 +277,16 @@ impl WebSocketClient {
             if let Some(logs) = self.get_transaction_receipt(&tx.hash).await? {
                 debug!(
                     "[{}] Transaction {} emitted {} logs",
-                    self.chain_name, tx.hash, logs.len()
+                    self.chain_name,
+                    tx.hash,
+                    logs.len()
                 );
 
                 // Convert each log to ProcessedEvent
                 for log in logs {
                     // Parse log index from hex
-                    let log_index = u64::from_str_radix(
-                        log.log_index.trim_start_matches("0x"),
-                        16,
-                    )
-                    .unwrap_or(0);
+                    let log_index = u64::from_str_radix(log.log_index.trim_start_matches("0x"), 16)
+                        .unwrap_or(0);
 
                     let event = ProcessedEvent {
                         chain_id: self.chain_id,
@@ -308,7 +307,10 @@ impl WebSocketClient {
 
         info!(
             "[{}] Block {} processed: {} transactions, {} events",
-            self.chain_name, block_number, tx_count, all_events.len()
+            self.chain_name,
+            block_number,
+            tx_count,
+            all_events.len()
         );
 
         if all_events.is_empty() {
@@ -319,7 +321,7 @@ impl WebSocketClient {
     }
 
     /// Fetch block with full transaction details
-    /// 
+    ///
     /// Sends JSON-RPC request:
     /// ```json
     /// {
@@ -329,7 +331,7 @@ impl WebSocketClient {
     ///   "id": 2
     /// }
     /// ```
-    /// 
+    ///
     /// The `true` parameter means "return full transaction objects, not just hashes"
     async fn get_block_with_transactions(
         &mut self,
@@ -356,7 +358,7 @@ impl WebSocketClient {
 
             if let Message::Text(text) = msg {
                 debug!("[{}] Received getBlockByNumber response", self.chain_name);
-                
+
                 let response: crate::types::BlockResponse = serde_json::from_str(&text)
                     .context("Failed to parse getBlockByNumber response")?;
 
@@ -368,7 +370,7 @@ impl WebSocketClient {
     }
 
     /// Fetch transaction receipt containing event logs
-    /// 
+    ///
     /// Sends JSON-RPC request:
     /// ```json
     /// {
@@ -397,8 +399,8 @@ impl WebSocketClient {
             let msg = msg.context("Failed to receive receipt response")?;
 
             if let Message::Text(text) = msg {
-                let response: ReceiptResponse = serde_json::from_str(&text)
-                    .context("Failed to parse receipt response")?;
+                let response: ReceiptResponse =
+                    serde_json::from_str(&text).context("Failed to parse receipt response")?;
 
                 if let Some(receipt) = response.result {
                     return Ok(Some(receipt.logs));

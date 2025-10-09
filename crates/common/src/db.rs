@@ -64,9 +64,7 @@ pub async fn create_pool(database_url: &str, max_connections: u32) -> Result<PgP
 /// health_check(&pool).await?;
 /// ```
 pub async fn health_check(pool: &PgPool) -> Result<()> {
-    let row: (i32,) = sqlx::query_as("SELECT 1")
-        .fetch_one(pool)
-        .await?;
+    let row: (i32,) = sqlx::query_as("SELECT 1").fetch_one(pool).await?;
 
     if row.0 == 1 {
         info!("Database health check passed");

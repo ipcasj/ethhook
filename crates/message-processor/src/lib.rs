@@ -1,11 +1,11 @@
 /*!
  * Message Processor Service
- * 
+ *
  * Reads events from Redis Streams, queries database for matching endpoints,
  * and creates delivery jobs.
- * 
+ *
  * ## Architecture
- * 
+ *
  * ```text
  * Redis Streams          Message Processor          PostgreSQL        Redis Queue
  * ─────────────         ──────────────────         ──────────         ───────────
@@ -24,11 +24,11 @@
  *                              ├─── LPUSH delivery_queue ─────────────>│
  *                              │    { endpoint_id, event_data }        │
  * ```
- * 
+ *
  * ## Why Consumer Groups?
- * 
+ *
  * Redis Streams support **consumer groups** for horizontal scaling:
- * 
+ *
  * ```text
  * Stream: events:1
  *    │
@@ -37,14 +37,14 @@
  *         ├──> Worker 2 (processes IDs 101-200)
  *         └──> Worker 3 (processes IDs 201-300)
  * ```
- * 
+ *
  * Benefits:
  * - **Load Balancing**: Automatic work distribution
  * - **At-Least-Once Delivery**: ACK mechanism
  * - **Fault Tolerance**: Pending entry list (PEL) for crashes
- * 
+ *
  * ## Performance Targets
- * 
+ *
  * - **Throughput**: 10,000 events/second
  * - **Latency**: < 100ms from stream to queue
  * - **Database**: Connection pool (20 connections)

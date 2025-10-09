@@ -1,6 +1,6 @@
 /*!
  * Type Definitions
- * 
+ *
  * Data structures for blockchain events and RPC responses.
  * These map to Ethereum JSON-RPC response formats.
  */
@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 /// A blockchain block header
-/// 
+///
 /// Example JSON from Alchemy:
 /// ```json
 /// {
@@ -24,22 +24,22 @@ use serde::{Deserialize, Serialize};
 pub struct Block {
     /// Block number (hex string like "0x112a880")
     pub number: String,
-    
+
     /// Block hash (hex string like "0xabc123...")
     pub hash: String,
-    
+
     /// Unix timestamp (hex string)
     pub timestamp: String,
-    
+
     /// Miner address
     pub miner: Option<String>,
-    
+
     /// Parent block hash
     pub parent_hash: String,
 }
 
 /// A transaction log (emitted event)
-/// 
+///
 /// Example: USDC Transfer event
 /// ```json
 /// {
@@ -55,7 +55,7 @@ pub struct Block {
 ///   "logIndex": "0x5"
 /// }
 /// ```
-/// 
+///
 /// This represents:
 /// - Event: Transfer (topic[0] is the event signature hash)
 /// - From: 0x742d... (topic[1])
@@ -66,37 +66,37 @@ pub struct Block {
 pub struct Log {
     /// Smart contract address that emitted the event
     pub address: String,
-    
+
     /// Indexed event parameters (up to 3, plus event signature as topic[0])
     pub topics: Vec<String>,
-    
+
     /// Non-indexed event parameters (ABI-encoded)
     pub data: String,
-    
+
     /// Block number where this log was emitted
     pub block_number: String,
-    
+
     /// Transaction hash that produced this log
     pub transaction_hash: String,
-    
+
     /// Log index within the block (for uniqueness)
     pub log_index: String,
-    
+
     /// Transaction index within the block
     pub transaction_index: Option<String>,
-    
+
     /// Whether this log was removed (due to chain reorg)
     #[serde(default)]
     pub removed: bool,
 }
 
 /// RPC subscription message for newHeads
-/// 
+///
 /// When we subscribe via WebSocket:
 /// ```json
 /// {"jsonrpc":"2.0","method":"eth_subscribe","params":["newHeads"]}
 /// ```
-/// 
+///
 /// We receive messages like:
 /// ```json
 /// {
@@ -122,7 +122,7 @@ pub struct SubscriptionParams {
 }
 
 /// RPC request to get block with full transaction details
-/// 
+///
 /// Request:
 /// ```json
 /// {
@@ -174,7 +174,7 @@ pub struct Transaction {
 }
 
 /// RPC request to get transaction receipt (includes logs)
-/// 
+///
 /// Request:
 /// ```json
 /// {
@@ -212,45 +212,45 @@ pub struct TransactionReceipt {
 }
 
 /// Processed event ready for Redis Stream
-/// 
+///
 /// This is our internal format after parsing blockchain logs.
 /// We'll serialize this to JSON and publish to Redis Stream.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessedEvent {
     /// Chain ID (1 = Ethereum, 42161 = Arbitrum, etc.)
     pub chain_id: u64,
-    
+
     /// Block number (decimal, not hex)
     pub block_number: u64,
-    
+
     /// Block hash
     pub block_hash: String,
-    
+
     /// Transaction hash
     pub transaction_hash: String,
-    
+
     /// Log index within the transaction
     pub log_index: u64,
-    
+
     /// Smart contract address that emitted the event
     pub contract_address: String,
-    
+
     /// Event topics (indexed parameters)
     pub topics: Vec<String>,
-    
+
     /// Event data (non-indexed parameters)
     pub data: String,
-    
+
     /// Unix timestamp when the block was mined
     pub timestamp: u64,
 }
 
 impl ProcessedEvent {
     /// Generate unique event ID for deduplication
-    /// 
+    ///
     /// Format: "event:{chain_id}:{tx_hash}:{log_index}"
     /// Example: "event:1:0xabc123...:5"
-    /// 
+    ///
     /// This ID is unique across:
     /// - Chains (different chain_id)
     /// - Transactions (different tx_hash)
@@ -261,9 +261,9 @@ impl ProcessedEvent {
             self.chain_id, self.transaction_hash, self.log_index
         )
     }
-    
+
     /// Get Redis Stream name for this event
-    /// 
+    ///
     /// Format: "events:{chain_id}"
     /// Examples:
     /// - "events:1" (Ethereum)
@@ -278,7 +278,7 @@ impl ProcessedEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_event_id_generation() {
         let event = ProcessedEvent {
@@ -292,10 +292,10 @@ mod tests {
             data: "0x".to_string(),
             timestamp: 1234567890,
         };
-        
+
         assert_eq!(event.event_id(), "event:1:0xdef456:5");
     }
-    
+
     #[test]
     fn test_stream_name_generation() {
         let event = ProcessedEvent {
@@ -309,7 +309,7 @@ mod tests {
             data: "0x".to_string(),
             timestamp: 0,
         };
-        
+
         assert_eq!(event.stream_name(), "events:42161");
     }
 }

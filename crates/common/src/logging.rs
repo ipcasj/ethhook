@@ -3,7 +3,7 @@
 //! Provides structured logging configuration using tracing.
 //! Similar to Log4j but with better support for async and structured data.
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Initialize tracing/logging for the application
 ///
@@ -35,17 +35,17 @@ pub fn init_tracing() {
     //   RUST_LOG=debug cargo run     -> debug and higher
     //   RUST_LOG=error cargo run     -> only errors
     //   RUST_LOG=ethhook=trace cargo run  -> trace for ethhook only
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     tracing_subscriber::registry()
         .with(env_filter)
-        .with(tracing_subscriber::fmt::layer()
-            .with_target(true)     // Show module path
-            .with_level(true)      // Show log level
-            .with_thread_ids(true) // Show thread IDs
-            .with_file(true)       // Show file and line
-            .compact()             // Compact format
+        .with(
+            tracing_subscriber::fmt::layer()
+                .with_target(true) // Show module path
+                .with_level(true) // Show log level
+                .with_thread_ids(true) // Show thread IDs
+                .with_file(true) // Show file and line
+                .compact(), // Compact format
         )
         .init();
 }
@@ -69,16 +69,16 @@ pub fn init_tracing() {
 /// }
 /// ```
 pub fn init_tracing_json() {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     tracing_subscriber::registry()
         .with(env_filter)
-        .with(tracing_subscriber::fmt::layer()
-            .json()                // JSON format
-            .with_target(true)
-            .with_level(true)
-            .with_current_span(true)
+        .with(
+            tracing_subscriber::fmt::layer()
+                .json() // JSON format
+                .with_target(true)
+                .with_level(true)
+                .with_current_span(true),
         )
         .init();
 }
@@ -86,7 +86,7 @@ pub fn init_tracing_json() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tracing::{info, warn, error};
+    use tracing::{error, info, warn};
 
     #[test]
     fn test_tracing_init() {

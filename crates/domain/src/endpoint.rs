@@ -35,21 +35,21 @@ pub enum HealthStatus {
 pub struct CreateEndpointRequest {
     #[validate(length(min = 1, max = 255))]
     pub name: String,
-    
+
     #[validate(url)]
     pub url: String,
-    
+
     #[validate(length(min = 42, max = 42))]
     pub contract_address: Option<String>,
-    
+
     pub event_topics: Option<Vec<String>>,
-    
+
     #[validate(range(min = 1, max = 100))]
     pub rate_limit_per_second: Option<i32>,
-    
+
     #[validate(range(min = 0, max = 10))]
     pub max_retries: Option<i32>,
-    
+
     #[validate(range(min = 5, max = 300))]
     pub timeout_seconds: Option<i32>,
 }
@@ -58,12 +58,12 @@ pub struct CreateEndpointRequest {
 pub struct UpdateEndpointRequest {
     #[validate(length(min = 1, max = 255))]
     pub name: Option<String>,
-    
+
     #[validate(url)]
     pub url: Option<String>,
-    
+
     pub is_active: Option<bool>,
-    
+
     #[validate(range(min = 1, max = 100))]
     pub rate_limit_per_second: Option<i32>,
 }

@@ -1,6 +1,6 @@
 /*!
  * Event Ingestor Library
- * 
+ *
  * This library exposes the core components of the event ingestor
  * for testing and potential reuse.
  */

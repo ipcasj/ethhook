@@ -1,7 +1,7 @@
 use anyhow::Result;
 use axum::{
-    routing::{delete, get, post, put},
     Router,
+    routing::{delete, get, post, put},
 };
 use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
@@ -67,9 +67,7 @@ async fn main() -> Result<()> {
     info!("Database connection pool established");
 
     // Run migrations
-    sqlx::migrate!("../../migrations")
-        .run(&pool)
-        .await?;
+    sqlx::migrate!("../../migrations").run(&pool).await?;
 
     info!("Database migrations completed");
 
@@ -95,7 +93,7 @@ async fn main() -> Result<()> {
 /// Create the application router with all routes and middleware
 fn create_router(pool: sqlx::PgPool, config: Config) -> Router {
     let state = AppState { pool, config };
-    
+
     // Public routes (no authentication required)
     let public_routes = Router::new()
         .route("/health", get(health_check))
@@ -108,19 +106,46 @@ fn create_router(pool: sqlx::PgPool, config: Config) -> Router {
         .route("/users/me", get(handlers::users::get_profile))
         .route("/users/me", put(handlers::users::update_profile))
         // Application routes
-        .route("/applications", post(handlers::applications::create_application))
-        .route("/applications", get(handlers::applications::list_applications))
-        .route("/applications/:id", get(handlers::applications::get_application))
-        .route("/applications/:id", put(handlers::applications::update_application))
-        .route("/applications/:id", delete(handlers::applications::delete_application))
-        .route("/applications/:id/regenerate-key", post(handlers::applications::regenerate_api_key))
+        .route(
+            "/applications",
+            post(handlers::applications::create_application),
+        )
+        .route(
+            "/applications",
+            get(handlers::applications::list_applications),
+        )
+        .route(
+            "/applications/:id",
+            get(handlers::applications::get_application),
+        )
+        .route(
+            "/applications/:id",
+            put(handlers::applications::update_application),
+        )
+        .route(
+            "/applications/:id",
+            delete(handlers::applications::delete_application),
+        )
+        .route(
+            "/applications/:id/regenerate-key",
+            post(handlers::applications::regenerate_api_key),
+        )
         // Endpoint routes
         .route("/endpoints", post(handlers::endpoints::create_endpoint))
-        .route("/applications/:app_id/endpoints", get(handlers::endpoints::list_endpoints))
+        .route(
+            "/applications/:app_id/endpoints",
+            get(handlers::endpoints::list_endpoints),
+        )
         .route("/endpoints/:id", get(handlers::endpoints::get_endpoint))
         .route("/endpoints/:id", put(handlers::endpoints::update_endpoint))
-        .route("/endpoints/:id", delete(handlers::endpoints::delete_endpoint))
-        .route("/endpoints/:id/regenerate-secret", post(handlers::endpoints::regenerate_hmac_secret))
+        .route(
+            "/endpoints/:id",
+            delete(handlers::endpoints::delete_endpoint),
+        )
+        .route(
+            "/endpoints/:id/regenerate-secret",
+            post(handlers::endpoints::regenerate_hmac_secret),
+        )
         .layer(axum::middleware::from_fn(auth::inject_jwt_secret));
 
     // Combine routes
@@ -130,18 +155,16 @@ fn create_router(pool: sqlx::PgPool, config: Config) -> Router {
         .with_state(state);
 
     // Build application with middleware
-    Router::new()
-        .nest("/api/v1", api_routes)
-        .layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(
-                    CorsLayer::new()
-                        .allow_origin(Any)
-                        .allow_methods(Any)
-                        .allow_headers(Any),
-                ),
-        )
+    Router::new().nest("/api/v1", api_routes).layer(
+        ServiceBuilder::new()
+            .layer(TraceLayer::new_for_http())
+            .layer(
+                CorsLayer::new()
+                    .allow_origin(Any)
+                    .allow_methods(Any)
+                    .allow_headers(Any),
+            ),
+    )
 }
 
 /// Health check endpoint

@@ -39,7 +39,7 @@ ethers = { version = "2.0", features = ["ws", "rustls"] }
 # alloy-rpc-types = "0.1"
 
 # Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
 
 # Redis
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager", "streams"] }
@@ -60,7 +60,7 @@ sha2 = "0.10"
 rand = "0.8"
 
 # Validation
-validator = { version = "0.18", features = ["derive"] }
+validator = { version = "0.19", features = ["derive"] }
 
 # Configuration
 config = "0.14"

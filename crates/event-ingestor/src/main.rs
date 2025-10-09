@@ -1,11 +1,11 @@
 /*!
  * Event Ingestor Service
- * 
+ *
  * This service is the "ears" of your webhook platform. It listens to blockchain events
  * in real-time and publishes them to Redis Streams for processing.
- * 
+ *
  * ## Architecture Overview
- * 
+ *
  * ```text
  * ┌─────────────────────────────────────────────────────────────────────┐
  * │                         Event Ingestor                              │
@@ -29,29 +29,29 @@
  * │                    └────────────────┘                               │
  * └─────────────────────────────────────────────────────────────────────┘
  * ```
- * 
+ *
  * ## Key Responsibilities
- * 
+ *
  * 1. **WebSocket Connections**: Maintain persistent connections to RPC providers
  * 2. **Event Parsing**: Parse blockchain events from blocks
  * 3. **Deduplication**: Prevent duplicate events during chain reorgs
  * 4. **Publishing**: Send events to Redis Streams for processing
  * 5. **Resilience**: Handle disconnections with circuit breaker pattern
- * 
+ *
  * ## Why WebSocket Instead of HTTP Polling?
- * 
+ *
  * HTTP Polling (expensive):
  * - 1 request every 2 seconds = 43,200 requests/day
  * - Costs $50/month in API calls
  * - High latency (2-5 seconds)
- * 
+ *
  * WebSocket (efficient):
  * - 1 persistent connection
  * - Real-time updates (< 100ms latency)
  * - Included in free tier
- * 
+ *
  * ## Performance Targets
- * 
+ *
  * - **Throughput**: 10,000 events/second across all chains
  * - **Latency**: < 500ms from block mined to Redis Stream
  * - **Availability**: 99.9% uptime with automatic reconnections
@@ -87,9 +87,8 @@ async fn main() -> Result<()> {
     info!("🚀 Starting Event Ingestor Service");
 
     // Load configuration from environment variables
-    let config = IngestorConfig::from_env()
-        .context("Failed to load configuration")?;
-    
+    let config = IngestorConfig::from_env().context("Failed to load configuration")?;
+
     info!("📋 Configuration loaded:");
     info!("   - Chains: {}", config.chains.len());
     info!("   - Redis: {}:{}", config.redis_host, config.redis_port);
@@ -99,7 +98,7 @@ async fn main() -> Result<()> {
 
     // Create shutdown broadcast channel for coordinated shutdown
     let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
-    
+
     // Initialize metrics server (Prometheus)
     // This starts an HTTP server on :9090/metrics for Prometheus to scrape
     let metrics_port = config.metrics_port;
@@ -113,7 +112,7 @@ async fn main() -> Result<()> {
     // Create chain ingestion manager
     // This will spawn a tokio task for each chain (4 tasks total)
     let manager = Arc::new(ChainIngestionManager::new(config).await?);
-    
+
     // Start ingesting events from all chains
     // Each chain runs independently; if one fails, others continue
     let mut ingestion_handle = {
@@ -144,19 +143,16 @@ async fn main() -> Result<()> {
     // Graceful shutdown - signal all services to stop
     info!("📡 {}", shutdown_reason);
     info!("🛑 Shutting down Event Ingestor...");
-    
+
     // Broadcast shutdown signal to all services
     let _ = shutdown_tx.send(());
-    
+
     // Shutdown ingestion manager
     manager.shutdown().await?;
-    
+
     // Wait for metrics server to finish (with timeout)
-    let _ = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        metrics_handle
-    ).await;
-    
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(10), metrics_handle).await;
+
     info!("👋 Event Ingestor stopped");
     Ok(())
 }

@@ -3,11 +3,11 @@
 //! Provides JWT token management, password hashing, and HMAC signatures.
 
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use serde::{Deserialize, Serialize};
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
 use hex;
+use hmac::{Hmac, Mac};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use serde::{Deserialize, Serialize};
+use sha2::Sha256;
 
 use crate::error::Result;
 
@@ -25,9 +25,9 @@ type HmacSha256 = Hmac<Sha256>;
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,        // Subject (user ID)
-    pub exp: usize,         // Expiration time (unix timestamp)
-    pub iat: usize,         // Issued at (unix timestamp)
+    pub sub: String, // Subject (user ID)
+    pub exp: usize,  // Expiration time (unix timestamp)
+    pub iat: usize,  // Issued at (unix timestamp)
 }
 
 /// Create a JWT token
@@ -137,13 +137,13 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
 /// let signature = sign_hmac("payload_data", "secret");
 /// ```
 pub fn sign_hmac(payload: &str, secret: &str) -> String {
-    let mut mac = HmacSha256::new_from_slice(secret.as_bytes())
-        .expect("HMAC can take key of any size");
-    
+    let mut mac =
+        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC can take key of any size");
+
     mac.update(payload.as_bytes());
     let result = mac.finalize();
     let code_bytes = result.into_bytes();
-    
+
     hex::encode(code_bytes)
 }
 
@@ -161,7 +161,7 @@ pub fn sign_hmac(payload: &str, secret: &str) -> String {
 /// ```
 pub fn verify_hmac(payload: &str, signature_hex: &str, secret: &str) -> bool {
     let computed = sign_hmac(payload, secret);
-    
+
     // Constant-time comparison to prevent timing attacks
     computed.as_bytes().len() == signature_hex.as_bytes().len()
         && computed
@@ -179,11 +179,11 @@ mod tests {
     fn test_jwt_creation_and_verification() {
         let secret = "test_secret_key_minimum_32_characters_long_123456";
         let user_id = "user123";
-        
+
         // Create token
         let token = create_jwt(user_id, secret, 3600).unwrap();
         assert!(!token.is_empty());
-        
+
         // Verify token
         let claims = verify_jwt(&token, secret).unwrap();
         assert_eq!(claims.sub, user_id);
@@ -194,26 +194,26 @@ mod tests {
         let secret = "test_secret_key_minimum_32_characters_long_123456";
         let wrong_secret = "wrong_secret_key_minimum_32_characters_long_654321";
         let user_id = "user123";
-        
+
         let token = create_jwt(user_id, secret, 3600).unwrap();
         let result = verify_jwt(&token, wrong_secret);
-        
+
         assert!(result.is_err());
     }
 
     #[test]
     fn test_password_hashing() {
         let password = "my_secure_password";
-        
+
         // Hash password
         let hash = hash_password(password).unwrap();
         assert!(!hash.is_empty());
         assert_ne!(hash, password);
-        
+
         // Verify correct password
         let valid = verify_password(password, &hash).unwrap();
         assert!(valid);
-        
+
         // Verify wrong password
         let invalid = verify_password("wrong_password", &hash).unwrap();
         assert!(!invalid);
@@ -223,20 +223,20 @@ mod tests {
     fn test_hmac_signing() {
         let payload = r#"{"event": "payment.success", "amount": 100}"#;
         let secret = "webhook_secret_key";
-        
+
         // Create signature
         let signature = sign_hmac(payload, secret);
         assert!(!signature.is_empty());
         assert_eq!(signature.len(), 64); // SHA256 produces 64 hex characters
-        
+
         // Verify signature
         let valid = verify_hmac(payload, &signature, secret);
         assert!(valid);
-        
+
         // Verify with wrong signature
         let invalid = verify_hmac(payload, "wrong_signature", secret);
         assert!(!invalid);
-        
+
         // Verify with wrong payload
         let invalid = verify_hmac("different_payload", &signature, secret);
         assert!(!invalid);
@@ -246,10 +246,10 @@ mod tests {
     fn test_hmac_deterministic() {
         let payload = "test_payload";
         let secret = "test_secret";
-        
+
         let sig1 = sign_hmac(payload, secret);
         let sig2 = sign_hmac(payload, secret);
-        
+
         assert_eq!(sig1, sig2, "HMAC should be deterministic");
     }
 }

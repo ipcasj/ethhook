@@ -1,10 +1,10 @@
 /*!
  * Webhook Delivery Service
- * 
+ *
  * Consumes delivery jobs from Redis Queue and sends webhooks to customer endpoints.
- * 
+ *
  * ## Architecture
- * 
+ *
  * ```text
  * Main Process
  *     │
@@ -15,7 +15,7 @@
  *          ...
  *          └──> Worker 50: BRPOP → HTTP POST → Log Result
  * ```
- * 
+ *
  * Each worker:
  * 1. BRPOP from delivery_queue (blocking, wait 5 seconds)
  * 2. Check circuit breaker (allow request?)
@@ -23,9 +23,9 @@
  * 4. Log result to PostgreSQL
  * 5. Update circuit breaker state
  * 6. Retry if failed (up to max_retries with exponential backoff)
- * 
+ *
  * ## Configuration
- * 
+ *
  * Environment variables:
  * - DATABASE_URL: PostgreSQL connection URL
  * - REDIS_HOST: Redis hostname
@@ -61,18 +61,22 @@ async fn main() -> Result<()> {
     info!("🚀 Starting Webhook Delivery Service");
 
     // Load configuration
-    let config = DeliveryConfig::from_env()
-        .context("Failed to load configuration")?;
-    
+    let config = DeliveryConfig::from_env().context("Failed to load configuration")?;
+
     info!("📋 Configuration loaded:");
-    info!("   - Database: {}", config.database_url.split('@').last().unwrap_or("***"));
+    info!(
+        "   - Database: {}",
+        config.database_url.split('@').last().unwrap_or("***")
+    );
     info!("   - Redis: {}:{}", config.redis_host, config.redis_port);
     info!("   - Queue: {}", config.queue_name);
     info!("   - Workers: {}", config.worker_count);
     info!("   - HTTP Timeout: {:?}", config.http_timeout);
     info!("   - Max Retries: {}", config.max_retries);
-    info!("   - Circuit Breaker: threshold={} timeout={}s", 
-        config.circuit_breaker_threshold, config.circuit_breaker_timeout_secs);
+    info!(
+        "   - Circuit Breaker: threshold={} timeout={}s",
+        config.circuit_breaker_threshold, config.circuit_breaker_timeout_secs
+    );
 
     // Create PostgreSQL connection pool
     info!("📦 Connecting to PostgreSQL...");
@@ -84,7 +88,7 @@ async fn main() -> Result<()> {
     // Create webhook delivery service (shared HTTP client)
     let webhook_delivery = Arc::new(
         WebhookDelivery::new(config.http_timeout)
-            .context("Failed to create webhook delivery service")?
+            .context("Failed to create webhook delivery service")?,
     );
 
     // Create circuit breaker manager (shared across workers)
@@ -109,11 +113,7 @@ async fn main() -> Result<()> {
             info!("[Worker {}] Starting", worker_id);
 
             // Each worker has its own Redis consumer
-            let consumer_result = JobConsumer::new(
-                &config.redis_url(),
-                &config.queue_name,
-            )
-            .await;
+            let consumer_result = JobConsumer::new(&config.redis_url(), &config.queue_name).await;
 
             let mut consumer = match consumer_result {
                 Ok(c) => c,
@@ -147,7 +147,10 @@ async fn main() -> Result<()> {
         handles.push(handle);
     }
 
-    info!("✅ Webhook Delivery is running ({} workers)", config.worker_count);
+    info!(
+        "✅ Webhook Delivery is running ({} workers)",
+        config.worker_count
+    );
     info!("   - Press Ctrl+C to shutdown gracefully");
 
     // Wait for shutdown signal
@@ -171,14 +174,11 @@ async fn main() -> Result<()> {
     let _ = shutdown_tx.send(());
 
     // Wait for workers to finish
-    let _ = tokio::time::timeout(
-        Duration::from_secs(10),
-        async {
-            for handle in handles {
-                let _ = handle.await;
-            }
-        },
-    )
+    let _ = tokio::time::timeout(Duration::from_secs(10), async {
+        for handle in handles {
+            let _ = handle.await;
+        }
+    })
     .await;
 
     info!("👋 Webhook Delivery stopped");
@@ -221,7 +221,7 @@ async fn worker_loop(
                 "[Worker {}] Circuit breaker OPEN for endpoint {} - skipping job",
                 worker_id, job.endpoint_id
             );
-            
+
             // Don't requeue - endpoint is unhealthy
             // Job will be dropped (in production, might want to save to DLQ)
             continue;
@@ -235,7 +235,7 @@ async fn worker_loop(
         while attempt <= max_attempts {
             // Deliver webhook
             let result = webhook_delivery.deliver(&job).await?;
-            
+
             // Log to database
             if let Err(e) = delivery::log_delivery_attempt(
                 db_pool,
@@ -246,7 +246,10 @@ async fn worker_loop(
             )
             .await
             {
-                error!("[Worker {}] Failed to log delivery attempt: {}", worker_id, e);
+                error!(
+                    "[Worker {}] Failed to log delivery attempt: {}",
+                    worker_id, e
+                );
             }
 
             // Update circuit breaker
@@ -259,20 +262,17 @@ async fn worker_loop(
                 break; // Success - done
             } else {
                 circuit_breaker.record_failure(job.endpoint_id).await;
-                
+
                 if result.should_retry && attempt < max_attempts {
                     // Calculate backoff
-                    let backoff = retry::calculate_backoff(
-                        attempt - 1,
-                        config.retry_base_delay_secs,
-                        60,
-                    );
-                    
+                    let backoff =
+                        retry::calculate_backoff(attempt - 1, config.retry_base_delay_secs, 60);
+
                     warn!(
                         "[Worker {}] ⏳ Retrying after {:?}: endpoint={} attempt={}/{}",
                         worker_id, backoff, job.endpoint_id, attempt, max_attempts
                     );
-                    
+
                     tokio::time::sleep(backoff).await;
                     attempt += 1;
                     _last_result = Some(result);

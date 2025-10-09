@@ -1,10 +1,9 @@
 use axum::{
-    async_trait,
+    Json, async_trait,
     extract::{FromRequestParts, Request},
-    http::{request::Parts, StatusCode},
+    http::{StatusCode, request::Parts},
     middleware::Next,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::Serialize;
 use sqlx::PgPool;
@@ -81,9 +80,7 @@ impl IntoResponse for ApiKeyError {
         let (status, message) = match self {
             ApiKeyError::MissingApiKey => (StatusCode::UNAUTHORIZED, "Missing API key"),
             ApiKeyError::InvalidApiKey => (StatusCode::UNAUTHORIZED, "Invalid API key"),
-            ApiKeyError::InactiveApplication => {
-                (StatusCode::FORBIDDEN, "Application is inactive")
-            }
+            ApiKeyError::InactiveApplication => (StatusCode::FORBIDDEN, "Application is inactive"),
             ApiKeyError::InternalError => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
@@ -100,7 +97,10 @@ impl IntoResponse for ApiKeyError {
 }
 
 /// Middleware to inject database pool into request extensions
-pub async fn inject_db_pool(pool: PgPool) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response> + Send>> {
+pub async fn inject_db_pool(
+    pool: PgPool,
+) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response> + Send>>
+{
     move |mut req: Request, next: Next| {
         let pool = pool.clone();
         Box::pin(async move {

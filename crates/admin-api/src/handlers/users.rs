@@ -1,14 +1,10 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::auth::{generate_token, hash_password, verify_password, AuthUser};
+use crate::auth::{AuthUser, generate_token, hash_password, verify_password};
 use crate::config::Config;
 
 /// Request to register a new user
@@ -178,7 +174,7 @@ pub async fn login(
             }),
         )
     })?;
-    
+
     if !is_valid {
         return Err((
             StatusCode::UNAUTHORIZED,

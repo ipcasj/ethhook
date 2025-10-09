@@ -1,35 +1,35 @@
 /*!
  * Message Processor Service
- * 
+ *
  * Reads blockchain events from Redis Streams, queries database for matching
  * webhook endpoints, and publishes delivery jobs to Redis Queue.
- * 
+ *
  * ## Service Flow
- * 
+ *
  * ```text
  * 1. XREADGROUP from Redis Streams
  *    ├─> events:1 (Ethereum)
  *    ├─> events:42161 (Arbitrum)
  *    ├─> events:10 (Optimism)
  *    └─> events:8453 (Base)
- * 
+ *
  * 2. For each event:
  *    ├─> Query PostgreSQL for matching endpoints
  *    ├─> Create delivery job for each endpoint
  *    └─> LPUSH to delivery_queue
- * 
+ *
  * 3. XACK processed messages
  * ```
- * 
+ *
  * ## Horizontal Scaling
- * 
+ *
  * Multiple instances can run in parallel using consumer groups:
  * - Each instance gets different messages automatically
  * - Crash recovery via pending entry list (PEL)
  * - Load balancing built-in
- * 
+ *
  * ## Configuration
- * 
+ *
  * Environment variables:
  * - DATABASE_URL: PostgreSQL connection URL
  * - REDIS_HOST: Redis hostname
@@ -65,11 +65,13 @@ async fn main() -> Result<()> {
     info!("🚀 Starting Message Processor Service");
 
     // Load configuration
-    let config = ProcessorConfig::from_env()
-        .context("Failed to load configuration")?;
-    
+    let config = ProcessorConfig::from_env().context("Failed to load configuration")?;
+
     info!("📋 Configuration loaded:");
-    info!("   - Database: {}", config.database_url.split('@').last().unwrap_or("***"));
+    info!(
+        "   - Database: {}",
+        config.database_url.split('@').last().unwrap_or("***")
+    );
     info!("   - Redis: {}:{}", config.redis_host, config.redis_port);
     info!("   - Consumer Group: {}", config.consumer_group);
     info!("   - Consumer Name: {}", config.consumer_name);
@@ -154,7 +156,10 @@ async fn main() -> Result<()> {
                     info!("[{}] Processing task stopped", chain_config.stream_name);
                 }
                 Err(e) => {
-                    error!("[{}] Processing task failed: {}", chain_config.stream_name, e);
+                    error!(
+                        "[{}] Processing task failed: {}",
+                        chain_config.stream_name, e
+                    );
                 }
             }
         });
@@ -186,14 +191,11 @@ async fn main() -> Result<()> {
     let _ = shutdown_tx.send(());
 
     // Wait for tasks to finish
-    let _ = tokio::time::timeout(
-        Duration::from_secs(10),
-        async {
-            for handle in handles {
-                let _ = handle.await;
-            }
-        },
-    )
+    let _ = tokio::time::timeout(Duration::from_secs(10), async {
+        for handle in handles {
+            let _ = handle.await;
+        }
+    })
     .await;
 
     info!("👋 Message Processor stopped");
@@ -255,7 +257,9 @@ async fn process_stream_loop(
             if endpoints.is_empty() {
                 info!(
                     "[{}] No endpoints for event {} (contract: {})",
-                    stream_name, entry.event.transaction_hash, &entry.event.contract_address[..10]
+                    stream_name,
+                    entry.event.transaction_hash,
+                    &entry.event.contract_address[..10]
                 );
                 continue;
             }

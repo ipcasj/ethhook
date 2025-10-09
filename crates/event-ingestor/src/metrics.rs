@@ -1,27 +1,27 @@
 /*!
  * Metrics Module
- * 
+ *
  * Prometheus metrics for monitoring Event Ingestor performance.
- * 
+ *
  * ## Available Metrics
- * 
+ *
  * - `events_received_total{chain}` - Total events received from blockchain
  * - `events_published_total{chain}` - Total events published to Redis Stream
  * - `events_deduplicated_total{chain}` - Total duplicate events skipped
  * - `websocket_reconnects_total{chain}` - Total WebSocket reconnections
  * - `circuit_breaker_state{chain,state}` - Current circuit breaker state (0/1)
  * - `event_processing_errors_total{chain,error_type}` - Errors during processing
- * 
+ *
  * ## Endpoints
- * 
+ *
  * - `GET /metrics` - Prometheus exposition format
  * - `GET /health` - Health check (returns 200 OK)
  */
 
 use anyhow::{Context, Result};
 use prometheus::{
-    register_int_counter_vec, register_int_gauge_vec, Encoder, IntCounterVec, IntGaugeVec,
-    TextEncoder,
+    Encoder, IntCounterVec, IntGaugeVec, TextEncoder, register_int_counter_vec,
+    register_int_gauge_vec,
 };
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
@@ -86,24 +86,24 @@ lazy_static::lazy_static! {
 }
 
 /// Start Prometheus metrics HTTP server with production-grade patterns
-/// 
+///
 /// Modern implementation with:
 /// - Bounded concurrency (max 100 concurrent connections)
 /// - Graceful shutdown with tokio::select! (event-driven, not polling)
 /// - Connection timeouts (30 seconds)
 /// - Structured concurrency with JoinSet
 /// - Proper resource cleanup
-/// 
+///
 /// ## Why `loop {}` instead of threads?
-/// 
+///
 /// This uses an async event loop, NOT a thread:
 /// - Runs on tokio's thread pool (shared with other tasks)
 /// - Yields to other tasks when waiting (tokio::select! is cooperative)
 /// - Zero CPU usage when idle (unlike threads)
 /// - Single task can handle thousands of connections
-/// 
+///
 /// ## Endpoints
-/// 
+///
 /// - `GET /metrics` - Prometheus metrics
 /// - `GET /health` - Health check
 pub async fn start_metrics_server(
@@ -122,7 +122,7 @@ pub async fn start_metrics_server(
 
     const MAX_CONCURRENT_CONNECTIONS: usize = 100;
     const CONNECTION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
-    
+
     let mut tasks = tokio::task::JoinSet::new();
     let semaphore = std::sync::Arc::new(tokio::sync::Semaphore::new(MAX_CONCURRENT_CONNECTIONS));
 
@@ -140,7 +140,7 @@ pub async fn start_metrics_server(
                             tasks.spawn(async move {
                                 // Permit is automatically released when dropped
                                 let _permit = permit;
-                                
+
                                 // Apply connection timeout
                                 match tokio::time::timeout(
                                     CONNECTION_TIMEOUT,
@@ -159,7 +159,7 @@ pub async fn start_metrics_server(
                             });
                         } else {
                             // Too many concurrent connections - reject
-                            info!("Rejecting connection from {} - at capacity ({} concurrent connections)", 
+                            info!("Rejecting connection from {} - at capacity ({} concurrent connections)",
                                   peer_addr, MAX_CONCURRENT_CONNECTIONS);
                             // Connection is dropped, client will see connection closed
                         }
@@ -171,7 +171,7 @@ pub async fn start_metrics_server(
                     }
                 }
             }
-            
+
             // Graceful shutdown (event-driven, not polling!)
             _ = shutdown.recv() => {
                 info!("Metrics server received shutdown signal");
@@ -179,19 +179,22 @@ pub async fn start_metrics_server(
             }
         }
     }
-    
+
     // Wait for all in-flight requests to complete (with timeout)
-    info!("Waiting for {} in-flight metrics requests to complete...", tasks.len());
-    
+    info!(
+        "Waiting for {} in-flight metrics requests to complete...",
+        tasks.len()
+    );
+
     let shutdown_timeout = std::time::Duration::from_secs(5);
     let shutdown_deadline = tokio::time::Instant::now() + shutdown_timeout;
-    
+
     while !tasks.is_empty() {
         tokio::select! {
             _ = tokio::time::sleep_until(shutdown_deadline) => {
                 let remaining = tasks.len();
                 if remaining > 0 {
-                    info!("Forcefully terminating {} remaining metrics requests after {:?}", 
+                    info!("Forcefully terminating {} remaining metrics requests after {:?}",
                           remaining, shutdown_timeout);
                 }
                 break;
@@ -201,7 +204,7 @@ pub async fn start_metrics_server(
             }
         }
     }
-    
+
     info!("Metrics server shut down gracefully");
     Ok(())
 }
@@ -240,7 +243,8 @@ async fn handle_connection(mut stream: tokio::net::TcpStream) -> Result<()> {
             stream.write_all(response.as_bytes()).await?;
         }
         "/health" => {
-            let response = "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nOK";
+            let response =
+                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\n\r\nOK";
             stream.write_all(response.as_bytes()).await?;
         }
         _ => {
@@ -265,7 +269,7 @@ mod tests {
         let _ = EVENTS_PUBLISHED.with_label_values(&["ethereum"]).get();
         let _ = EVENTS_DEDUPLICATED.with_label_values(&["ethereum"]).get();
         let _ = WEBSOCKET_RECONNECTS.with_label_values(&["ethereum"]).get();
-        
+
         // If we get here without panicking, metrics are properly registered
         assert!(true);
     }
@@ -275,7 +279,7 @@ mod tests {
         // Test incrementing counters
         EVENTS_RECEIVED.with_label_values(&["test_chain"]).inc();
         EVENTS_PUBLISHED.with_label_values(&["test_chain"]).inc();
-        
+
         assert!(EVENTS_RECEIVED.with_label_values(&["test_chain"]).get() > 0);
         assert!(EVENTS_PUBLISHED.with_label_values(&["test_chain"]).get() > 0);
     }

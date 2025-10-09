@@ -30,29 +30,25 @@ impl Config {
     /// Load configuration from environment variables
     pub fn from_env() -> Result<Self> {
         Ok(Config {
-            server_host: env::var("ADMIN_API_HOST")
-                .unwrap_or_else(|_| "0.0.0.0".to_string()),
+            server_host: env::var("ADMIN_API_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
             server_port: env::var("ADMIN_API_PORT")
                 .unwrap_or_else(|_| "3000".to_string())
                 .parse()
                 .context("Failed to parse ADMIN_API_PORT")?,
 
-            database_url: env::var("DATABASE_URL")
-                .context("DATABASE_URL must be set")?,
+            database_url: env::var("DATABASE_URL").context("DATABASE_URL must be set")?,
             database_max_connections: env::var("DATABASE_MAX_CONNECTIONS")
                 .unwrap_or_else(|_| "20".to_string())
                 .parse()
                 .context("Failed to parse DATABASE_MAX_CONNECTIONS")?,
 
-            jwt_secret: env::var("JWT_SECRET")
-                .context("JWT_SECRET must be set")?,
+            jwt_secret: env::var("JWT_SECRET").context("JWT_SECRET must be set")?,
             jwt_expiration_hours: env::var("JWT_EXPIRATION_HOURS")
                 .unwrap_or_else(|_| "24".to_string())
                 .parse()
                 .context("Failed to parse JWT_EXPIRATION_HOURS")?,
 
-            api_key_prefix: env::var("API_KEY_PREFIX")
-                .unwrap_or_else(|_| "ethk".to_string()),
+            api_key_prefix: env::var("API_KEY_PREFIX").unwrap_or_else(|_| "ethk".to_string()),
 
             rate_limit_per_minute: env::var("RATE_LIMIT_PER_MINUTE")
                 .unwrap_or_else(|_| "60".to_string())

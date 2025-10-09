@@ -1,10 +1,10 @@
 /*!
  * Admin API Service
- * 
+ *
  * REST API for managing users, applications, and webhook endpoints.
- * 
+ *
  * ## Architecture
- * 
+ *
  * ```text
  * Client                Admin API              Database
  * ──────               ──────────              ────────
@@ -29,17 +29,17 @@
  *                           │
  * <─── endpoint ────────────┤
  * ```
- * 
+ *
  * ## API Endpoints
- * 
+ *
  * ### Authentication
  * - `POST /api/v1/auth/register` - Register new user
  * - `POST /api/v1/auth/login` - Login and get JWT token
- * 
+ *
  * ### Users (Protected)
  * - `GET /api/v1/users/me` - Get current user profile
  * - `PUT /api/v1/users/me` - Update user profile
- * 
+ *
  * ### Applications (Protected)
  * - `POST /api/v1/applications` - Create application
  * - `GET /api/v1/applications` - List user's applications
@@ -47,7 +47,7 @@
  * - `PUT /api/v1/applications/:id` - Update application
  * - `DELETE /api/v1/applications/:id` - Delete application
  * - `POST /api/v1/applications/:id/regenerate-key` - Regenerate API key
- * 
+ *
  * ### Endpoints (Protected)
  * - `POST /api/v1/endpoints` - Create webhook endpoint
  * - `GET /api/v1/applications/:app_id/endpoints` - List endpoints
@@ -55,18 +55,18 @@
  * - `PUT /api/v1/endpoints/:id` - Update endpoint
  * - `DELETE /api/v1/endpoints/:id` - Delete endpoint
  * - `POST /api/v1/endpoints/:id/regenerate-secret` - Regenerate HMAC secret
- * 
+ *
  * ## Authentication
- * 
+ *
  * Protected endpoints require JWT authentication:
  * ```
  * Authorization: Bearer <jwt_token>
  * ```
- * 
+ *
  * JWT tokens are issued on registration and login, valid for 24 hours by default.
- * 
+ *
  * ## Security Features
- * 
+ *
  * - **Password Hashing**: bcrypt with cost factor 12
  * - **JWT Tokens**: HS256 algorithm with configurable expiration
  * - **API Keys**: Secure random generation with prefix
@@ -89,10 +89,16 @@ use sqlx::PgPool;
 
 /// Create a test router for integration tests
 pub fn create_test_router(pool: PgPool) -> Router {
-    use axum::{routing::{delete, get, post, put}, Router};
+    use axum::{
+        Router,
+        routing::{delete, get, post, put},
+    };
     use tower::ServiceBuilder;
-    use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer};
-    
+    use tower_http::{
+        cors::{Any, CorsLayer},
+        trace::TraceLayer,
+    };
+
     let config = Config {
         database_url: String::new(), // Not used in tests
         database_max_connections: 5,
@@ -104,54 +110,92 @@ pub fn create_test_router(pool: PgPool) -> Router {
         rate_limit_per_minute: 60,
         cors_allowed_origins: vec!["*".to_string()],
     };
-    
+
     #[derive(Clone)]
     struct AppState {
         pool: PgPool,
         config: Config,
     }
-    
+
     impl axum::extract::FromRef<AppState> for PgPool {
         fn from_ref(state: &AppState) -> Self {
             state.pool.clone()
         }
     }
-    
+
     impl axum::extract::FromRef<AppState> for Config {
         fn from_ref(state: &AppState) -> Self {
             state.config.clone()
         }
     }
-    
+
     let state = AppState { pool, config };
-    
+
     let public_routes = Router::new()
         .route("/health", get(|| async { "OK" }))
         .route("/auth/register", post(handlers::users::register))
         .route("/auth/login", post(handlers::users::login));
-    
+
     let protected_routes = Router::new()
         .route("/users/me", get(handlers::users::get_profile))
         .route("/users/me", put(handlers::users::update_profile))
-        .route("/applications", post(handlers::applications::create_application))
-        .route("/applications", get(handlers::applications::list_applications))
-        .route("/applications/:id", get(handlers::applications::get_application))
-        .route("/applications/:id", put(handlers::applications::update_application))
-        .route("/applications/:id", delete(handlers::applications::delete_application))
-        .route("/applications/:id/regenerate-key", post(handlers::applications::regenerate_api_key))
+        .route(
+            "/applications",
+            post(handlers::applications::create_application),
+        )
+        .route(
+            "/applications",
+            get(handlers::applications::list_applications),
+        )
+        .route(
+            "/applications/:id",
+            get(handlers::applications::get_application),
+        )
+        .route(
+            "/applications/:id",
+            put(handlers::applications::update_application),
+        )
+        .route(
+            "/applications/:id",
+            delete(handlers::applications::delete_application),
+        )
+        .route(
+            "/applications/:id/regenerate-key",
+            post(handlers::applications::regenerate_api_key),
+        )
         .route("/endpoints", post(handlers::endpoints::create_endpoint))
-        .route("/applications/:app_id/endpoints", get(handlers::endpoints::list_endpoints))
+        .route(
+            "/applications/:app_id/endpoints",
+            get(handlers::endpoints::list_endpoints),
+        )
         .route("/endpoints/:id", get(handlers::endpoints::get_endpoint))
         .route("/endpoints/:id", put(handlers::endpoints::update_endpoint))
-        .route("/endpoints/:id", delete(handlers::endpoints::delete_endpoint))
-        .route("/endpoints/:id/regenerate-secret", post(handlers::endpoints::regenerate_hmac_secret))
+        .route(
+            "/endpoints/:id",
+            delete(handlers::endpoints::delete_endpoint),
+        )
+        .route(
+            "/endpoints/:id/regenerate-secret",
+            post(handlers::endpoints::regenerate_hmac_secret),
+        )
         .layer(axum::middleware::from_fn(auth::inject_jwt_secret));
-    
+
     Router::new()
-        .nest("/api/v1", Router::new().merge(public_routes).merge(protected_routes).with_state(state))
+        .nest(
+            "/api/v1",
+            Router::new()
+                .merge(public_routes)
+                .merge(protected_routes)
+                .with_state(state),
+        )
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any)),
+                .layer(
+                    CorsLayer::new()
+                        .allow_origin(Any)
+                        .allow_methods(Any)
+                        .allow_headers(Any),
+                ),
         )
 }

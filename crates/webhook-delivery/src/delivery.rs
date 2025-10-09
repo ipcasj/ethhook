@@ -1,6 +1,6 @@
 /*!
  * Webhook Delivery Module
- * 
+ *
  * Sends HTTP POST requests to customer webhooks with HMAC signatures.
  */
 
@@ -32,46 +32,46 @@ pub struct WebhookDelivery {
 
 impl WebhookDelivery {
     /// Create new webhook delivery service
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `http_timeout` - Timeout per HTTP request
     pub fn new(http_timeout: Duration) -> Result<Self> {
         let client = Client::builder()
             .timeout(http_timeout)
             .build()
             .context("Failed to create HTTP client")?;
-        
+
         Ok(Self { client })
     }
-    
+
     /// Deliver webhook to endpoint
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `job` - Delivery job with endpoint URL and event data
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// DeliveryResult with success status and details
     pub async fn deliver(&self, job: &DeliveryJob) -> Result<DeliveryResult> {
         let start = Instant::now();
-        
+
         // Build webhook payload
         let payload = self.build_payload(&job.event);
-        let payload_json = serde_json::to_string(&payload)
-            .context("Failed to serialize payload")?;
-        
+        let payload_json =
+            serde_json::to_string(&payload).context("Failed to serialize payload")?;
+
         // Calculate HMAC signature
         let signature = ethhook_common::sign_hmac(&payload_json, &job.hmac_secret);
-        
+
         debug!(
             "Sending webhook to {} (endpoint: {}, attempt: {})",
             &job.url[..30.min(job.url.len())],
             job.endpoint_id,
             job.attempt
         );
-        
+
         // Send POST request
         let response_result = self
             .client
@@ -83,24 +83,24 @@ impl WebhookDelivery {
             .body(payload_json)
             .send()
             .await;
-        
+
         let duration_ms = start.elapsed().as_millis() as u64;
-        
+
         // Process response
         match response_result {
             Ok(response) => {
                 let status = response.status();
                 let status_code = status.as_u16();
-                
+
                 // Read response body (limit to 10KB)
                 let body_result = response.text().await;
                 let response_body = body_result
                     .ok()
                     .map(|b| b.chars().take(10000).collect::<String>());
-                
+
                 let success = status.is_success();
                 let should_retry = !success && crate::retry::is_retryable_error(Some(status_code));
-                
+
                 if success {
                     info!(
                         "✅ Webhook delivered successfully: endpoint={} status={} duration={}ms",
@@ -112,7 +112,7 @@ impl WebhookDelivery {
                         job.endpoint_id, status_code, duration_ms, should_retry
                     );
                 }
-                
+
                 Ok(DeliveryResult {
                     success,
                     status_code: Some(status_code),
@@ -124,7 +124,7 @@ impl WebhookDelivery {
             }
             Err(e) => {
                 let error_message = e.to_string();
-                
+
                 // Determine if error is retryable
                 let should_retry = if e.is_timeout() || e.is_connect() {
                     true // Network errors - retry
@@ -136,12 +136,12 @@ impl WebhookDelivery {
                 } else {
                     true // Unknown error - retry to be safe
                 };
-                
+
                 error!(
                     "❌ Webhook delivery error: endpoint={} error={} duration={}ms retry={}",
                     job.endpoint_id, error_message, duration_ms, should_retry
                 );
-                
+
                 Ok(DeliveryResult {
                     success: false,
                     status_code: None,
@@ -153,7 +153,7 @@ impl WebhookDelivery {
             }
         }
     }
-    
+
     /// Build webhook payload from event data
     fn build_payload(&self, event: &EventData) -> serde_json::Value {
         json!({
@@ -183,7 +183,7 @@ pub async fn log_delivery_attempt(
     // 1. Insert event into events table (if not exists)
     // 2. Insert delivery_attempt record
     // For now, just log to database without foreign key constraint
-    
+
     sqlx::query(
         r#"
         INSERT INTO delivery_attempts (
@@ -209,12 +209,12 @@ pub async fn log_delivery_attempt(
     .execute(pool)
     .await
     .context("Failed to log delivery attempt")?;
-    
+
     debug!(
         "Logged delivery attempt: endpoint={} success={}",
         endpoint_id, result.success
     );
-    
+
     Ok(())
 }
 
@@ -232,7 +232,7 @@ mod tests {
     #[test]
     fn test_build_payload() {
         let delivery = WebhookDelivery::new(Duration::from_secs(30)).unwrap();
-        
+
         let event = EventData {
             chain_id: 1,
             block_number: 18000000,
@@ -240,13 +240,15 @@ mod tests {
             transaction_hash: "0xdef456".to_string(),
             log_index: 5,
             contract_address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48".to_string(),
-            topics: vec!["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".to_string()],
+            topics: vec![
+                "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".to_string(),
+            ],
             data: "0x".to_string(),
             timestamp: 1696800000,
         };
-        
+
         let payload = delivery.build_payload(&event);
-        
+
         assert_eq!(payload["chain_id"], 1);
         assert_eq!(payload["block_number"], 18000000);
         assert_eq!(payload["transaction_hash"], "0xdef456");

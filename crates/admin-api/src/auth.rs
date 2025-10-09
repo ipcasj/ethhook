@@ -1,24 +1,23 @@
 use anyhow::{Context, Result};
 use axum::{
-    async_trait,
+    Json, async_trait,
     extract::{FromRequestParts, Request},
-    http::{header, request::Parts, StatusCode},
+    http::{StatusCode, header, request::Parts},
     middleware::Next,
     response::{IntoResponse, Response},
-    Json,
 };
 use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// JWT claims
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
-    pub sub: Uuid,          // user_id
+    pub sub: Uuid, // user_id
     pub email: String,
-    pub exp: i64,           // expiration timestamp
-    pub iat: i64,           // issued at timestamp
+    pub exp: i64, // expiration timestamp
+    pub iat: i64, // issued at timestamp
 }
 
 impl Claims {
@@ -37,7 +36,12 @@ impl Claims {
 }
 
 /// Generate a JWT token
-pub fn generate_token(user_id: Uuid, email: String, secret: &str, expiration_hours: i64) -> Result<String> {
+pub fn generate_token(
+    user_id: Uuid,
+    email: String,
+    secret: &str,
+    expiration_hours: i64,
+) -> Result<String> {
     let claims = Claims::new(user_id, email, expiration_hours);
     let token = encode(
         &Header::default(),
@@ -63,14 +67,12 @@ pub fn validate_token(token: &str, secret: &str) -> Result<Claims> {
 
 /// Hash a password using bcrypt
 pub fn hash_password(password: &str) -> Result<String> {
-    bcrypt::hash(password, bcrypt::DEFAULT_COST)
-        .context("Failed to hash password")
+    bcrypt::hash(password, bcrypt::DEFAULT_COST).context("Failed to hash password")
 }
 
 /// Verify a password against a hash
 pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
-    bcrypt::verify(password, hash)
-        .context("Failed to verify password")
+    bcrypt::verify(password, hash).context("Failed to verify password")
 }
 
 /// Extractor for authenticated user
@@ -106,8 +108,7 @@ where
             .ok_or(AuthError::InternalError)?;
 
         // Validate token
-        let claims = validate_token(token, jwt_secret)
-            .map_err(|_| AuthError::InvalidToken)?;
+        let claims = validate_token(token, jwt_secret).map_err(|_| AuthError::InvalidToken)?;
 
         Ok(AuthUser {
             user_id: claims.sub,
@@ -129,22 +130,26 @@ impl IntoResponse for AuthError {
         let (status, message) = match self {
             AuthError::MissingToken => (StatusCode::UNAUTHORIZED, "Missing authorization token"),
             AuthError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid or expired token"),
-            AuthError::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
+            AuthError::InternalError => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
+            }
         };
 
-        (status, Json(serde_json::json!({
-            "error": message
-        }))).into_response()
+        (
+            status,
+            Json(serde_json::json!({
+                "error": message
+            })),
+        )
+            .into_response()
     }
 }
 
 /// Middleware to inject JWT secret into request extensions
-pub async fn inject_jwt_secret(
-    mut req: Request,
-    next: Next,
-) -> Response {
+pub async fn inject_jwt_secret(mut req: Request, next: Next) -> Response {
     // Get JWT secret from environment variable
-    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret-key-for-testing-only".to_string());
+    let secret = std::env::var("JWT_SECRET")
+        .unwrap_or_else(|_| "test-secret-key-for-testing-only".to_string());
     req.extensions_mut().insert(secret);
     next.run(req).await
 }

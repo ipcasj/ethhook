@@ -1,10 +1,10 @@
 /*!
  * Chain Ingestion Manager
- * 
+ *
  * Coordinates event ingestion across multiple blockchains.
- * 
+ *
  * ## Architecture
- * 
+ *
  * ```text
  * ChainIngestionManager
  *         │
@@ -12,7 +12,7 @@
  *         ├──> tokio::spawn(ingest_chain(Arbitrum))   [Task 2]
  *         ├──> tokio::spawn(ingest_chain(Optimism))   [Task 3]
  *         └──> tokio::spawn(ingest_chain(Base))       [Task 4]
- * 
+ *
  * Each task runs independently:
  * - If Ethereum fails, Arbitrum/Optimism/Base continue
  * - Each task has its own WebSocket connection
@@ -20,13 +20,13 @@
  * ```
  */
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
+use rand::Rng;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, warn};
-use rand::Rng;
 
 use crate::client::WebSocketClient;
 use crate::config::{ChainConfig, IngestorConfig};
@@ -79,7 +79,7 @@ impl ChainHealth {
     /// Record a failure and potentially open circuit
     fn record_failure(&mut self) {
         self.consecutive_failures += 1;
-        
+
         // Open circuit after 3 consecutive failures
         if self.consecutive_failures >= 3 && self.circuit_state == CircuitState::Closed {
             self.circuit_state = CircuitState::Open;
@@ -88,21 +88,21 @@ impl ChainHealth {
     }
 
     /// Calculate backoff duration with exponential backoff and jitter
-    /// 
+    ///
     /// Uses the formula: min(base * 2^attempt, max) + jitter
     /// Jitter prevents thundering herd problem
     fn calculate_backoff(&self, base_delay: u64, max_delay: u64) -> Duration {
         let attempt = self.consecutive_failures.min(10); // Cap at 2^10 = 1024x
-        
+
         // Exponential backoff: base * 2^attempt
         let exponential_delay = base_delay.saturating_mul(2u64.saturating_pow(attempt));
         let capped_delay = exponential_delay.min(max_delay);
-        
+
         // Add jitter: ±20% randomness
         let mut rng = rand::thread_rng();
         let jitter_factor = rng.gen_range(0.8..1.2);
         let delay_with_jitter = (capped_delay as f64 * jitter_factor) as u64;
-        
+
         Duration::from_secs(delay_with_jitter)
     }
 
@@ -148,12 +148,9 @@ impl ChainIngestionManager {
         let (shutdown_tx, _) = broadcast::channel(1);
 
         // Initialize Redis deduplicator
-        let deduplicator = Deduplicator::new(
-            &config.redis_url(),
-            config.dedup_ttl_seconds,
-        )
-        .await
-        .context("Failed to initialize Redis deduplicator")?;
+        let deduplicator = Deduplicator::new(&config.redis_url(), config.dedup_ttl_seconds)
+            .await
+            .context("Failed to initialize Redis deduplicator")?;
 
         // Initialize Redis Stream publisher
         let publisher = StreamPublisher::new(&config.redis_url())
@@ -169,7 +166,7 @@ impl ChainIngestionManager {
     }
 
     /// Start ingesting events from all configured chains
-    /// 
+    ///
     /// Uses JoinSet for structured concurrency - better than loose vec of handles.
     /// Each chain runs independently with circuit breaker and health tracking.
     pub async fn start_all_chains(&self) -> Result<()> {
@@ -183,10 +180,7 @@ impl ChainIngestionManager {
 
             // Spawn independent task for this chain
             join_set.spawn(async move {
-                info!(
-                    "[{}] Starting chain ingestion task",
-                    chain_config.name
-                );
+                info!("[{}] Starting chain ingestion task", chain_config.name);
 
                 let mut health = ChainHealth::new();
                 let base_delay = chain_config.reconnect_delay_secs;
@@ -226,7 +220,7 @@ impl ChainIngestionManager {
     }
 
     /// Ingest events with circuit breaker and exponential backoff
-    /// 
+    ///
     /// Production-grade implementation with:
     /// - Event-driven shutdown (tokio::select!)
     /// - Exponential backoff with jitter
@@ -243,7 +237,7 @@ impl ChainIngestionManager {
         max_delay: u64,
     ) {
         let health_check_interval = Duration::from_secs(30);
-        
+
         loop {
             // Check circuit breaker before attempting connection
             if !health.should_attempt_reconnect(base_delay, max_delay) {
@@ -252,7 +246,7 @@ impl ChainIngestionManager {
                     "[{}] Circuit breaker OPEN (failures: {}). Waiting {:?} before retry...",
                     chain_config.name, health.consecutive_failures, backoff
                 );
-                
+
                 // Event-driven wait with shutdown capability
                 tokio::select! {
                     _ = shutdown_rx.recv() => {
@@ -280,7 +274,10 @@ impl ChainIngestionManager {
 
             let mut client = match client_result {
                 Ok(c) => {
-                    info!("[{}] Connected and subscribed to newHeads", chain_config.name);
+                    info!(
+                        "[{}] Connected and subscribed to newHeads",
+                        chain_config.name
+                    );
                     health.record_success();
                     // Record reconnection metric
                     metrics::WEBSOCKET_RECONNECTS
@@ -317,18 +314,21 @@ impl ChainIngestionManager {
 
             match result {
                 Ok(()) => {
-                    info!("[{}] Event processing loop exited normally", chain_config.name);
+                    info!(
+                        "[{}] Event processing loop exited normally",
+                        chain_config.name
+                    );
                     return; // Shutdown requested
                 }
                 Err(e) => {
                     error!("[{}] Event processing failed: {}", chain_config.name, e);
                     health.record_failure();
-                    
+
                     // Update metrics after failure
                     metrics::CONSECUTIVE_FAILURES
                         .with_label_values(&[&chain_config.name])
                         .set(health.consecutive_failures as i64);
-                    
+
                     // Update circuit breaker state
                     let state_value = match health.circuit_state {
                         CircuitState::Closed => 0,
@@ -386,7 +386,7 @@ impl ChainIngestionManager {
                         Ok(Some(event)) => {
                             events_processed += 1;
                             health.record_success();
-                            
+
                             // Record event received metric
                             metrics::EVENTS_RECEIVED
                                 .with_label_values(&[&chain_config.name])
@@ -412,7 +412,7 @@ impl ChainIngestionManager {
                             // Phase 4: Check deduplication
                             let event_id = event.event_id();
                             let mut dedup = deduplicator.lock().await;
-                            
+
                             let should_process = match dedup.is_duplicate(&event_id).await {
                                 Ok(true) => {
                                     debug!("[{}] Skipping duplicate: {}", chain_config.name, event_id);
@@ -499,10 +499,10 @@ impl ChainIngestionManager {
     pub async fn shutdown(&self) -> Result<()> {
         info!("Sending shutdown signal to all chains");
         let _ = self.shutdown_tx.send(());
-        
+
         // Give tasks time to finish gracefully
         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-        
+
         Ok(())
     }
 }
@@ -534,7 +534,7 @@ mod tests {
     #[test]
     fn test_circuit_breaker_initial_state() {
         let health = ChainHealth::new();
-        
+
         assert_eq!(health.circuit_state, CircuitState::Closed);
         assert_eq!(health.consecutive_failures, 0);
         assert!(health.circuit_opened_at.is_none());
@@ -543,16 +543,16 @@ mod tests {
     #[test]
     fn test_circuit_breaker_opens_after_3_failures() {
         let mut health = ChainHealth::new();
-        
+
         // Record 3 consecutive failures
         health.record_failure();
         assert_eq!(health.consecutive_failures, 1);
         assert_eq!(health.circuit_state, CircuitState::Closed);
-        
+
         health.record_failure();
         assert_eq!(health.consecutive_failures, 2);
         assert_eq!(health.circuit_state, CircuitState::Closed);
-        
+
         health.record_failure();
         assert_eq!(health.consecutive_failures, 3);
         assert_eq!(health.circuit_state, CircuitState::Open);
@@ -562,12 +562,12 @@ mod tests {
     #[test]
     fn test_circuit_breaker_resets_on_success() {
         let mut health = ChainHealth::new();
-        
+
         // Record some failures
         health.record_failure();
         health.record_failure();
         assert_eq!(health.consecutive_failures, 2);
-        
+
         // Success should reset everything
         health.record_success();
         assert_eq!(health.consecutive_failures, 0);
@@ -578,16 +578,16 @@ mod tests {
     #[test]
     fn test_circuit_breaker_half_open_transition() {
         let mut health = ChainHealth::new();
-        
+
         // Open the circuit
         health.record_failure();
         health.record_failure();
         health.record_failure();
         assert_eq!(health.circuit_state, CircuitState::Open);
-        
+
         // Manually set circuit_opened_at to past (simulate time passing)
         health.circuit_opened_at = Some(Instant::now() - Duration::from_secs(10));
-        
+
         // Should transition to HalfOpen when attempting reconnect
         let should_reconnect = health.should_attempt_reconnect(1, 60);
         assert!(should_reconnect);
@@ -597,13 +597,13 @@ mod tests {
     #[test]
     fn test_circuit_breaker_stays_open_during_backoff() {
         let mut health = ChainHealth::new();
-        
+
         // Open the circuit
         health.record_failure();
         health.record_failure();
         health.record_failure();
         health.circuit_opened_at = Some(Instant::now());
-        
+
         // Should NOT reconnect immediately (backoff not elapsed)
         let should_reconnect = health.should_attempt_reconnect(5, 60);
         assert!(!should_reconnect);
@@ -615,17 +615,17 @@ mod tests {
         let mut health = ChainHealth::new();
         let base_delay = 2; // 2 seconds base
         let max_delay = 60; // 60 seconds max
-        
+
         // Failure 1: base * 2^1 = 2 * 2 = 4 seconds (with jitter: 3.2-4.8s)
         health.consecutive_failures = 1;
         let backoff1 = health.calculate_backoff(base_delay, max_delay);
         assert!(backoff1.as_secs() >= 3 && backoff1.as_secs() <= 5);
-        
+
         // Failure 2: base * 2^2 = 2 * 4 = 8 seconds (with jitter: 6.4-9.6s)
         health.consecutive_failures = 2;
         let backoff2 = health.calculate_backoff(base_delay, max_delay);
         assert!(backoff2.as_secs() >= 6 && backoff2.as_secs() <= 10);
-        
+
         // Failure 3: base * 2^3 = 2 * 8 = 16 seconds (with jitter: 12.8-19.2s)
         health.consecutive_failures = 3;
         let backoff3 = health.calculate_backoff(base_delay, max_delay);
@@ -637,12 +637,12 @@ mod tests {
         let mut health = ChainHealth::new();
         let base_delay = 2;
         let max_delay = 60;
-        
+
         // Failure 10: base * 2^10 = 2 * 1024 = 2048 seconds
         // Should cap at max_delay (60 seconds)
         health.consecutive_failures = 10;
         let backoff = health.calculate_backoff(base_delay, max_delay);
-        
+
         // With ±20% jitter on 60s = 48-72 seconds
         assert!(backoff.as_secs() >= 48 && backoff.as_secs() <= 72);
     }
@@ -651,14 +651,14 @@ mod tests {
     fn test_jitter_prevents_thundering_herd() {
         let mut health = ChainHealth::new();
         health.consecutive_failures = 3;
-        
+
         // Calculate backoff multiple times
         let mut backoffs = Vec::new();
         for _ in 0..100 {
             let backoff = health.calculate_backoff(2, 60);
             backoffs.push(backoff.as_secs());
         }
-        
+
         // Check that we get different values (jitter working)
         let unique_values: std::collections::HashSet<_> = backoffs.iter().collect();
         // The jitter range is ±20%, which at second granularity gives us:
@@ -666,20 +666,26 @@ mod tests {
         // With ±20% jitter: 12.8-19.2 seconds = 13-19 seconds (at 1s granularity)
         // That's 7 possible values: [13, 14, 15, 16, 17, 18, 19]
         // We expect at least 5 unique values out of 100 samples
-        assert!(unique_values.len() >= 5, 
-            "Jitter should produce variety (got {} unique values, expected >= 5)", unique_values.len());
-        
+        assert!(
+            unique_values.len() >= 5,
+            "Jitter should produce variety (got {} unique values, expected >= 5)",
+            unique_values.len()
+        );
+
         // Check that all values are within expected range
         for &backoff_secs in &backoffs {
-            assert!(backoff_secs >= 12 && backoff_secs <= 20,
-                "Backoff {} seconds out of range [12, 20]", backoff_secs);
+            assert!(
+                backoff_secs >= 12 && backoff_secs <= 20,
+                "Backoff {} seconds out of range [12, 20]",
+                backoff_secs
+            );
         }
     }
 
     #[test]
     fn test_time_since_last_event() {
         let health = ChainHealth::new();
-        
+
         // Just created, should be very recent
         let elapsed = health.time_since_last_event();
         assert!(elapsed.as_millis() < 100);
@@ -688,23 +694,23 @@ mod tests {
     #[test]
     fn test_circuit_state_transitions_complete_cycle() {
         let mut health = ChainHealth::new();
-        
+
         // 1. Start in Closed state
         assert_eq!(health.circuit_state, CircuitState::Closed);
-        
+
         // 2. Transition to Open after 3 failures
         health.record_failure();
         health.record_failure();
         health.record_failure();
         assert_eq!(health.circuit_state, CircuitState::Open);
-        
+
         // 3. Simulate time passing (backoff elapsed)
         health.circuit_opened_at = Some(Instant::now() - Duration::from_secs(100));
-        
+
         // 4. Transition to HalfOpen
         let _ = health.should_attempt_reconnect(1, 60);
         assert_eq!(health.circuit_state, CircuitState::HalfOpen);
-        
+
         // 5. Success in HalfOpen → back to Closed
         health.record_success();
         assert_eq!(health.circuit_state, CircuitState::Closed);
@@ -714,17 +720,17 @@ mod tests {
     #[test]
     fn test_half_open_failure_reopens_circuit() {
         let mut health = ChainHealth::new();
-        
+
         // Open circuit
         health.record_failure();
         health.record_failure();
         health.record_failure();
-        
+
         // Transition to HalfOpen
         health.circuit_opened_at = Some(Instant::now() - Duration::from_secs(100));
         let _ = health.should_attempt_reconnect(1, 60);
         assert_eq!(health.circuit_state, CircuitState::HalfOpen);
-        
+
         // Failure in HalfOpen should reopen circuit
         // (Note: Current implementation doesn't special-case HalfOpen failures,
         // but consecutive_failures increases which will keep it "open")

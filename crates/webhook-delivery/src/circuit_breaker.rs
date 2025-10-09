@@ -1,6 +1,6 @@
 /*!
  * Circuit Breaker for Endpoint Health Tracking
- * 
+ *
  * Prevents hammering unhealthy endpoints with requests.
  */
 
@@ -58,9 +58,9 @@ pub struct CircuitBreakerManager {
 
 impl CircuitBreakerManager {
     /// Create new circuit breaker manager
-    /// 
+    ///
     /// # Arguments
-    /// 
+    ///
     /// * `threshold` - Number of failures before opening circuit (e.g., 5)
     /// * `timeout` - How long to wait before testing recovery (e.g., 60 seconds)
     pub fn new(threshold: u32, timeout: Duration) -> Self {
@@ -70,20 +70,20 @@ impl CircuitBreakerManager {
             timeout,
         }
     }
-    
+
     /// Check if request should be allowed for this endpoint
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// * `true` - Request allowed (circuit closed or half-open)
     /// * `false` - Request blocked (circuit open, still in timeout)
     pub async fn should_allow_request(&self, endpoint_id: Uuid) -> bool {
         let mut endpoints = self.endpoints.lock().await;
-        
+
         let health = endpoints
             .entry(endpoint_id)
             .or_insert_with(EndpointHealth::new);
-        
+
         match health.state {
             CircuitState::Closed => true,
             CircuitState::HalfOpen => true,
@@ -109,19 +109,19 @@ impl CircuitBreakerManager {
             }
         }
     }
-    
+
     /// Record successful delivery
     pub async fn record_success(&self, endpoint_id: Uuid) {
         let mut endpoints = self.endpoints.lock().await;
-        
+
         let health = endpoints
             .entry(endpoint_id)
             .or_insert_with(EndpointHealth::new);
-        
+
         // Reset failure count
         health.consecutive_failures = 0;
         health.last_success = Some(Instant::now());
-        
+
         // Close circuit if it was open/half-open
         if health.state != CircuitState::Closed {
             debug!(
@@ -132,17 +132,17 @@ impl CircuitBreakerManager {
             health.opened_at = None;
         }
     }
-    
+
     /// Record failed delivery
     pub async fn record_failure(&self, endpoint_id: Uuid) {
         let mut endpoints = self.endpoints.lock().await;
-        
+
         let health = endpoints
             .entry(endpoint_id)
             .or_insert_with(EndpointHealth::new);
-        
+
         health.consecutive_failures += 1;
-        
+
         // Check if we should open the circuit
         if health.consecutive_failures >= self.threshold {
             match health.state {
@@ -169,25 +169,25 @@ impl CircuitBreakerManager {
             }
         }
     }
-    
+
     /// Get current state for an endpoint
     pub async fn get_state(&self, endpoint_id: Uuid) -> CircuitState {
         let endpoints = self.endpoints.lock().await;
-        
+
         endpoints
             .get(&endpoint_id)
             .map(|h| h.state)
             .unwrap_or(CircuitState::Closed)
     }
-    
+
     /// Get statistics for monitoring
     pub async fn stats(&self) -> CircuitBreakerStats {
         let endpoints = self.endpoints.lock().await;
-        
+
         let mut closed = 0;
         let mut open = 0;
         let mut half_open = 0;
-        
+
         for health in endpoints.values() {
             match health.state {
                 CircuitState::Closed => closed += 1,
@@ -195,7 +195,7 @@ impl CircuitBreakerManager {
                 CircuitState::HalfOpen => half_open += 1,
             }
         }
-        
+
         CircuitBreakerStats {
             total_endpoints: endpoints.len(),
             closed,
@@ -222,7 +222,7 @@ mod tests {
     async fn test_circuit_breaker_initial_state() {
         let manager = CircuitBreakerManager::new(3, Duration::from_secs(60));
         let endpoint_id = Uuid::new_v4();
-        
+
         // Initial state should be closed
         assert_eq!(manager.get_state(endpoint_id).await, CircuitState::Closed);
         assert!(manager.should_allow_request(endpoint_id).await);
@@ -232,12 +232,12 @@ mod tests {
     async fn test_circuit_breaker_opens_after_failures() {
         let manager = CircuitBreakerManager::new(3, Duration::from_secs(60));
         let endpoint_id = Uuid::new_v4();
-        
+
         // Record 3 failures
         manager.record_failure(endpoint_id).await;
         manager.record_failure(endpoint_id).await;
         manager.record_failure(endpoint_id).await;
-        
+
         // Circuit should be open
         assert_eq!(manager.get_state(endpoint_id).await, CircuitState::Open);
         assert!(!manager.should_allow_request(endpoint_id).await);
@@ -247,22 +247,22 @@ mod tests {
     async fn test_circuit_breaker_closes_on_success() {
         let manager = CircuitBreakerManager::new(3, Duration::from_secs(60));
         let endpoint_id = Uuid::new_v4();
-        
+
         // Open circuit
         manager.record_failure(endpoint_id).await;
         manager.record_failure(endpoint_id).await;
         manager.record_failure(endpoint_id).await;
         assert_eq!(manager.get_state(endpoint_id).await, CircuitState::Open);
-        
+
         // Manually transition to half-open (simulate timeout elapsed)
         {
             let mut endpoints = manager.endpoints.lock().await;
             endpoints.get_mut(&endpoint_id).unwrap().state = CircuitState::HalfOpen;
         }
-        
+
         // Record success
         manager.record_success(endpoint_id).await;
-        
+
         // Circuit should close
         assert_eq!(manager.get_state(endpoint_id).await, CircuitState::Closed);
         assert!(manager.should_allow_request(endpoint_id).await);
@@ -271,22 +271,22 @@ mod tests {
     #[tokio::test]
     async fn test_circuit_breaker_stats() {
         let manager = CircuitBreakerManager::new(3, Duration::from_secs(60));
-        
+
         let endpoint1 = Uuid::new_v4();
         let endpoint2 = Uuid::new_v4();
         let endpoint3 = Uuid::new_v4();
-        
+
         // endpoint1: closed (healthy)
         manager.record_success(endpoint1).await;
-        
+
         // endpoint2: open (unhealthy)
         manager.record_failure(endpoint2).await;
         manager.record_failure(endpoint2).await;
         manager.record_failure(endpoint2).await;
-        
+
         // endpoint3: closed (healthy)
         manager.record_success(endpoint3).await;
-        
+
         let stats = manager.stats().await;
         assert_eq!(stats.total_endpoints, 3);
         assert_eq!(stats.closed, 2);

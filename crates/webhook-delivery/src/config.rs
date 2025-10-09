@@ -11,33 +11,33 @@ use std::time::Duration;
 pub struct DeliveryConfig {
     /// PostgreSQL connection URL
     pub database_url: String,
-    
+
     /// Redis connection settings
     pub redis_host: String,
     pub redis_port: u16,
     pub redis_password: Option<String>,
-    
+
     /// Queue name to consume from
     pub queue_name: String,
-    
+
     /// Number of concurrent delivery workers
     pub worker_count: usize,
-    
+
     /// HTTP timeout per request
     pub http_timeout: Duration,
-    
+
     /// Maximum retries per delivery
     pub max_retries: u32,
-    
+
     /// Base delay for exponential backoff (seconds)
     pub retry_base_delay_secs: u64,
-    
+
     /// Circuit breaker failure threshold
     pub circuit_breaker_threshold: u32,
-    
+
     /// Circuit breaker timeout (seconds)
     pub circuit_breaker_timeout_secs: u64,
-    
+
     /// Metrics server port
     pub metrics_port: u16,
 }
@@ -47,66 +47,63 @@ impl DeliveryConfig {
     pub fn from_env() -> Result<Self> {
         // Load .env file if present
         dotenvy::dotenv().ok();
-        
+
         // Database configuration
-        let database_url = env::var("DATABASE_URL")
-            .context("DATABASE_URL not set")?;
-        
+        let database_url = env::var("DATABASE_URL").context("DATABASE_URL not set")?;
+
         // Redis configuration
-        let redis_host = env::var("REDIS_HOST")
-            .context("REDIS_HOST not set")?;
+        let redis_host = env::var("REDIS_HOST").context("REDIS_HOST not set")?;
         let redis_port = env::var("REDIS_PORT")
             .context("REDIS_PORT not set")?
             .parse::<u16>()
             .context("REDIS_PORT must be a valid port number")?;
         let redis_password = env::var("REDIS_PASSWORD").ok();
-        
+
         // Queue configuration
-        let queue_name = env::var("QUEUE_NAME")
-            .unwrap_or_else(|_| "delivery_queue".to_string());
-        
+        let queue_name = env::var("QUEUE_NAME").unwrap_or_else(|_| "delivery_queue".to_string());
+
         // Worker configuration
         let worker_count = env::var("WORKER_COUNT")
             .unwrap_or_else(|_| "50".to_string())
             .parse::<usize>()
             .context("WORKER_COUNT must be a valid number")?;
-        
+
         // HTTP configuration
         let http_timeout = Duration::from_secs(
             env::var("HTTP_TIMEOUT_SECS")
                 .unwrap_or_else(|_| "30".to_string())
                 .parse::<u64>()
-                .context("HTTP_TIMEOUT_SECS must be a valid number")?
+                .context("HTTP_TIMEOUT_SECS must be a valid number")?,
         );
-        
+
         // Retry configuration
         let max_retries = env::var("MAX_RETRIES")
             .unwrap_or_else(|_| "5".to_string())
             .parse::<u32>()
             .context("MAX_RETRIES must be a valid number")?;
-        
+
         let retry_base_delay_secs = env::var("RETRY_BASE_DELAY_SECS")
             .unwrap_or_else(|_| "2".to_string())
             .parse::<u64>()
             .context("RETRY_BASE_DELAY_SECS must be a valid number")?;
-        
+
         // Circuit breaker configuration
         let circuit_breaker_threshold = env::var("CIRCUIT_BREAKER_THRESHOLD")
             .unwrap_or_else(|_| "5".to_string())
             .parse::<u32>()
             .context("CIRCUIT_BREAKER_THRESHOLD must be a valid number")?;
-        
+
         let circuit_breaker_timeout_secs = env::var("CIRCUIT_BREAKER_TIMEOUT_SECS")
             .unwrap_or_else(|_| "60".to_string())
             .parse::<u64>()
             .context("CIRCUIT_BREAKER_TIMEOUT_SECS must be a valid number")?;
-        
+
         // Metrics configuration
         let metrics_port = env::var("METRICS_PORT")
             .unwrap_or_else(|_| "9092".to_string())
             .parse::<u16>()
             .context("METRICS_PORT must be a valid port number")?;
-        
+
         Ok(Self {
             database_url,
             redis_host,
@@ -122,11 +119,14 @@ impl DeliveryConfig {
             metrics_port,
         })
     }
-    
+
     /// Get Redis connection URL
     pub fn redis_url(&self) -> String {
         if let Some(password) = &self.redis_password {
-            format!("redis://:{}@{}:{}", password, self.redis_host, self.redis_port)
+            format!(
+                "redis://:{}@{}:{}",
+                password, self.redis_host, self.redis_port
+            )
         } else {
             format!("redis://{}:{}", self.redis_host, self.redis_port)
         }
