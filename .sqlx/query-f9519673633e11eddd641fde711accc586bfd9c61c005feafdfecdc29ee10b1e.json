@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO endpoints (\n            application_id, webhook_url, description, hmac_secret,\n            chain_ids, contract_addresses, event_signatures\n        )\n        VALUES ($1, $2, $3, $4, $5, $6, $7)\n        RETURNING id, application_id, webhook_url, description, hmac_secret,\n                  chain_ids, contract_addresses, event_signatures,\n                  is_active, created_at, updated_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "application_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "webhook_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "hmac_secret",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "chain_ids",
+        "type_info": "Int4Array"
+      },
+      {
+        "ordinal": 6,
+        "name": "contract_addresses",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "event_signatures",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 8,
+        "name": "is_active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Varchar",
+        "Int4Array",
+        "TextArray",
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "f9519673633e11eddd641fde711accc586bfd9c61c005feafdfecdc29ee10b1e"
+}

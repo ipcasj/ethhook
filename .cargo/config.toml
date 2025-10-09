@@ -1,0 +1,4 @@
+[env]
+# Enable SQLx offline mode by default
+# This allows compilation without a database connection
+SQLX_OFFLINE = "true"
