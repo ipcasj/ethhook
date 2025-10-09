@@ -113,15 +113,15 @@ impl RedisClient {
     ) -> Result<Vec<StreamEntry>> {
         // Type alias for complex Redis XREAD response
         type XReadResult = Vec<(String, Vec<(String, Vec<(String, String)>)>)>;
-        
+
         let result: RedisResult<XReadResult> = redis::cmd("XREAD")
-                .arg("COUNT")
-                .arg(count)
-                .arg("STREAMS")
-                .arg(stream)
-                .arg(id)
-                .query_async(&mut self.manager)
-                .await;
+            .arg("COUNT")
+            .arg(count)
+            .arg("STREAMS")
+            .arg(stream)
+            .arg(id)
+            .query_async(&mut self.manager)
+            .await;
 
         match result {
             Ok(streams) => {

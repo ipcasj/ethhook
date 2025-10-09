@@ -158,10 +158,10 @@ impl StreamConsumer {
     ) -> Result<Vec<StreamEntry>> {
         // XREADGROUP GROUP group_name consumer_name BLOCK block_ms COUNT count STREAMS stream_name >
         // > = read only new messages not yet delivered to any consumer
-        
+
         // Type alias for complex Redis XREADGROUP response
         type XReadGroupResult = Vec<(String, Vec<(String, Vec<(String, String)>)>)>;
-        
+
         let result: XReadGroupResult = redis::cmd("XREADGROUP")
             .arg("GROUP")
             .arg(&self.group_name)
@@ -279,16 +279,16 @@ impl StreamConsumer {
     /// Useful for monitoring stuck consumers.
     pub async fn pending_count(&mut self, stream_name: &str) -> Result<usize> {
         // XPENDING stream_name group_name
-        
+
         // Type alias for complex Redis XPENDING response
         type XPendingResult = (usize, Option<String>, Option<String>, Vec<(String, usize)>);
-        
+
         let result: XPendingResult = redis::cmd("XPENDING")
-                .arg(stream_name)
-                .arg(&self.group_name)
-                .query_async(&mut self.client)
-                .await
-                .context("Failed to get pending count")?;
+            .arg(stream_name)
+            .arg(&self.group_name)
+            .query_async(&mut self.client)
+            .await
+            .context("Failed to get pending count")?;
 
         Ok(result.0)
     }

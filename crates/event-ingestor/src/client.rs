@@ -421,7 +421,6 @@ impl WebSocketClient {
 
 #[cfg(test)]
 mod tests {
-    
 
     #[test]
     fn test_parse_hex_block_number() {

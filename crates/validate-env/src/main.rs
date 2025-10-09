@@ -229,9 +229,7 @@ fn validate_numeric(errors: &mut Vec<String>, key: &str, min: u32, max: u32, def
                 println!("  ✓ {key}: {num}");
             }
             Ok(num) => {
-                errors.push(format!(
-                    "{key} value {num} is out of range ({min}-{max})"
-                ));
+                errors.push(format!("{key} value {num} is out of range ({min}-{max})"));
                 println!("  ✗ {key}: {num} (out of range {min}-{max})");
             }
             Err(_) => {
