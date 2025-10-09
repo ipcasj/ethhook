@@ -1,0 +1,411 @@
+use axum::{
+    extract::State,
+    http::StatusCode,
+    Json,
+};
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use uuid::Uuid;
+use va    })?;
+
+    Ok(Json(AuthResponse {
+        user: UserResponse {
+            id: user.id,
+                })?;
+
+    Ok(Json(AuthResponse {
+        user: UserResponse {
+            id: user.id,
+            email: user.email,
+            name: user.name.unwrap_or_default(),
+            created_at: user.created_at.unwrap_or_else(|| chrono::Utc::now()),
+        },
+        token,
+    }))
+}
+
+/// Get user profileail,
+            name: user.name.unwrap_or_default(),
+            created_at: user.created_at.unwrap_or_else(|| chrono::Utc::now()),
+        },
+        token,
+    }))
+}
+
+/// Login userate;
+
+use crate::auth::{generate_token, hash_password, verify_password, AuthUser};
+use crate::config::Config;
+
+/// Request to register a new user
+#[derive(Debug, Deserialize, Validate)]
+pub struct RegisterRequest {
+    #[validate(email(message = "Invalid email address"))]
+    pub email: String,
+
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
+    pub password: String,
+
+    #[validate(length(min = 1, message = "Name is required"))]
+    pub name: String,
+}
+
+/// Request to login
+#[derive(Debug, Deserialize, Validate)]
+pub struct LoginRequest {
+    #[validate(email(message = "Invalid email address"))]
+    pub email: String,
+
+    pub password: String,
+}
+
+/// Response with user data and JWT token
+#[derive(Debug, Serialize)]
+pub struct AuthResponse {
+    pub user: UserResponse,
+    pub token: String,
+}
+
+/// User data in responses
+#[derive(Debug, Serialize)]
+pub struct UserResponse {
+    pub id: Uuid,
+    pub email: String,
+    pub name: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Error response
+#[derive(Debug, Serialize)]
+pub struct ErrorResponse {
+    pub error: String,
+}
+
+/// Register a new user
+pub async fn register(
+    State(pool): State<PgPool>,
+    State(config): State<Config>,
+    Json(payload): Json<RegisterRequest>,
+) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Validate input
+    payload.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("Validation error: {}", e),
+            }),
+        )
+    })?;
+
+    // Check if user already exists
+    let existing = sqlx::query!(
+        "SELECT id FROM users WHERE email = $1",
+        payload.email
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Database error: {}", e),
+            }),
+        )
+    })?;
+
+    if existing.is_some() {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(ErrorResponse {
+                error: "User with this email already exists".to_string(),
+            }),
+        ));
+    }
+
+    // Hash password
+    let password_hash = hash_password(&payload.password).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Failed to hash password: {}", e),
+            }),
+        )
+    })?;
+
+    // Create user
+    let user = sqlx::query!(
+        r#"
+        INSERT INTO users (email, password_hash, full_name)
+        VALUES ($1, $2, $3)
+        RETURNING id, email, full_name as name, created_at
+        "#,
+        payload.email,
+        password_hash,
+        payload.name
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Failed to create user: {}", e),
+            }),
+        )
+    })?;
+
+    // Generate JWT token
+    let token = generate_token(
+        user.id,
+        user.email.clone(),
+        &config.jwt_secret,
+        config.jwt_expiration_hours,
+    )
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Failed to generate token: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(AuthResponse {
+        user: UserResponse {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            created_at: user.created_at,
+        },
+        token,
+    }))
+}
+
+/// Login an existing user
+pub async fn login(
+    State(pool): State<PgPool>,
+    State(config): State<Config>,
+    Json(payload): Json<LoginRequest>,
+) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Validate input
+    payload.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("Validation error: {}", e),
+            }),
+        )
+    })?;
+
+    // Find user by email
+    let user = sqlx::query!(
+        r#"
+        SELECT id, email, full_name as name, password_hash, created_at
+        FROM users
+        WHERE email = $1
+        "#,
+        payload.email
+    )
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Database error: {}", e),
+            }),
+        )
+    })?
+    .ok_or_else(|| {
+        (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse {
+                error: "Invalid email or password".to_string(),
+            }),
+        )
+    })?;
+
+    // Verify password
+    let valid = verify_password(&payload.password, &user.password_hash).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Password verification error: {}", e),
+            }),
+        )
+    })?;
+
+    if !valid {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse {
+                error: "Invalid email or password".to_string(),
+            }),
+        ));
+    }
+
+    // Generate JWT token
+    let token = generate_token(
+        user.id,
+        user.email.clone(),
+        &config.jwt_secret,
+        config.jwt_expiration_hours,
+    )
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Failed to generate token: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(AuthResponse {
+        user: UserResponse {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            created_at: user.created_at,
+        },
+        token,
+    }))
+}
+
+/// Get current user profile
+pub async fn get_profile(
+    State(pool): State<PgPool>,
+    auth_user: AuthUser,
+) -> Result<Json<UserResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let user = sqlx::query!(
+        r#"
+        SELECT id, email, full_name as name, created_at
+        FROM users
+        WHERE id = $1
+        "#,
+        auth_user.user_id
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Database error: {}", e),
+            }),
+        )
+    })?;
+
+    Ok(Json(UserResponse {
+        id: user.id,
+        email: user.email,
+        name: user.name.unwrap_or_default(),
+        created_at: user.created_at.unwrap_or_else(|| chrono::Utc::now()),
+    }))
+}
+
+/// Request to update user profile
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdateProfileRequest {
+    #[validate(length(min = 1, message = "Name is required"))]
+    pub name: Option<String>,
+}
+
+/// Update user profile
+pub async fn update_profile(
+    State(pool): State<PgPool>,
+    auth_user: AuthUser,
+    Json(payload): Json<UpdateProfileRequest>,
+) -> Result<Json<UserResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Validate input
+    payload.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("Validation error: {}", e),
+            }),
+        )
+    })?;
+
+    // Update user
+    let user = if let Some(name) = payload.name {
+        sqlx::query!(
+            r#"
+            UPDATE users
+            SET full_name = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, email, full_name as name, created_at
+            "#,
+            name,
+            auth_user.user_id
+        )
+        .fetch_one(&pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: format!("Failed to update user: {}", e),
+                }),
+            )
+        })?
+    } else {
+        // No changes requested
+        return get_profile(State(pool), auth_user).await;
+    };
+
+    Ok(Json(UserResponse {
+        id: user.id,
+        email: user.email,
+        name: user.name.unwrap_or_default(),
+        created_at: user.created_at.unwrap_or_else(|| chrono::Utc::now()),
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_register_request_validation() {
+        // Valid request
+        let valid = RegisterRequest {
+            email: "test@example.com".to_string(),
+            password: "password123".to_string(),
+            name: "Test User".to_string(),
+        };
+        assert!(valid.validate().is_ok());
+
+        // Invalid email
+        let invalid_email = RegisterRequest {
+            email: "not-an-email".to_string(),
+            password: "password123".to_string(),
+            name: "Test User".to_string(),
+        };
+        assert!(invalid_email.validate().is_err());
+
+        // Short password
+        let short_password = RegisterRequest {
+            email: "test@example.com".to_string(),
+            password: "short".to_string(),
+            name: "Test User".to_string(),
+        };
+        assert!(short_password.validate().is_err());
+    }
+
+    #[test]
+    fn test_login_request_validation() {
+        // Valid request
+        let valid = LoginRequest {
+            email: "test@example.com".to_string(),
+            password: "password123".to_string(),
+        };
+        assert!(valid.validate().is_ok());
+
+        // Invalid email
+        let invalid = LoginRequest {
+            email: "not-an-email".to_string(),
+            password: "password123".to_string(),
+        };
+        assert!(invalid.validate().is_err());
+    }
+}

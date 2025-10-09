@@ -1,0 +1,42 @@
+[package]
+name = "ethhook-admin-api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Web framework
+axum = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Authentication & Security
+jsonwebtoken = { workspace = true }
+bcrypt = { workspace = true }
+rand = { workspace = true }
+
+# Utilities
+uuid = { workspace = true }
+chrono = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+validator = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Internal dependencies
+ethhook-common = { path = "../common" }
+ethhook-config = { path = "../config" }
+ethhook-domain = { path = "../domain" }
+
+[dev-dependencies]
+http-body-util = "0.1"

@@ -1,13 +1,13 @@
 [workspace]
 members = [
     # Services - will be uncommented as we build them
-    "crates/event-ingestor",         # ✓ Day 3 - IN PROGRESS!
-    # "crates/message-processor",    # Week 2
-    # "crates/webhook-delivery",     # Week 2
-    # "crates/admin-api",            # Week 3
+    "crates/event-ingestor",         # ✓ COMPLETE!
+    "crates/message-processor",      # ✓ COMPLETE!
+    "crates/webhook-delivery",       # ✓ COMPLETE!
+    "crates/admin-api",              # ✓ COMPLETE!
     
     # Foundation crates
-    "crates/common",                 # ✓ Day 2 - DONE!
+    "crates/common",                 # ✓ COMPLETE!
     "crates/domain",                 # ✓ Exists
     "crates/config",                 # ✓ Exists
     "crates/validate-env",           # Validation tool
@@ -29,7 +29,7 @@ tokio-util = "0.7"
 # HTTP server and client
 axum = { version = "0.7", features = ["macros", "ws"] }
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
-tower = { version = "0.4", features = ["limit", "timeout"] }
+tower = { version = "0.4", features = ["limit", "timeout", "util"] }
 tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
 
 # Blockchain
