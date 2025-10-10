@@ -2,6 +2,7 @@
 
 > Production-grade real-time Ethereum webhook service built in Rust
 
+[![CI](https://github.com/ipcasj/ethhook/workflows/CI/badge.svg)](https://github.com/ipcasj/ethhook/actions)
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
