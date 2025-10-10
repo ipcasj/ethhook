@@ -96,7 +96,10 @@ cargo audit
 
 ## CI Status Badges
 
-Add these to your main README.md:
+✅ **Already added to main README.md:**
+
+- CI workflow badge (shows build status)
+- Optional: Codecov badge (requires Codecov account setup)
 
 ```markdown
 ![CI](https://github.com/ipcasj/ethhook/workflows/CI/badge.svg)
