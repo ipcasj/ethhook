@@ -10,6 +10,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 /// Extractor for API key authentication
+/// Reserved for future API key-based authentication
+#[allow(dead_code)]
 pub struct ApiKeyAuth {
     #[allow(dead_code)]
     pub application_id: Uuid,
@@ -64,6 +66,8 @@ where
 }
 
 /// API key errors
+/// Reserved for future API key-based authentication
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum ApiKeyError {
     MissingApiKey,
@@ -72,6 +76,9 @@ pub enum ApiKeyError {
     InternalError,
 }
 
+/// API key error response
+/// Reserved for future API key-based authentication
+#[allow(dead_code)]
 #[derive(Serialize)]
 struct ApiKeyErrorResponse {
     error: String,
