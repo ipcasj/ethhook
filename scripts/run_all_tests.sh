@@ -200,6 +200,41 @@ if [ "$RUN_INTEGRATION" = true ]; then
         export DATABASE_URL="postgres://ethhook:password@localhost:5432/ethhook"
         export REDIS_URL="redis://localhost:6379"
         
+        # Run database migrations
+        echo "🔄 Running database migrations..."
+        MIGRATION_SUCCESS=false
+        
+        # Try sqlx-cli first
+        if command -v sqlx &> /dev/null; then
+            if sqlx migrate run --source migrations 2>/dev/null; then
+                MIGRATION_SUCCESS=true
+                echo "✓ Migrations applied via sqlx-cli"
+            fi
+        fi
+        
+        # Fallback: run migrations directly via docker
+        if [ "$MIGRATION_SUCCESS" = false ]; then
+            echo "  Using docker exec fallback..."
+            for migration in migrations/*.sql; do
+                if [ -f "$migration" ]; then
+                    echo "  Applying $(basename "$migration")..."
+                    if docker exec -i ethhook-postgres psql -U ethhook -d ethhook < "$migration" > /dev/null 2>&1; then
+                        MIGRATION_SUCCESS=true
+                    else
+                        echo -e "${RED}  Failed to apply $(basename "$migration")${NC}"
+                    fi
+                fi
+            done
+            
+            if [ "$MIGRATION_SUCCESS" = true ]; then
+                echo "✓ Migrations applied via docker"
+            else
+                echo -e "${RED}❌ Migration failed!${NC}"
+                mark_failed "Integration tests (migration failed)"
+                RUN_INTEGRATION=false
+            fi
+        fi
+        
         echo ""
         echo "Running integration tests..."
         if cargo test --test integration_tests -- --test-threads=1 --ignored --nocapture; then
@@ -231,7 +266,22 @@ if [ "$RUN_E2E" = true ]; then
         if [ "$RUN_E2E" = true ]; then
             echo "📦 Starting infrastructure..."
             $DOCKER_COMPOSE up -d postgres redis
+            
+            # Wait for services
+            echo "⏳ Waiting for services..."
             sleep 3
+            
+            # Ensure migrations are applied
+            export DATABASE_URL="postgres://ethhook:password@localhost:5432/ethhook"
+            export REDIS_URL="redis://localhost:6379"
+            
+            echo "🔄 Ensuring database migrations..."
+            for migration in migrations/*.sql; do
+                if [ -f "$migration" ]; then
+                    docker exec -i ethhook-postgres psql -U ethhook -d ethhook < "$migration" > /dev/null 2>&1 || true
+                fi
+            done
+            echo "✓ Database ready"
         fi
     fi
     
@@ -246,9 +296,6 @@ if [ "$RUN_E2E" = true ]; then
     fi
     
     if [ "$RUN_E2E" = true ]; then
-        export DATABASE_URL="postgres://ethhook:password@localhost:5432/ethhook"
-        export REDIS_URL="redis://localhost:6379"
-        
         echo ""
         echo "Running E2E tests (this may take a while)..."
         if cargo test --test e2e_tests -- --test-threads=1 --ignored --nocapture; then
