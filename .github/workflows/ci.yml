@@ -187,6 +187,14 @@ jobs:
           sqlx database create
           sqlx migrate run
       
+      - name: Build service binaries for E2E tests
+        run: |
+          cargo build --bin ethhook-message-processor
+          cargo build --bin ethhook-webhook-delivery
+          cargo build --bin event-ingestor
+        env:
+          SQLX_OFFLINE: true
+      
       - name: Run E2E tests
         run: cargo test --test e2e_tests -- --ignored --test-threads=1
         env:
