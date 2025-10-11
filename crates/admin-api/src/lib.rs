@@ -102,7 +102,8 @@ pub fn create_test_router(pool: PgPool) -> Router {
     let config = Config {
         database_url: String::new(), // Not used in tests
         database_max_connections: 5,
-        jwt_secret: "test-secret-key-for-testing-only".to_string(),
+        jwt_secret: std::env::var("JWT_SECRET")
+            .unwrap_or_else(|_| "test-secret-key-for-testing-only".to_string()),
         jwt_expiration_hours: 24,
         server_host: "127.0.0.1".to_string(),
         server_port: 8080,
@@ -148,37 +149,36 @@ pub fn create_test_router(pool: PgPool) -> Router {
             get(handlers::applications::list_applications),
         )
         .route(
-            "/applications/:id",
+            "/applications/{id}",
             get(handlers::applications::get_application),
         )
         .route(
-            "/applications/:id",
+            "/applications/{id}",
             put(handlers::applications::update_application),
         )
         .route(
-            "/applications/:id",
+            "/applications/{id}",
             delete(handlers::applications::delete_application),
         )
         .route(
-            "/applications/:id/regenerate-key",
+            "/applications/{id}/regenerate-key",
             post(handlers::applications::regenerate_api_key),
         )
         .route("/endpoints", post(handlers::endpoints::create_endpoint))
         .route(
-            "/applications/:app_id/endpoints",
+            "/applications/{app_id}/endpoints",
             get(handlers::endpoints::list_endpoints),
         )
-        .route("/endpoints/:id", get(handlers::endpoints::get_endpoint))
-        .route("/endpoints/:id", put(handlers::endpoints::update_endpoint))
+        .route("/endpoints/{id}", get(handlers::endpoints::get_endpoint))
+        .route("/endpoints/{id}", put(handlers::endpoints::update_endpoint))
         .route(
-            "/endpoints/:id",
+            "/endpoints/{id}",
             delete(handlers::endpoints::delete_endpoint),
         )
         .route(
-            "/endpoints/:id/regenerate-secret",
+            "/endpoints/{id}/regenerate-secret",
             post(handlers::endpoints::regenerate_hmac_secret),
-        )
-        .layer(axum::middleware::from_fn(auth::inject_jwt_secret));
+        );
 
     Router::new()
         .nest(
@@ -186,6 +186,7 @@ pub fn create_test_router(pool: PgPool) -> Router {
             Router::new()
                 .merge(public_routes)
                 .merge(protected_routes)
+                .layer(axum::middleware::from_fn(auth::inject_jwt_secret))
                 .with_state(state),
         )
         .layer(

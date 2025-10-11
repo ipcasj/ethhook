@@ -1,5 +1,5 @@
 use axum::{
-    Json, async_trait,
+    Json,
     extract::{FromRequestParts, Request},
     http::{StatusCode, request::Parts},
     middleware::Next,
@@ -19,7 +19,6 @@ pub struct ApiKeyAuth {
     pub user_id: Uuid,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for ApiKeyAuth
 where
     S: Send + Sync,

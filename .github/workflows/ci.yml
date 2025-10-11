@@ -118,11 +118,83 @@ jobs:
           JWT_SECRET: test-secret-for-ci
       
       - name: Run Admin API integration tests
-        run: cargo test -p ethhook-admin-api --test integration_test -- --include-ignored
+        run: cargo test -p ethhook-admin-api --test integration_test -- --ignored --test-threads=1
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key-for-testing-only
+
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ethhook
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: ethhook
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features postgres
+      
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
+        run: |
+          sqlx database create
+          sqlx migrate run
+      
+      - name: Run E2E tests
+        run: cargo test --test e2e_tests -- --ignored --test-threads=1
+        env:
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test-secret-for-e2e-tests
+        timeout-minutes: 10
 
   build:
     name: Build All Services
@@ -336,7 +408,7 @@ jobs:
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [lint, test, build, sqlx-check, security-audit]
+    needs: [lint, test, e2e-tests, build, sqlx-check, security-audit]
     if: always()
     
     steps:
@@ -347,13 +419,15 @@ jobs:
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit & Integration Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| SQLx Check | ${{ needs.sqlx-check.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Security Audit | ${{ needs.security-audit.result }} |" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
+             [ "${{ needs.e2e-tests.result }}" != "success" ] || \
              [ "${{ needs.build.result }}" != "success" ] || \
              [ "${{ needs.sqlx-check.result }}" != "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY

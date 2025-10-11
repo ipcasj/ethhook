@@ -130,7 +130,21 @@ async fn main() -> Result<()> {
     let mut handles = vec![];
     for chain in &config.chains {
         let chain_config = chain.clone();
-        let consumer = Arc::clone(&consumer);
+
+        // Create separate consumer for each stream to avoid mutex contention
+        // Each stream needs its own consumer so XREADGROUP BLOCK doesn't block other streams
+        let stream_consumer = StreamConsumer::new(
+            &config.redis_url(),
+            &config.consumer_group,
+            &config.consumer_name,
+        )
+        .await
+        .context(format!(
+            "Failed to create consumer for stream {}",
+            chain_config.stream_name
+        ))?;
+        let consumer = Arc::new(Mutex::new(stream_consumer));
+
         let matcher = Arc::clone(&matcher);
         let publisher = Arc::clone(&publisher);
         let mut shutdown_rx = shutdown_tx.subscribe();
@@ -222,13 +236,24 @@ async fn process_stream_loop(
             break;
         }
 
-        // Read events from stream
+        // Read events from stream with error recovery
         let entries = {
             let mut consumer = consumer.lock().await;
-            consumer
+            match consumer
                 .read_events(stream_name, batch_size, block_time_ms)
                 .await
-                .context("Failed to read events")?
+            {
+                Ok(entries) => entries,
+                Err(e) => {
+                    error!(
+                        "[{}] Failed to read events: {:?}. Retrying in 1s...",
+                        stream_name, e
+                    );
+                    drop(consumer); // Release lock before sleeping
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    continue; // Retry instead of crashing
+                }
+            }
         };
 
         if entries.is_empty() {
@@ -248,11 +273,18 @@ async fn process_stream_loop(
         for entry in &entries {
             message_ids.push(entry.id.clone());
 
-            // Find matching endpoints
-            let endpoints = matcher
-                .find_matching_endpoints(&entry.event)
-                .await
-                .context("Failed to find matching endpoints")?;
+            // Find matching endpoints with error recovery
+            let endpoints = match matcher.find_matching_endpoints(&entry.event).await {
+                Ok(eps) => eps,
+                Err(e) => {
+                    error!(
+                        "[{}] Failed to find matching endpoints for event {}: {:?}",
+                        stream_name, entry.event.transaction_hash, e
+                    );
+                    // Skip this event but continue processing others
+                    continue;
+                }
+            };
 
             if endpoints.is_empty() {
                 info!(
@@ -264,15 +296,21 @@ async fn process_stream_loop(
                 continue;
             }
 
-            // Create delivery jobs
+            // Create delivery jobs with error recovery
             let mut pub_client = publisher.lock().await;
             for endpoint in &endpoints {
-                pub_client
-                    .publish(endpoint, &entry.event)
-                    .await
-                    .context("Failed to publish delivery job")?;
-
-                jobs_created += 1;
+                match pub_client.publish(endpoint, &entry.event).await {
+                    Ok(_) => {
+                        jobs_created += 1;
+                    }
+                    Err(e) => {
+                        error!(
+                            "[{}] Failed to publish delivery job for endpoint {}: {:?}",
+                            stream_name, endpoint.endpoint_id, e
+                        );
+                        // Continue with other endpoints
+                    }
+                }
             }
             drop(pub_client);
 
@@ -286,13 +324,24 @@ async fn process_stream_loop(
 
         events_processed += entries.len() as u64;
 
-        // Acknowledge processed messages
+        info!(
+            "[{}] Preparing to ACK {} message IDs",
+            stream_name,
+            message_ids.len()
+        );
+
+        // Acknowledge processed messages with error recovery
         {
             let mut consumer = consumer.lock().await;
-            consumer
-                .ack_messages(stream_name, &message_ids)
-                .await
-                .context("Failed to acknowledge messages")?;
+            if let Err(e) = consumer.ack_messages(stream_name, &message_ids).await {
+                error!(
+                    "[{}] Failed to acknowledge {} messages: {:?}. Messages may be reprocessed.",
+                    stream_name,
+                    message_ids.len(),
+                    e
+                );
+                // Continue - messages will remain in pending list and be retried
+            }
         }
 
         info!(

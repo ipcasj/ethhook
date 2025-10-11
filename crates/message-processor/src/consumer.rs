@@ -28,7 +28,7 @@
 use anyhow::{Context, Result};
 use redis::RedisError;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 /// Processed event from Redis Stream
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,10 +159,13 @@ impl StreamConsumer {
         // XREADGROUP GROUP group_name consumer_name BLOCK block_ms COUNT count STREAMS stream_name >
         // > = read only new messages not yet delivered to any consumer
 
-        // Type alias for complex Redis XREADGROUP response
-        type XReadGroupResult = Vec<(String, Vec<(String, Vec<(String, String)>)>)>;
+        debug!(
+            "[{}] Starting XREADGROUP: group={}, consumer={}, block={}ms, count={}",
+            stream_name, self.group_name, self.consumer_name, block_ms, count
+        );
 
-        let result: XReadGroupResult = redis::cmd("XREADGROUP")
+        // Use redis::Value for flexible parsing (matches integration test approach)
+        let response: redis::Value = redis::cmd("XREADGROUP")
             .arg("GROUP")
             .arg(&self.group_name)
             .arg(&self.consumer_name)
@@ -175,16 +178,77 @@ impl StreamConsumer {
             .arg(">") // Read new messages only
             .query_async(&mut self.client)
             .await
-            .context("Failed to read from stream")?;
+            .map_err(|e| {
+                error!(
+                    "XREADGROUP failed for stream '{}': {} (group: {}, consumer: {}, block: {}ms, count: {})",
+                    stream_name, e, self.group_name, self.consumer_name, block_ms, count
+                );
+                anyhow::anyhow!("Failed to read from stream '{stream_name}': {e}")
+            })?;
 
         let mut entries = Vec::new();
 
-        for (_stream, messages) in result {
-            for (id, fields) in messages {
-                // Parse fields into StreamEvent
-                let event = Self::parse_stream_event(&fields)?;
+        // Parse response: XREADGROUP returns Bulk([Bulk([Data(stream_name), Bulk([entries...])])])
+        if let redis::Value::Bulk(streams) = response {
+            debug!(
+                "[{}] XREADGROUP returned {} streams",
+                stream_name,
+                streams.len()
+            );
 
-                entries.push(StreamEntry { id, event });
+            for stream_data in &streams {
+                if let redis::Value::Bulk(stream_parts) = stream_data {
+                    // stream_parts[0] = stream name (Data)
+                    // stream_parts[1] = entries (Bulk)
+                    if stream_parts.len() < 2 {
+                        continue;
+                    }
+
+                    if let redis::Value::Bulk(messages) = &stream_parts[1] {
+                        // Each message is Bulk([Data(id), Bulk([Data(key1), Data(val1), ...])])
+                        for message in messages {
+                            if let redis::Value::Bulk(entry_parts) = message {
+                                if entry_parts.len() < 2 {
+                                    continue;
+                                }
+
+                                // Extract message ID
+                                let id = if let redis::Value::Data(id_bytes) = &entry_parts[0] {
+                                    String::from_utf8_lossy(id_bytes).to_string()
+                                } else {
+                                    continue;
+                                };
+
+                                // Extract fields (key-value pairs)
+                                let mut fields = Vec::new();
+                                if let redis::Value::Bulk(field_data) = &entry_parts[1] {
+                                    // Fields are alternating: key1, val1, key2, val2, ...
+                                    for chunk in field_data.chunks(2) {
+                                        if chunk.len() == 2 {
+                                            let key = if let redis::Value::Data(k) = &chunk[0] {
+                                                String::from_utf8_lossy(k).to_string()
+                                            } else {
+                                                continue;
+                                            };
+
+                                            let val = if let redis::Value::Data(v) = &chunk[1] {
+                                                String::from_utf8_lossy(v).to_string()
+                                            } else {
+                                                continue;
+                                            };
+
+                                            fields.push((key, val));
+                                        }
+                                    }
+                                }
+
+                                // Parse fields into StreamEvent
+                                let event = Self::parse_stream_event(&fields)?;
+                                entries.push(StreamEntry { id, event });
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -252,8 +316,15 @@ impl StreamConsumer {
     /// * `message_ids` - IDs of messages to acknowledge
     pub async fn ack_messages(&mut self, stream_name: &str, message_ids: &[String]) -> Result<()> {
         if message_ids.is_empty() {
+            debug!("[{}] No messages to acknowledge (empty list)", stream_name);
             return Ok(());
         }
+
+        info!(
+            "[{}] Acknowledging {} messages...",
+            stream_name,
+            message_ids.len()
+        );
 
         // XACK stream_name group_name id1 id2 id3...
         let mut cmd = redis::cmd("XACK");
@@ -268,7 +339,12 @@ impl StreamConsumer {
             .await
             .context("Failed to acknowledge messages")?;
 
-        debug!("Acknowledged {} messages from {}", acked, stream_name);
+        info!(
+            "[{}] ✅ Acknowledged {} messages (expected {})",
+            stream_name,
+            acked,
+            message_ids.len()
+        );
 
         Ok(())
     }

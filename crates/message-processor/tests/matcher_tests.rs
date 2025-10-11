@@ -51,7 +51,7 @@ async fn create_test_user(pool: &PgPool) -> Uuid {
          VALUES ($1, $2, $3)",
     )
     .bind(user_id)
-    .bind(format!("test-{}@example.com", user_id))
+    .bind(format!("test-{user_id}@example.com"))
     .bind("$argon2id$v=19$m=19456,t=2,p=1$test$test")
     .execute(pool)
     .await
@@ -69,7 +69,7 @@ async fn create_test_endpoint(
     is_active: bool,
 ) -> Uuid {
     let endpoint_id = Uuid::new_v4();
-    let url = format!("https://webhook.example.com/{}", endpoint_id);
+    let url = format!("https://webhook.example.com/{endpoint_id}");
 
     sqlx::query(
         "INSERT INTO endpoints 

@@ -7,6 +7,7 @@ The Admin API code is complete but **requires PostgreSQL for compilation** due t
 ### Why Does It Need a Database?
 
 SQLx uses the `sqlx::query!()` macro which connects to your database at **compile time** to:
+
 - Verify SQL syntax
 - Check that column names exist
 - Validate types match between SQL and Rust
@@ -97,6 +98,7 @@ These services don't use SQLx macros and compile fine:
 3. **Common Crate** - ✅ Compiles
 
 Test them:
+
 ```bash
 cargo build -p ethhook-event-ingestor
 cargo build -p ethhook-webhook-delivery
@@ -126,6 +128,7 @@ cargo build --workspace --release
 ```
 
 This will:
+
 1. Start PostgreSQL and Redis
 2. Run all database migrations
 3. Build all 4 services successfully
@@ -137,14 +140,17 @@ This will:
 The following non-database errors were already fixed:
 
 ### 1. ✅ Duplicate Module Declaration
+
 - **File**: `crates/admin-api/src/lib.rs`
 - **Issue**: `pub mod handlers;` was declared twice
 - **Fix**: Removed duplicate line
 
 ### 2. ✅ Unsafe `env::set_var` in Tests
+
 - **File**: `crates/admin-api/src/config.rs`
 - **Issue**: In Rust 2024, `env::set_var` is unsafe
 - **Fix**: Wrapped in `unsafe` block:
+
 ```rust
 unsafe {
     env::set_var("DATABASE_URL", "postgresql://localhost/test");
@@ -159,6 +165,7 @@ unsafe {
 Once the Admin API compiles successfully:
 
 1. **Run All Services**:
+
    ```bash
    # Terminal 1
    cargo run --release -p ethhook-event-ingestor
@@ -174,6 +181,7 @@ Once the Admin API compiles successfully:
    ```
 
 2. **Test the API**:
+
    ```bash
    # Health check
    curl http://localhost:3000/api/v1/health
@@ -189,6 +197,7 @@ Once the Admin API compiles successfully:
    ```
 
 3. **Run Integration Tests**:
+
    ```bash
    cargo test --workspace
    ```
@@ -216,6 +225,7 @@ If you encounter issues:
 4. **Verify connection**: `psql postgresql://ethhook:password@localhost:5432/ethhook -c '\l'`
 
 If problems persist, see:
+
 - [docs/ADMIN_API_IMPLEMENTATION.md](ADMIN_API_IMPLEMENTATION.md) - Full API documentation
 - [SETUP_GUIDE.md](../SETUP_GUIDE.md) - General setup instructions
 - [docker-compose.yml](../docker-compose.yml) - Docker configuration

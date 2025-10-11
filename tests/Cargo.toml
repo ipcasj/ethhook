@@ -1,0 +1,55 @@
+[package]
+name = "ethhook-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+# Workspace dependencies
+ethhook-common = { path = "../crates/common" }
+ethhook-domain = { path = "../crates/domain" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# HTTP client for testing webhooks
+reqwest = { workspace = true }
+axum = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Redis
+redis = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Testing utilities
+uuid = "1.10"
+chrono = "0.4"
+anyhow = "1.0"
+tracing = { workspace = true }
+
+# Test server for webhook endpoint
+wiremock = "0.6"
+
+# Serial test execution to avoid database conflicts
+serial_test = "3.0"
+
+# WebSocket for mock Ethereum RPC server
+tokio-tungstenite = "0.21"
+futures-util = "0.3"
+
+# Integration tests (database + Redis + HTTP components)
+[[test]]
+name = "integration_tests"
+path = "integration_tests.rs"
+harness = true
+
+# Real E2E tests (full service pipeline)
+[[test]]
+name = "e2e_tests"
+path = "e2e_tests.rs"
+harness = true

@@ -30,6 +30,7 @@ delivery_queue ─────────> Worker 1
 ## 📂 Files Created
 
 ### 1. **Cargo.toml** (Dependencies)
+
 ```toml
 ethhook-common
 tokio (async runtime)
@@ -42,10 +43,12 @@ rand (jitter for backoff)
 ```
 
 ### 2. **lib.rs** (Module Declaration)
+
 - Declares all modules: config, consumer, delivery, retry, circuit_breaker
 - Module-level documentation with architecture diagrams
 
 ### 3. **config.rs** (Configuration Management)
+
 ```rust
 pub struct DeliveryConfig {
     database_url: String,
@@ -63,10 +66,12 @@ pub struct DeliveryConfig {
 ```
 
 **Features:**
+
 - Loads from environment variables with sensible defaults
 - 2 unit tests (Redis URL generation)
 
 ### 4. **consumer.rs** (Redis Queue Consumer)
+
 ```rust
 pub struct JobConsumer {
     client: redis::aio::ConnectionManager,
@@ -87,17 +92,20 @@ pub struct DeliveryJob {
 ```
 
 **Features:**
+
 - **BRPOP**: Blocking pop from Redis Queue (efficient, no polling)
 - **JSON Parsing**: Deserializes DeliveryJob from message-processor
 - **Requeue**: Can put failed jobs back into queue
 - 2 unit tests (consumer creation, timeout)
 
 **Key Methods:**
+
 - `consume(timeout_secs)` - BRPOP with timeout
 - `queue_length()` - Monitor backlog
 - `requeue(job)` - Add failed job back to queue
 
 ### 5. **circuit_breaker.rs** (Endpoint Health Tracking)
+
 ```rust
 pub enum CircuitState {
     Closed,     // Normal operation - endpoint healthy
@@ -113,6 +121,7 @@ pub struct CircuitBreakerManager {
 ```
 
 **Features:**
+
 - **Per-Endpoint State**: Tracks health for each webhook endpoint
 - **3-State Machine**: Closed → Open → HalfOpen → Closed
 - **Automatic Recovery**: Tests endpoint after timeout
@@ -120,12 +129,14 @@ pub struct CircuitBreakerManager {
 - 4 unit tests (state transitions)
 
 **State Transitions:**
+
 1. **Closed → Open**: After 5 consecutive failures
 2. **Open → HalfOpen**: After 60 seconds timeout
 3. **HalfOpen → Closed**: On successful delivery
 4. **HalfOpen → Open**: On failed test delivery
 
 **Key Methods:**
+
 - `should_allow_request()` - Check if request allowed
 - `record_success()` - Reset failure count, close circuit
 - `record_failure()` - Increment failures, maybe open circuit
@@ -133,6 +144,7 @@ pub struct CircuitBreakerManager {
 - `stats()` - Get aggregate statistics
 
 ### 6. **retry.rs** (Exponential Backoff Logic)
+
 ```rust
 pub fn calculate_backoff(
     attempt: u32, 
@@ -144,6 +156,7 @@ pub fn is_retryable_error(status: Option<u16>) -> bool
 ```
 
 **Features:**
+
 - **Exponential Backoff**: `base * 2^attempt`
 - **Jitter**: ±20% randomness (prevents thundering herd)
 - **Capped**: Maximum 60 seconds
@@ -151,6 +164,7 @@ pub fn is_retryable_error(status: Option<u16>) -> bool
 - 2 unit tests (backoff calculation, retryable errors)
 
 **Retry Schedule:**
+
 ```
 Attempt 1: Immediate
 Attempt 2: ~2 seconds (1.6-2.4s with jitter)
@@ -161,6 +175,7 @@ Total: ~30 seconds over 5 attempts
 ```
 
 **Retryable Errors:**
+
 - ✅ Network errors (timeout, connection refused)
 - ✅ 429 Too Many Requests
 - ✅ 5xx Server Errors (500, 502, 503, 504)
@@ -171,6 +186,7 @@ Total: ~30 seconds over 5 attempts
 - ❌ 410 Gone
 
 ### 7. **delivery.rs** (Webhook Sender)
+
 ```rust
 pub struct WebhookDelivery {
     client: Client, // reqwest HTTP client with timeout
@@ -187,6 +203,7 @@ pub struct DeliveryResult {
 ```
 
 **Features:**
+
 - **HMAC Signature**: Uses `ethhook_common::sign_hmac()`
 - **Headers**: `X-Webhook-Signature`, `X-Webhook-Id`, `X-Webhook-Attempt`
 - **Timeout**: Configurable per request (default 30s)
@@ -194,6 +211,7 @@ pub struct DeliveryResult {
 - 2 unit tests (client creation, payload building)
 
 **HTTP Request:**
+
 ```http
 POST /webhook HTTP/1.1
 Host: example.com
@@ -214,11 +232,13 @@ X-Webhook-Attempt: 1
 ```
 
 **Key Methods:**
+
 - `deliver(job)` - Send HTTP POST request
 - `build_payload(event)` - Create JSON payload
 - `log_delivery_attempt()` - Save to PostgreSQL
 
 ### 8. **main.rs** (Service Entry Point)
+
 ```rust
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -232,6 +252,7 @@ async fn main() -> Result<()> {
 ```
 
 **Features:**
+
 - **Worker Pool**: 50 concurrent tokio tasks
 - **Shared Resources**: Arc<> for HTTP client and circuit breaker
 - **Per-Worker Consumer**: Each worker has own Redis connection
@@ -239,6 +260,7 @@ async fn main() -> Result<()> {
 - **Retry Loop**: Built into worker, uses exponential backoff
 
 **Worker Loop:**
+
 1. BRPOP from delivery_queue (block 5 seconds)
 2. Check circuit breaker: `should_allow_request()`
 3. If allowed:
@@ -254,6 +276,7 @@ async fn main() -> Result<()> {
 ## 🚀 Key Features
 
 ### Worker Pool Architecture
+
 ```text
 Main Process
     │
@@ -270,6 +293,7 @@ Main Process
 ```
 
 **Benefits:**
+
 - **Horizontal Scaling**: Each worker processes jobs independently
 - **Fault Isolation**: One worker failure doesn't affect others
 - **Load Distribution**: Workers pull jobs at their own pace
@@ -280,6 +304,7 @@ Main Process
 **Solution**: Circuit breaker blocks requests to failing endpoints
 
 **Example:**
+
 ```
 Time  | Endpoint A Status | Circuit State | Action
 0s    | ✅ Success        | Closed        | Deliver
@@ -298,6 +323,7 @@ Time  | Endpoint A Status | Circuit State | Action
 **Purpose**: Customers verify webhook came from us
 
 **Implementation:**
+
 ```rust
 let payload_json = serde_json::to_string(&payload)?;
 let signature = ethhook_common::sign_hmac(&payload_json, &hmac_secret);
@@ -307,6 +333,7 @@ let signature = ethhook_common::sign_hmac(&payload_json, &hmac_secret);
 ```
 
 **Customer Verification:**
+
 ```python
 # Customer webhook handler
 def handle_webhook(request):
@@ -323,6 +350,7 @@ def handle_webhook(request):
 ### Database Logging
 
 Every delivery attempt logged to `delivery_attempts` table:
+
 - endpoint_id
 - attempt_number
 - http_status_code
@@ -333,6 +361,7 @@ Every delivery attempt logged to `delivery_attempts` table:
 - should_retry
 
 **Benefits:**
+
 - Debugging failed deliveries
 - Monitoring endpoint health
 - Customer support (show delivery history)
@@ -360,6 +389,7 @@ Every delivery attempt logged to `delivery_attempts` table:
 ## 🔄 Complete Data Flow
 
 ### End-to-End Journey
+
 ```text
 1. Blockchain (Ethereum)
    ├─ Block mined with transaction
@@ -391,6 +421,7 @@ Every delivery attempt logged to `delivery_attempts` table:
 ```
 
 ### Example Timeline
+
 ```
 T+0ms:    Block mined on Ethereum
 T+50ms:   Event Ingestor receives via WebSocket
@@ -411,23 +442,28 @@ Total latency: 320ms from blockchain to customer ✅
 ## 🎓 Lessons Learned
 
 ### Worker Pool vs Thread Pool
+
 - **Worker Pool (tokio tasks)**: Better for I/O-bound workloads
 - **Thread Pool (OS threads)**: Better for CPU-bound workloads
 - **Decision**: Worker pool (all I/O: Redis, HTTP, PostgreSQL)
 
 ### Circuit Breaker Granularity
+
 - **Per-Endpoint**: Track health individually (implemented)
 - **Global**: One circuit for all endpoints
 - **Decision**: Per-endpoint (one bad endpoint shouldn't block others)
 
 ### Retry Strategy
+
 - **Immediate**: Fast but wastes resources
 - **Fixed Delay**: Simple but suboptimal
 - **Exponential Backoff**: Best for transient errors (implemented)
 - **Exponential + Jitter**: Prevents thundering herd (implemented)
 
 ### Error Classification
+
 Critical distinction: **Retryable vs Non-Retryable**
+
 - **Retryable**: 5xx errors, network errors, timeouts
 - **Non-Retryable**: 4xx errors (except 429), success responses
 - **Benefit**: Saves resources, faster permanent failure detection

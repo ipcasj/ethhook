@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use axum::{
-    Json, async_trait,
+    Json,
     extract::{FromRequestParts, Request},
     http::{StatusCode, header, request::Parts},
     middleware::Next,
@@ -83,7 +83,6 @@ pub struct AuthUser {
     pub email: String,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
@@ -150,9 +149,12 @@ impl IntoResponse for AuthError {
 /// Middleware to inject JWT secret into request extensions
 pub async fn inject_jwt_secret(mut req: Request, next: Next) -> Response {
     // Get JWT secret from environment variable
+    // This is called for every request, so the environment variable is always fresh
     let secret = std::env::var("JWT_SECRET")
         .unwrap_or_else(|_| "test-secret-key-for-testing-only".to_string());
-    req.extensions_mut().insert(secret);
+
+    // Insert the secret into request extensions
+    req.extensions_mut().insert(secret.clone());
     next.run(req).await
 }
 

@@ -112,7 +112,7 @@ impl EndpointMatcher {
             SELECT 
                 e.id AS endpoint_id,
                 e.application_id,
-                e.url,
+                e.webhook_url AS url,
                 e.hmac_secret,
                 e.rate_limit_per_second,
                 e.max_retries,
@@ -120,17 +120,27 @@ impl EndpointMatcher {
             FROM endpoints e
             WHERE e.is_active = true
               AND (
-                  e.contract_address IS NULL 
-                  OR LOWER(e.contract_address) = LOWER($1)
+                  -- Match chain_ids
+                  e.chain_ids IS NULL
+                  OR $3::INTEGER = ANY(e.chain_ids)
               )
               AND (
-                  e.event_topics IS NULL
-                  OR e.event_topics <@ $2
+                  -- Match contract_addresses
+                  e.contract_addresses IS NULL 
+                  OR LOWER($1) = ANY(
+                      SELECT LOWER(UNNEST(e.contract_addresses))
+                  )
+              )
+              AND (
+                  -- Match event_signatures (topics)
+                  e.event_signatures IS NULL
+                  OR e.event_signatures <@ $2
               )
             "#,
         )
         .bind(&event.contract_address)
         .bind(&event.topics)
+        .bind(event.chain_id as i32)
         .fetch_all(&self.pool)
         .await
         .context("Failed to query matching endpoints")?;

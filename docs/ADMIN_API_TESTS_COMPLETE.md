@@ -13,17 +13,20 @@ Successfully implemented comprehensive integration tests for the Admin API, addr
 ## Tests Implemented
 
 ### Authentication Tests
+
 1. ✅ **test_user_registration_success** - Valid user registration flow
 2. ✅ **test_user_registration_duplicate_email** - Duplicate email handling (409 Conflict)
 3. ✅ **test_user_login_success** - JWT token generation
 4. ✅ **test_user_login_invalid_password** - Invalid credentials (401 Unauthorized)
 
 ### Protected Route Tests
-5. ✅ **test_get_user_profile_authenticated** - JWT validation for protected routes
-6. ✅ **test_get_user_profile_unauthenticated** - Missing token handling
+
+1. ✅ **test_get_user_profile_authenticated** - JWT validation for protected routes
+2. ✅ **test_get_user_profile_unauthenticated** - Missing token handling
 
 ### Application Workflow Tests
-7. ✅ **test_complete_application_workflow** - Full CRUD lifecycle:
+
+1. ✅ **test_complete_application_workflow** - Full CRUD lifecycle:
    - Create application
    - List applications
    - Get specific application
@@ -31,18 +34,21 @@ Successfully implemented comprehensive integration tests for the Admin API, addr
    - Delete application
 
 ### Validation Tests
-8. ✅ **test_jwt_validation** - Invalid/malformed token rejection
-9. ✅ **test_password_validation** - Weak password rejection
-10. ✅ **test_email_validation** - Email format validation
+
+1. ✅ **test_jwt_validation** - Invalid/malformed token rejection
+2. ✅ **test_password_validation** - Weak password rejection
+3. ✅ **test_email_validation** - Email format validation
 
 ## Test Infrastructure
 
 ### Helper Functions
+
 - `create_test_pool()` - Creates test database connection
 - `cleanup_test_data()` - Removes test users after execution
 - `get_json_response()` - Parses JSON response bodies
 
 ### Test Configuration
+
 - All tests marked with `#[ignore]` - require explicit opt-in
 - Tests require PostgreSQL running (DATABASE_URL)
 - Tests use real database (not mocks) for integration testing
@@ -50,6 +56,7 @@ Successfully implemented comprehensive integration tests for the Admin API, addr
 ## Running the Tests
 
 ### Prerequisites
+
 ```bash
 # Start PostgreSQL
 docker-compose up -d ethhook-postgres
@@ -59,6 +66,7 @@ export DATABASE_URL="postgresql://ethhook:password@localhost:5432/ethhook"
 ```
 
 ### Run Tests
+
 ```bash
 # Run all Admin API integration tests
 cargo test -p ethhook-admin-api --test integration_test -- --ignored
@@ -73,11 +81,13 @@ cargo test -p ethhook-admin-api --test integration_test -- --ignored --nocapture
 ## Technical Details
 
 ### Compilation Fixes
+
 1. **tower::util::ServiceExt** - Added `util` feature to tower workspace dependency
 2. **create_test_router** - Made public (removed `#[cfg(test)]`) for test accessibility
 3. **SQLx offline mode** - Used raw `sqlx::query()` instead of `query!()` for cleanup functions
 
 ### Dependencies
+
 ```toml
 # Workspace Cargo.toml
 tower = { version = "0.4", features = ["limit", "timeout", "util"] }
@@ -90,7 +100,9 @@ http-body-util = "0.1"
 ## Test Architecture
 
 ### AppState Structure
+
 Tests use the same `AppState` as production:
+
 ```rust
 #[derive(Clone)]
 struct AppState {
@@ -100,6 +112,7 @@ struct AppState {
 ```
 
 ### Router Creation
+
 ```rust
 pub fn create_test_router(pool: PgPool) -> Router {
     let config = Config { /* test config */ };
@@ -113,6 +126,7 @@ pub fn create_test_router(pool: PgPool) -> Router {
 ```
 
 ### Request Pattern
+
 ```rust
 let request = Request::builder()
     .method("POST")
@@ -128,16 +142,19 @@ assert_eq!(response.status(), StatusCode::OK);
 ## Coverage Analysis
 
 ### Before
+
 - **Admin API Tests**: 0
 - **Total Lines**: 2,470
 - **Test Coverage**: 0%
 
 ### After
+
 - **Admin API Tests**: 11 integration tests
 - **Coverage**: Authentication, CRUD, Validation
 - **Estimated Coverage**: 30-40% (handlers covered)
 
 ### Still Needed
+
 - Unit tests for individual handler functions
 - Error path testing (database failures, etc.)
 - Edge case testing (SQL injection, XSS)
@@ -147,16 +164,18 @@ assert_eq!(response.status(), StatusCode::OK);
 ## Next Steps
 
 ### Short Term (1-2 weeks)
+
 1. ✅ Admin API integration tests - **COMPLETE**
 2. ⏳ Add Message Processor unit tests (currently 2 tests)
 3. ⏳ End-to-end pipeline test
 4. ⏳ CI/CD setup (GitHub Actions)
 
 ### Medium Term (3-4 weeks)
-5. Load testing with k6 (10,000 events/sec target)
-6. Security testing (SQL injection, JWT tampering)
-7. Chaos engineering tests
-8. Increase coverage to 70-80%
+
+1. Load testing with k6 (10,000 events/sec target)
+2. Security testing (SQL injection, JWT tampering)
+3. Chaos engineering tests
+4. Increase coverage to 70-80%
 
 See `docs/TESTING_STRATEGY.md` for complete testing roadmap.
 

@@ -113,18 +113,23 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 ## 🧪 Testing
 
 ```bash
-# Run unit tests
+# Run all unit tests
 cargo test
 
-# Run integration tests (requires Docker)
-cargo test --test integration_tests
+# Run end-to-end integration tests (requires PostgreSQL + Redis)
+./scripts/run_e2e_tests.sh
+
+# Or manually with infrastructure running
+cargo test --package ethhook-e2e-tests -- --ignored
+
+# Run tests for specific service
+cargo test --package ethhook-message-processor
 
 # Run with coverage
 cargo tarpaulin --out Html
-
-# Load testing
-k6 run tests/load/webhook_delivery.js
 ```
+
+See [E2E Test Documentation](tests/README.md) for details on integration testing.
 
 ## 📊 Monitoring
 

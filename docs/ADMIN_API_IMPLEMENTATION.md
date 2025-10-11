@@ -102,9 +102,11 @@ http://localhost:3000/api/v1
 ### Authentication Endpoints (Public)
 
 #### POST /auth/register
+
 Register a new user account.
 
 **Request**:
+
 ```json
 {
   "email": "user@example.com",
@@ -114,6 +116,7 @@ Register a new user account.
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "user": {
@@ -127,9 +130,11 @@ Register a new user account.
 ```
 
 #### POST /auth/login
+
 Login with email and password.
 
 **Request**:
+
 ```json
 {
   "email": "user@example.com",
@@ -138,6 +143,7 @@ Login with email and password.
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "user": {
@@ -155,14 +161,17 @@ Login with email and password.
 ### User Endpoints (Protected)
 
 All protected endpoints require JWT authentication:
+
 ```
 Authorization: Bearer <jwt_token>
 ```
 
 #### GET /users/me
+
 Get current user profile.
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -173,9 +182,11 @@ Get current user profile.
 ```
 
 #### PUT /users/me
+
 Update user profile.
 
 **Request**:
+
 ```json
 {
   "name": "Jane Doe"
@@ -183,6 +194,7 @@ Update user profile.
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -197,9 +209,11 @@ Update user profile.
 ### Application Endpoints (Protected)
 
 #### POST /applications
+
 Create a new application.
 
 **Request**:
+
 ```json
 {
   "name": "My DeFi App",
@@ -208,6 +222,7 @@ Create a new application.
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
@@ -222,9 +237,11 @@ Create a new application.
 ```
 
 #### GET /applications
+
 List all applications for the authenticated user.
 
 **Response** (200 OK):
+
 ```json
 {
   "applications": [
@@ -244,9 +261,11 @@ List all applications for the authenticated user.
 ```
 
 #### GET /applications/:id
+
 Get application details.
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
@@ -261,9 +280,11 @@ Get application details.
 ```
 
 #### PUT /applications/:id
+
 Update an application.
 
 **Request**:
+
 ```json
 {
   "name": "My Updated DeFi App",
@@ -273,6 +294,7 @@ Update an application.
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
@@ -287,14 +309,17 @@ Update an application.
 ```
 
 #### DELETE /applications/:id
+
 Delete an application.
 
 **Response** (204 No Content)
 
 #### POST /applications/:id/regenerate-key
+
 Regenerate API key for an application.
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
@@ -313,9 +338,11 @@ Regenerate API key for an application.
 ### Endpoint Endpoints (Protected)
 
 #### POST /endpoints
+
 Create a webhook endpoint.
 
 **Request**:
+
 ```json
 {
   "application_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
@@ -328,6 +355,7 @@ Create a webhook endpoint.
 ```
 
 **Response** (201 Created):
+
 ```json
 {
   "id": "3f4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d",
@@ -345,9 +373,11 @@ Create a webhook endpoint.
 ```
 
 #### GET /applications/:app_id/endpoints
+
 List endpoints for an application.
 
 **Response** (200 OK):
+
 ```json
 {
   "endpoints": [
@@ -370,9 +400,11 @@ List endpoints for an application.
 ```
 
 #### GET /endpoints/:id
+
 Get endpoint details.
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "3f4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d",
@@ -390,9 +422,11 @@ Get endpoint details.
 ```
 
 #### PUT /endpoints/:id
+
 Update an endpoint.
 
 **Request**:
+
 ```json
 {
   "webhook_url": "https://myapp.com/webhooks/uniswap-v2",
@@ -403,6 +437,7 @@ Update an endpoint.
 ```
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "3f4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d",
@@ -420,14 +455,17 @@ Update an endpoint.
 ```
 
 #### DELETE /endpoints/:id
+
 Delete an endpoint.
 
 **Response** (204 No Content)
 
 #### POST /endpoints/:id/regenerate-secret
+
 Regenerate HMAC secret for an endpoint.
 
 **Response** (200 OK):
+
 ```json
 {
   "id": "3f4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d",
@@ -479,21 +517,25 @@ CORS_ALLOWED_ORIGINS=*              # Default: * (all origins)
 ## Security Features
 
 ### Password Hashing
+
 - **Algorithm**: bcrypt
 - **Cost Factor**: 12 (default)
 - **Salt**: Auto-generated per password
 
 ### JWT Tokens
+
 - **Algorithm**: HS256
 - **Expiration**: Configurable (24 hours default)
 - **Claims**: user_id, email, exp, iat
 
 ### API Keys
+
 - **Format**: `ethk_<32_random_chars>`
 - **Character Set**: A-Z, a-z, 0-9
 - **Length**: 37 characters total
 
 ### HMAC Secrets
+
 - **Length**: 64 characters
 - **Character Set**: A-Z, a-z, 0-9
 - **Usage**: Webhook signature verification

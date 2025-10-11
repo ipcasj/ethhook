@@ -77,6 +77,7 @@ pub struct StreamEvent {
 ```
 
 **Features:**
+
 - **Consumer Groups**: XREADGROUP for horizontal scaling
 - **Auto-Creation**: ensure_consumer_group (idempotent)
 - **Batch Processing**: Read up to 100 events per call
@@ -85,12 +86,14 @@ pub struct StreamEvent {
 - 2 unit tests (consumer creation, group creation)
 
 **Key Methods:**
+
 - `ensure_consumer_group()` - Create/verify consumer group exists
 - `read_events()` - XREADGROUP with blocking
 - `ack_messages()` - Mark messages as processed
 - `pending_count()` - Get unprocessed message count
 
 ### 4. **matcher.rs** (Endpoint Matcher)
+
 ```rust
 pub struct EndpointMatcher {
     pool: PgPool,
@@ -108,6 +111,7 @@ pub struct MatchedEndpoint {
 ```
 
 **Features:**
+
 - **PostgreSQL Query**: Optimized with indexes
 - **Flexible Matching**: NULL contract/topics = match all
 - **Array Operator**: `event_topics <@ topics` (contained by)
@@ -115,15 +119,18 @@ pub struct MatchedEndpoint {
 - 2 unit tests (matcher creation, find endpoints)
 
 **Matching Logic:**
+
 1. endpoint.is_active = true
 2. contract_address matches (or NULL for all)
 3. event_topics are subset of event topics (or NULL for all)
 
 **Performance:**
+
 - Uses indexes: `idx_endpoints_contract_address`, `idx_endpoints_event_topics`
 - Expected query time: < 5ms for 10,000 endpoints
 
 ### 5. **publisher.rs** (Delivery Job Publisher)
+
 ```rust
 pub struct DeliveryPublisher {
     client: redis::aio::ConnectionManager,
@@ -144,6 +151,7 @@ pub struct DeliveryJob {
 ```
 
 **Features:**
+
 - **FIFO Queue**: LPUSH/BRPOP pattern
 - **JSON Serialization**: Jobs as JSON strings
 - **Batch Publishing**: publish_batch() with pipeline
@@ -151,11 +159,13 @@ pub struct DeliveryJob {
 - 2 unit tests (publisher creation, publish job)
 
 **Key Methods:**
+
 - `publish()` - Single job publishing
 - `publish_batch()` - Efficient bulk publishing with pipeline
 - `queue_length()` - Monitor queue backlog
 
 ### 6. **main.rs** (Service Entry Point)
+
 ```rust
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -170,6 +180,7 @@ async fn main() -> Result<()> {
 ```
 
 **Features:**
+
 - **Structured Concurrency**: One task per chain (4 tasks)
 - **Graceful Shutdown**: tokio::select! with broadcast channel
 - **Health Monitoring**: Stats logging every batch
@@ -177,6 +188,7 @@ async fn main() -> Result<()> {
 - **Event-Driven**: No polling loops
 
 **Processing Loop:**
+
 1. XREADGROUP from stream (block 5 seconds)
 2. For each event:
    - Query matching endpoints
@@ -186,6 +198,7 @@ async fn main() -> Result<()> {
 4. Log statistics
 
 ### 7. **Cargo.toml** (Dependencies)
+
 ```toml
 [dependencies]
 ethhook-common = { path = "../common" }
@@ -204,7 +217,9 @@ hostname = "0.4"
 ## 🚀 Key Features
 
 ### Horizontal Scaling
+
 Multiple instances can run in parallel:
+
 ```text
 Consumer Group: "message_processors"
 ├── processor-1 (pod/instance 1)
@@ -215,17 +230,20 @@ Consumer Group: "message_processors"
 Each instance gets different messages automatically!
 
 ### Fault Tolerance
+
 - **Pending Entry List (PEL)**: Unacknowledged messages
 - **Crash Recovery**: Other consumers pick up pending messages
 - **At-Least-Once Delivery**: Messages never lost
 
 ### Performance
+
 - **Batch Processing**: 100 events per XREAD
 - **Connection Pooling**: 20 PostgreSQL connections
 - **Pipeline**: Batch publish with Redis pipeline
 - **Async I/O**: Non-blocking operations
 
 ### Monitoring
+
 - Pending message count
 - Events processed counter
 - Jobs created counter
@@ -234,6 +252,7 @@ Each instance gets different messages automatically!
 ## 📊 Data Flow
 
 1. **Event Ingestor** → Redis Stream `events:1`
+
    ```json
    {
      "chain_id": "1",
@@ -246,6 +265,7 @@ Each instance gets different messages automatically!
    ```
 
 2. **Message Processor** → PostgreSQL Query
+
    ```sql
    SELECT * FROM endpoints
    WHERE is_active = true
@@ -254,6 +274,7 @@ Each instance gets different messages automatically!
    ```
 
 3. **Message Processor** → Redis Queue `delivery_queue`
+
    ```json
    {
      "endpoint_id": "550e8400-...",
@@ -302,20 +323,24 @@ Each instance gets different messages automatically!
 ## 🎓 Lessons Learned
 
 ### Consumer Groups vs Individual Consumers
+
 - **Consumer Groups**: Better for scaling (automatic load balancing)
 - **Individual Consumers**: Better for dedicated streams
 
 ### Redis Queue vs Redis Stream
+
 - **Queue (LIST)**: Simple FIFO, blocking pop
 - **Stream**: Ordered log, consumer groups, replay
 - **Decision**: Queue for delivery jobs (simpler, no replay needed)
 
 ### PostgreSQL Array Operators
+
 - `<@` (contained by): Check if array is subset
 - `@>` (contains): Check if array is superset
 - GIN indexes essential for array queries
 
 ### Error Handling Strategy
+
 - **Transient Errors**: Continue processing (log + skip)
 - **Fatal Errors**: Shutdown gracefully
 - **Partial Failures**: ACK successful messages only

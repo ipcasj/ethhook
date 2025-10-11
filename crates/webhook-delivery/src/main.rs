@@ -204,11 +204,19 @@ async fn worker_loop(
             break;
         }
 
-        // Consume next job (block for 5 seconds)
-        let job = match consumer.consume(5).await? {
-            Some(j) => j,
-            None => {
+        // Consume next job (block for 5 seconds) with error recovery
+        let job = match consumer.consume(5).await {
+            Ok(Some(j)) => j,
+            Ok(None) => {
                 // Timeout - no jobs available
+                continue;
+            }
+            Err(e) => {
+                error!(
+                    "[Worker {}] Failed to consume job: {:?}. Retrying in 1s...",
+                    worker_id, e
+                );
+                tokio::time::sleep(Duration::from_secs(1)).await;
                 continue;
             }
         };
@@ -233,8 +241,18 @@ async fn worker_loop(
         let mut _last_result = None;
 
         while attempt <= max_attempts {
-            // Deliver webhook
-            let result = webhook_delivery.deliver(&job).await?;
+            // Deliver webhook with error recovery
+            let result = match webhook_delivery.deliver(&job).await {
+                Ok(r) => r,
+                Err(e) => {
+                    error!(
+                        "[Worker {}] Failed to deliver webhook: {:?}. Continuing to next job...",
+                        worker_id, e
+                    );
+                    // Break retry loop and move to next job
+                    break;
+                }
+            };
 
             // Log to database
             if let Err(e) = delivery::log_delivery_attempt(

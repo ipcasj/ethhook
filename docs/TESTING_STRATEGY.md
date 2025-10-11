@@ -3,6 +3,7 @@
 ## Current Test Coverage Status
 
 ### Summary
+
 - **Total Unit Tests**: 54 tests (44 sync + 10 async)
 - **Integration Tests**: 1 test file (event-ingestor only)
 - **Passed Tests**: 54 ✅
@@ -12,7 +13,9 @@
 ### Test Coverage by Service
 
 #### ✅ Event Ingestor (19 tests)
+
 **Strong Coverage:**
+
 - ✅ Deduplication logic
 - ✅ Event ID generation
 - ✅ Stream naming conventions
@@ -23,7 +26,9 @@
 **Integration Tests:** 1 file (Redis-dependent, marked as `#[ignore]`)
 
 #### ✅ Webhook Delivery (10 tests)
+
 **Strong Coverage:**
+
 - ✅ Circuit breaker state machine
 - ✅ Retry logic (is_retryable, backoff calculation)
 - ✅ Payload building
@@ -31,7 +36,9 @@
 - ⚠️ **Missing**: End-to-end delivery tests, HMAC signature verification
 
 #### ⚠️ Message Processor (2 tests)
+
 **Weak Coverage:**
+
 - ✅ Redis URL configuration
 - ❌ **Missing**: Endpoint matching logic tests
 - ❌ **Missing**: Stream consumption tests
@@ -39,7 +46,9 @@
 - 6 tests marked as `#[ignore]` (require Redis)
 
 #### ❌ Admin API (0 tests) - **CRITICAL GAP**
+
 **No Tests:**
+
 - ❌ No user registration/login tests
 - ❌ No JWT authentication tests
 - ❌ No application CRUD tests
@@ -52,7 +61,8 @@
 
 ### 1. **Unit Test Coverage (Target: 70-80%)**
 
-#### What to Test:
+#### What to Test
+
 ```rust
 // ✅ Business logic
 #[test]
@@ -83,9 +93,10 @@ fn test_circuit_breaker_state_machine() {
 }
 ```
 
-#### Current Gaps to Fill:
+#### Current Gaps to Fill
 
 **Admin API:**
+
 ```rust
 // crates/admin-api/src/handlers/users.rs
 #[cfg(test)]
@@ -115,6 +126,7 @@ mod tests {
 ```
 
 **Message Processor:**
+
 ```rust
 // crates/message-processor/src/matcher.rs
 #[cfg(test)]
@@ -140,15 +152,17 @@ mod tests {
 
 ### 2. **Integration Tests (Target: Key User Journeys)**
 
-#### Current Status:
+#### Current Status
+
 - ✅ Event Ingestor: 1 integration test file
 - ❌ Message Processor: 0 integration tests
 - ❌ Webhook Delivery: 0 integration tests
 - ❌ Admin API: 0 integration tests
 
-#### What to Add:
+#### What to Add
 
 **End-to-End Flow Tests:**
+
 ```rust
 // crates/admin-api/tests/integration_test.rs
 #[tokio::test]
@@ -178,7 +192,8 @@ async fn test_event_ingestion_to_delivery() {
 
 ### 3. **Load/Performance Tests**
 
-#### Tools:
+#### Tools
+
 - **k6** (for HTTP load testing)
 - **Rust criterion** (for microbenchmarks)
 
@@ -212,6 +227,7 @@ export default function() {
 ```
 
 **Run:**
+
 ```bash
 k6 run scripts/load_test.js
 ```
@@ -220,7 +236,8 @@ k6 run scripts/load_test.js
 
 ### 4. **CI/CD Pipeline Tests**
 
-#### GitHub Actions Workflow:
+#### GitHub Actions Workflow
+
 ```yaml
 # .github/workflows/ci.yml
 name: CI
@@ -422,28 +439,32 @@ async fn test_redis_connection_loss_recovery() {
 ## Recommended Testing Priorities
 
 ### 🔴 **Critical (Do Now)**
+
 1. **Admin API Integration Tests** - User flows, authentication
 2. **Message Processor Unit Tests** - Endpoint matching logic
 3. **End-to-End Pipeline Test** - Event → Webhook delivery
 4. **CI/CD Pipeline Setup** - GitHub Actions with PostgreSQL/Redis
 
 ### 🟡 **High Priority (Next Sprint)**
-5. **Load Tests** - Verify 10,000 events/sec target
-6. **Security Tests** - SQL injection, JWT tampering, API key validation
-7. **Contract Tests** - API schema validation
-8. **Database Migration Tests** - Up/down migrations
+
+1. **Load Tests** - Verify 10,000 events/sec target
+2. **Security Tests** - SQL injection, JWT tampering, API key validation
+3. **Contract Tests** - API schema validation
+4. **Database Migration Tests** - Up/down migrations
 
 ### 🟢 **Medium Priority (Future)**
-9. **Chaos Tests** - Network failures, service crashes
-10. **Performance Benchmarks** - Criterion microbenchmarks
-11. **Property-Based Tests** - Quickcheck/proptest
-12. **Fuzz Tests** - cargo-fuzz for parser code
+
+1. **Chaos Tests** - Network failures, service crashes
+2. **Performance Benchmarks** - Criterion microbenchmarks
+3. **Property-Based Tests** - Quickcheck/proptest
+4. **Fuzz Tests** - cargo-fuzz for parser code
 
 ---
 
 ## Test Coverage Tools
 
-### Measure Coverage:
+### Measure Coverage
+
 ```bash
 # Install tarpaulin
 cargo install cargo-tarpaulin
@@ -455,7 +476,8 @@ cargo tarpaulin --workspace --out Html --output-dir coverage/
 open coverage/index.html
 ```
 
-### Continuous Coverage:
+### Continuous Coverage
+
 ```bash
 # Install cargo-watch for live testing
 cargo install cargo-watch
@@ -468,8 +490,9 @@ cargo watch -x test
 
 ## Test Organization Best Practices
 
-### Directory Structure:
-```
+### Directory Structure
+
+```text
 crates/
   admin-api/
     src/
@@ -480,12 +503,14 @@ crates/
       contract_test.rs     # API contract tests
 ```
 
-### Naming Conventions:
+### Naming Conventions
+
 - **Unit tests**: `test_<function>_<scenario>()`
 - **Integration tests**: `test_<feature>_<flow>()`
 - **Benchmark tests**: `bench_<operation>()`
 
-### Test Annotations:
+### Test Annotations
+
 ```rust
 #[test]              // Unit test (no async)
 #[tokio::test]       // Async unit test
@@ -493,11 +518,8 @@ crates/
 #[should_panic]      // Expects panic
 ```
 
----
-
-## Summary
-
 ### Current State: ⚠️ **Incomplete**
+
 - ✅ Good unit test coverage for core logic
 - ❌ Missing Admin API tests (0 tests)
 - ❌ Missing integration tests (except event-ingestor)
@@ -505,6 +527,7 @@ crates/
 - ❌ No load/performance tests
 
 ### Target State: ✅ **Production-Ready**
+
 - 70-80% unit test coverage
 - Integration tests for all services
 - CI/CD with automated testing
@@ -512,7 +535,8 @@ crates/
 - Security/chaos tests
 - Code coverage tracking
 
-### Effort Estimate:
+### Effort Estimate
+
 - **Admin API Tests**: 2-3 days
 - **CI/CD Setup**: 1 day
 - **Integration Tests**: 3-4 days
