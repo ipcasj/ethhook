@@ -4,13 +4,7 @@
  * Automatically tracks HTTP request metrics for all endpoints
  */
 
-use axum::{
-    body::Body,
-    extract::Request,
-    http::StatusCode,
-    middleware::Next,
-    response::{IntoResponse, Response},
-};
+use axum::{extract::Request, middleware::Next, response::Response};
 use std::time::Instant;
 
 use crate::metrics;

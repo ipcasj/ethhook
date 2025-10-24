@@ -106,7 +106,7 @@ pub fn EventsPage() -> impl IntoView {
                     set_endpoints.set(all_endpoints);
                 }
                 Err(e) => {
-                    toast.error(format!("Failed to load endpoints: {}", e));
+                    toast.error(format!("Failed to load endpoints: {e}"));
                 }
             }
         });
@@ -172,7 +172,7 @@ pub fn EventsPage() -> impl IntoView {
                     set_loading_attempts.set(false);
                 }
                 Err(e) => {
-                    toast.error(format!("Failed to load delivery attempts: {}", e));
+                    toast.error(format!("Failed to load delivery attempts: {e}"));
                     set_loading_attempts.set(false);
                 }
             }
@@ -565,11 +565,11 @@ pub fn EventsPage() -> impl IntoView {
                                                                             <td>
                                                                                 <span class=format!("status-badge {}", status_class)>
                                                                                     {if attempt.success.unwrap_or(false) { "Success" } else { "Failed" }}
-                                                                                    {move || attempt.http_status_code.map(|code| format!(" ({})", code)).unwrap_or_default()}
+                                                                                    {move || attempt.http_status_code.map(|code| format!(" ({code})")).unwrap_or_default()}
                                                                                 </span>
                                                                             </td>
                                                                             <td>
-                                                                                {move || attempt.duration_ms.map(|d| format!("{}ms", d)).unwrap_or_else(|| "—".to_string())}
+                                                                                {move || attempt.duration_ms.map(|d| format!("{d}ms")).unwrap_or_else(|| "—".to_string())}
                                                                             </td>
                                                                             <td style="max-width: 500px; word-wrap: break-word; white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;">
                                                                                 <span style="display: block; overflow-x: auto; word-break: break-word; white-space: pre-wrap;">{display_message.clone()}</span>

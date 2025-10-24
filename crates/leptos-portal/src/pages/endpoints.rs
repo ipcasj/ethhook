@@ -1,10 +1,5 @@
 use crate::api::{self, Endpoint};
 use crate::components::{Navbar, SkeletonEndpointCard};
-use crate::utils::{
-    chain_id_error_message, eth_address_error_message, event_signature_error_message,
-    is_valid_chain_id, is_valid_eth_address, is_valid_event_signature, is_valid_length,
-    is_valid_url, length_error_message, url_error_message,
-};
 use leptos::*;
 use leptos_router::*;
 use wasm_bindgen_futures::spawn_local;
@@ -44,7 +39,7 @@ pub fn EndpointsPage() -> impl IntoView {
                         set_loading.set(false);
                     }
                     Err(e) => {
-                        set_error.set(Some(format!("Failed to load endpoints: {}", e)));
+                        set_error.set(Some(format!("Failed to load endpoints: {e}")));
                         set_loading.set(false);
                     }
                 }
@@ -53,7 +48,7 @@ pub fn EndpointsPage() -> impl IntoView {
                 match api::get_application(&app_id_val).await {
                     Ok(app) => set_app_name.set(app.name),
                     Err(e) => {
-                        set_error.set(Some(format!("Failed to load application: {}", e)));
+                        set_error.set(Some(format!("Failed to load application: {e}")));
                         set_loading.set(false);
                         return;
                     }
@@ -66,7 +61,7 @@ pub fn EndpointsPage() -> impl IntoView {
                         set_loading.set(false);
                     }
                     Err(e) => {
-                        set_error.set(Some(format!("Failed to load endpoints: {}", e)));
+                        set_error.set(Some(format!("Failed to load endpoints: {e}")));
                         set_loading.set(false);
                     }
                 }
@@ -101,7 +96,7 @@ pub fn EndpointsPage() -> impl IntoView {
                         reload();
                     }
                     Err(e) => {
-                        set_error.set(Some(format!("Failed to delete endpoint: {}", e)));
+                        set_error.set(Some(format!("Failed to delete endpoint: {e}")));
                     }
                 }
             });
@@ -112,7 +107,7 @@ pub fn EndpointsPage() -> impl IntoView {
         spawn_local(async move {
             match api::regenerate_hmac_secret(&endpoint_id).await {
                 Ok(_) => reload(),
-                Err(e) => set_error.set(Some(format!("Failed to regenerate secret: {}", e))),
+                Err(e) => set_error.set(Some(format!("Failed to regenerate secret: {e}"))),
             }
         });
     };
@@ -214,7 +209,7 @@ pub fn EndpointsPage() -> impl IntoView {
                             let filtered = filtered_endpoints();
                             let total = endpoints.get().len();
                             if search_query.get().is_empty() {
-                                format!("Showing {} endpoints", total)
+                                format!("Showing {total} endpoints")
                             } else {
                                 format!("Showing {} of {} endpoints", filtered.len(), total)
                             }
@@ -449,7 +444,7 @@ where
                         style="padding: 0.5rem 1rem;"
                         on:click=move |_| {
                             let window: Window = window().unwrap();
-                            let _ = window.location().set_href(&format!("/endpoints/{}", id));
+                            let _ = window.location().set_href(&format!("/endpoints/{id}"));
                         }
                         title="View Details"
                     >
@@ -809,7 +804,7 @@ where
                     set_loading_apps.set(false);
                 }
                 Err(e) => {
-                    set_error.set(Some(format!("Failed to load applications: {}", e)));
+                    set_error.set(Some(format!("Failed to load applications: {e}")));
                     set_loading_apps.set(false);
                 }
             }

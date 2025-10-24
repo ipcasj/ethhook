@@ -41,12 +41,12 @@ pub struct ApiError {
 pub async fn login(email: String, password: String) -> Result<LoginResponse, String> {
     let request = LoginRequest { email, password };
 
-    let response = Request::post(&format!("{}/api/v1/auth/login", API_BASE))
+    let response = Request::post(&format!("{API_BASE}/api/v1/auth/login"))
         .json(&request)
-        .map_err(|e| format!("Failed to create request: {}", e))?
+        .map_err(|e| format!("Failed to create request: {e}"))?
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -62,12 +62,12 @@ pub async fn register(
         password,
     };
 
-    let response = Request::post(&format!("{}/api/v1/auth/register", API_BASE))
+    let response = Request::post(&format!("{API_BASE}/api/v1/auth/register"))
         .json(&request)
-        .map_err(|e| format!("Failed to create request: {}", e))?
+        .map_err(|e| format!("Failed to create request: {e}"))?
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -75,11 +75,11 @@ pub async fn register(
 pub async fn get_profile() -> Result<UserInfo, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::get(&format!("{}/api/v1/users/me", API_BASE))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::get(&format!("{API_BASE}/api/v1/users/me"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -89,7 +89,7 @@ async fn handle_response<T: for<'de> Deserialize<'de>>(response: Response) -> Re
         response
             .json::<T>()
             .await
-            .map_err(|e| format!("Failed to parse response: {}", e))
+            .map_err(|e| format!("Failed to parse response: {e}"))
     } else {
         let error = response
             .json::<ApiError>()
@@ -139,11 +139,11 @@ pub struct UpdateApplicationRequest {
 pub async fn list_applications() -> Result<ApplicationListResponse, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::get(&format!("{}/api/v1/applications", API_BASE))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::get(&format!("{API_BASE}/api/v1/applications"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -152,11 +152,11 @@ pub async fn list_applications() -> Result<ApplicationListResponse, String> {
 pub async fn get_application(app_id: &str) -> Result<Application, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::get(&format!("{}/api/v1/applications/{}", API_BASE, app_id))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::get(&format!("{API_BASE}/api/v1/applications/{app_id}"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -169,13 +169,13 @@ pub async fn create_application(
     let token = auth::get_token().ok_or("Not authenticated")?;
     let request = CreateApplicationRequest { name, description };
 
-    let response = Request::post(&format!("{}/api/v1/applications", API_BASE))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::post(&format!("{API_BASE}/api/v1/applications"))
+        .header("Authorization", &format!("Bearer {token}"))
         .json(&request)
-        .map_err(|e| format!("Failed to create request: {}", e))?
+        .map_err(|e| format!("Failed to create request: {e}"))?
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -194,13 +194,13 @@ pub async fn update_application(
         is_active,
     };
 
-    let response = Request::put(&format!("{}/api/v1/applications/{}", API_BASE, app_id))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::put(&format!("{API_BASE}/api/v1/applications/{app_id}"))
+        .header("Authorization", &format!("Bearer {token}"))
         .json(&request)
-        .map_err(|e| format!("Failed to create request: {}", e))?
+        .map_err(|e| format!("Failed to create request: {e}"))?
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -209,11 +209,11 @@ pub async fn update_application(
 pub async fn delete_application(app_id: &str) -> Result<(), String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::delete(&format!("{}/api/v1/applications/{}", API_BASE, app_id))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::delete(&format!("{API_BASE}/api/v1/applications/{app_id}"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     if response.ok() {
         Ok(())
@@ -232,13 +232,12 @@ pub async fn regenerate_api_key(app_id: &str) -> Result<Application, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
     let response = Request::post(&format!(
-        "{}/api/v1/applications/{}/regenerate-key",
-        API_BASE, app_id
+        "{API_BASE}/api/v1/applications/{app_id}/regenerate-key"
     ))
-    .header("Authorization", &format!("Bearer {}", token))
+    .header("Authorization", &format!("Bearer {token}"))
     .send()
     .await
-    .map_err(|e| format!("Network error: {}", e))?;
+    .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -296,13 +295,12 @@ pub async fn list_endpoints(app_id: &str) -> Result<EndpointListResponse, String
     let token = auth::get_token().ok_or("Not authenticated")?;
 
     let response = Request::get(&format!(
-        "{}/api/v1/applications/{}/endpoints",
-        API_BASE, app_id
+        "{API_BASE}/api/v1/applications/{app_id}/endpoints"
     ))
-    .header("Authorization", &format!("Bearer {}", token))
+    .header("Authorization", &format!("Bearer {token}"))
     .send()
     .await
-    .map_err(|e| format!("Network error: {}", e))?;
+    .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -311,11 +309,11 @@ pub async fn list_endpoints(app_id: &str) -> Result<EndpointListResponse, String
 pub async fn list_all_user_endpoints() -> Result<EndpointListResponse, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::get(&format!("{}/api/v1/endpoints", API_BASE))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::get(&format!("{API_BASE}/api/v1/endpoints"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -324,11 +322,11 @@ pub async fn list_all_user_endpoints() -> Result<EndpointListResponse, String> {
 pub async fn get_endpoint(endpoint_id: &str) -> Result<Endpoint, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::get(&format!("{}/api/v1/endpoints/{}", API_BASE, endpoint_id))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::get(&format!("{API_BASE}/api/v1/endpoints/{endpoint_id}"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -354,16 +352,16 @@ pub async fn create_endpoint(
     };
 
     let body_str =
-        serde_json::to_string(&payload).map_err(|e| format!("Serialization error: {}", e))?;
+        serde_json::to_string(&payload).map_err(|e| format!("Serialization error: {e}"))?;
 
-    let response = Request::post(&format!("{}/api/v1/endpoints", API_BASE))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::post(&format!("{API_BASE}/api/v1/endpoints"))
+        .header("Authorization", &format!("Bearer {token}"))
         .header("Content-Type", "application/json")
         .body(body_str)
-        .map_err(|e| format!("Request error: {}", e))?
+        .map_err(|e| format!("Request error: {e}"))?
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -390,16 +388,16 @@ pub async fn update_endpoint(
     };
 
     let body_str =
-        serde_json::to_string(&payload).map_err(|e| format!("Serialization error: {}", e))?;
+        serde_json::to_string(&payload).map_err(|e| format!("Serialization error: {e}"))?;
 
-    let response = Request::put(&format!("{}/api/v1/endpoints/{}", API_BASE, endpoint_id))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::put(&format!("{API_BASE}/api/v1/endpoints/{endpoint_id}"))
+        .header("Authorization", &format!("Bearer {token}"))
         .header("Content-Type", "application/json")
         .body(body_str)
-        .map_err(|e| format!("Request error: {}", e))?
+        .map_err(|e| format!("Request error: {e}"))?
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -408,11 +406,11 @@ pub async fn update_endpoint(
 pub async fn delete_endpoint(endpoint_id: &str) -> Result<(), String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::delete(&format!("{}/api/v1/endpoints/{}", API_BASE, endpoint_id))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::delete(&format!("{API_BASE}/api/v1/endpoints/{endpoint_id}"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     if response.ok() {
         Ok(())
@@ -431,13 +429,12 @@ pub async fn regenerate_hmac_secret(endpoint_id: &str) -> Result<Endpoint, Strin
     let token = auth::get_token().ok_or("Not authenticated")?;
 
     let response = Request::post(&format!(
-        "{}/api/v1/endpoints/{}/regenerate-secret",
-        API_BASE, endpoint_id
+        "{API_BASE}/api/v1/endpoints/{endpoint_id}/regenerate-secret"
     ))
-    .header("Authorization", &format!("Bearer {}", token))
+    .header("Authorization", &format!("Bearer {token}"))
     .send()
     .await
-    .map_err(|e| format!("Network error: {}", e))?;
+    .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -499,16 +496,16 @@ pub async fn list_events(endpoint_id: Option<&str>) -> Result<EventListResponse,
     let token = auth::get_token().ok_or("Not authenticated")?;
 
     let url = if let Some(ep_id) = endpoint_id {
-        format!("{}/api/v1/events?endpoint_id={}", API_BASE, ep_id)
+        format!("{API_BASE}/api/v1/events?endpoint_id={ep_id}")
     } else {
-        format!("{}/api/v1/events", API_BASE)
+        format!("{API_BASE}/api/v1/events")
     };
 
     let response = Request::get(&url)
-        .header("Authorization", &format!("Bearer {}", token))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -517,11 +514,11 @@ pub async fn list_events(endpoint_id: Option<&str>) -> Result<EventListResponse,
 pub async fn get_event(event_id: &str) -> Result<Event, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::get(&format!("{}/api/v1/events/{}", API_BASE, event_id))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::get(&format!("{API_BASE}/api/v1/events/{event_id}"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -533,14 +530,14 @@ pub async fn list_delivery_attempts(
 ) -> Result<DeliveryAttemptListResponse, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let mut url = format!("{}/api/v1/delivery-attempts", API_BASE);
+    let mut url = format!("{API_BASE}/api/v1/delivery-attempts");
     let mut params = vec![];
 
     if let Some(ev_id) = event_id {
-        params.push(format!("event_id={}", ev_id));
+        params.push(format!("event_id={ev_id}"));
     }
     if let Some(ep_id) = endpoint_id {
-        params.push(format!("endpoint_id={}", ep_id));
+        params.push(format!("endpoint_id={ep_id}"));
     }
 
     if !params.is_empty() {
@@ -548,10 +545,10 @@ pub async fn list_delivery_attempts(
     }
 
     let response = Request::get(&url)
-        .header("Authorization", &format!("Bearer {}", token))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }
@@ -575,11 +572,11 @@ pub struct DashboardStatistics {
 pub async fn get_dashboard_statistics() -> Result<DashboardStatistics, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 
-    let response = Request::get(&format!("{}/api/v1/statistics/dashboard", API_BASE))
-        .header("Authorization", &format!("Bearer {}", token))
+    let response = Request::get(&format!("{API_BASE}/api/v1/statistics/dashboard"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
-        .map_err(|e| format!("Network error: {}", e))?;
+        .map_err(|e| format!("Network error: {e}"))?;
 
     handle_response(response).await
 }

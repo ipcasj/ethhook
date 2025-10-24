@@ -5,7 +5,7 @@ pub fn format_date(date_str: &str) -> String {
         // Extract just the date and time part (2023-04-15 12:34:56)
         let date = &date_str[0..10];
         let time = &date_str[11..19];
-        format!("{} {}", date, time)
+        format!("{date} {time}")
     } else {
         date_str.to_string()
     }
@@ -170,13 +170,10 @@ pub fn event_signature_error_message(signature: &str) -> Option<String> {
 pub fn length_error_message(field_name: &str, s: &str, min: usize, max: usize) -> Option<String> {
     let len = s.len();
     if len < min {
-        return Some(format!(
-            "{} must be at least {} characters",
-            field_name, min
-        ));
+        return Some(format!("{field_name} must be at least {min} characters"));
     }
     if len > max {
-        return Some(format!("{} must be at most {} characters", field_name, max));
+        return Some(format!("{field_name} must be at most {max} characters"));
     }
     None
 }

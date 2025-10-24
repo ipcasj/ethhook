@@ -6,13 +6,8 @@ mod event_recommendations;
 mod skeleton;
 mod toast;
 
-pub use event_recommendations::{
-    get_popular_sepolia_events, EventRecommendationTooltip, QuickEventButtons,
-};
-pub use skeleton::{
-    SkeletonApplicationCard, SkeletonEndpointCard, SkeletonLoader, SkeletonStatCard,
-};
-pub use toast::{ToastContainer, ToastContext, ToastVariant};
+pub use skeleton::{SkeletonApplicationCard, SkeletonEndpointCard, SkeletonStatCard};
+pub use toast::{ToastContainer, ToastContext};
 
 #[component]
 pub fn Navbar() -> impl IntoView {

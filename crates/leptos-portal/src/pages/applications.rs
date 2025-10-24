@@ -69,11 +69,11 @@ pub fn ApplicationsPage() -> impl IntoView {
                 match api::delete_application(&app_id).await {
                     Ok(_) => {
                         set_show_delete_modal.set(false);
-                        toast.success(format!("Application '{}' deleted successfully", app_name));
+                        toast.success(format!("Application '{app_name}' deleted successfully"));
                         reload_applications();
                     }
                     Err(e) => {
-                        toast.error(format!("Failed to delete application: {}", e));
+                        toast.error(format!("Failed to delete application: {e}"));
                     }
                 }
             });
@@ -157,7 +157,7 @@ pub fn ApplicationsPage() -> impl IntoView {
                             let filtered = filtered_applications();
                             let total = applications.get().len();
                             if search_query.get().is_empty() {
-                                format!("Showing {} applications", total)
+                                format!("Showing {total} applications")
                             } else {
                                 format!("Showing {} of {} applications", filtered.len(), total)
                             }
@@ -223,7 +223,7 @@ pub fn ApplicationsPage() -> impl IntoView {
                                                                 toast.success("API key regenerated successfully");
                                                                 reload_applications();
                                                             }
-                                                            Err(e) => toast.error(format!("Failed to regenerate key: {}", e)),
+                                                            Err(e) => toast.error(format!("Failed to regenerate key: {e}")),
                                                         }
                                                     });
                                                 }
@@ -384,7 +384,7 @@ where
                         class="btn"
                         on:click=move |_| {
                             let window = web_sys::window().expect("no global window exists");
-                            let _ = window.location().set_href(&format!("/applications/{}/endpoints", app_id_for_endpoints));
+                            let _ = window.location().set_href(&format!("/applications/{app_id_for_endpoints}/endpoints"));
                         }
                         title="Manage Endpoints"
                     >
@@ -394,7 +394,7 @@ where
                         class="btn"
                         on:click=move |_| {
                             let window = web_sys::window().expect("no global window exists");
-                            let _ = window.location().set_href(&format!("/applications/{}", app_id_for_details));
+                            let _ = window.location().set_href(&format!("/applications/{app_id_for_details}"));
                         }
                         title="View Details"
                     >
