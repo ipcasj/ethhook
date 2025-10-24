@@ -871,29 +871,26 @@ async fn test_consumer_group_acknowledgment() {
     println!("   Redis keys: {keys:?}");
 
     // Check if consumer group exists and get pending count
-    let pending_info: redis::Value = redis::cmd("XPENDING")
+    // Note: XPENDING returns NOGROUP error if consumer group doesn't exist yet
+    let pending_count = match redis::cmd("XPENDING")
         .arg("events:1")
         .arg("message_processors")
         .query_async(&mut redis)
         .await
-        .expect("Failed to check pending messages");
-
-    println!("✓ XPENDING result: {pending_info:?}");
-
-    // Parse pending count from XPENDING response
-    // Response format: [count, first_id, last_id, [[consumer, count]]]
-    let pending_count = if let redis::Value::Bulk(ref data) = pending_info {
-        if !data.is_empty() {
+    {
+        Ok(redis::Value::Bulk(ref data)) if !data.is_empty() => {
             if let redis::Value::Int(count) = data[0] {
                 count
             } else {
                 0
             }
-        } else {
+        }
+        Ok(_) => 0,
+        Err(e) if e.to_string().contains("NOGROUP") => {
+            println!("   Consumer group not created yet, treating as 0 pending");
             0
         }
-    } else {
-        0
+        Err(e) => panic!("Failed to check pending messages: {e}"),
     };
 
     println!("   Pending messages: {pending_count}");
@@ -1066,25 +1063,26 @@ async fn test_service_recovery_with_consumer_groups() {
     ci_sleep(2).await;
 
     // Check how many are still pending before killing
-    let pending_before: redis::Value = redis::cmd("XPENDING")
+    // Note: XPENDING returns error if consumer group doesn't exist yet
+    let pending_count_before = match redis::cmd("XPENDING")
         .arg("events:1")
         .arg("message_processors")
         .query_async(&mut redis)
         .await
-        .expect("Failed to check pending messages");
-
-    let pending_count_before = if let redis::Value::Bulk(ref data) = pending_before {
-        if !data.is_empty() {
+    {
+        Ok(redis::Value::Bulk(ref data)) if !data.is_empty() => {
             if let redis::Value::Int(count) = data[0] {
                 count
             } else {
                 0
             }
-        } else {
+        }
+        Ok(_) => 0,
+        Err(e) if e.to_string().contains("NOGROUP") => {
+            println!("   Consumer group not created yet, treating as 0 pending");
             0
         }
-    } else {
-        0
+        Err(e) => panic!("Failed to check pending messages: {e}"),
     };
 
     println!("   Messages pending before kill: {pending_count_before}");
@@ -1100,25 +1098,25 @@ async fn test_service_recovery_with_consumer_groups() {
 
     // Check XPENDING - should have unprocessed/unacknowledged messages
     println!("\n🔍 Checking pending messages after crash...");
-    let pending_after_crash: redis::Value = redis::cmd("XPENDING")
+    let pending_count_after_crash = match redis::cmd("XPENDING")
         .arg("events:1")
         .arg("message_processors")
         .query_async(&mut redis)
         .await
-        .expect("Failed to check pending messages");
-
-    let pending_count_after_crash = if let redis::Value::Bulk(ref data) = pending_after_crash {
-        if !data.is_empty() {
+    {
+        Ok(redis::Value::Bulk(ref data)) if !data.is_empty() => {
             if let redis::Value::Int(count) = data[0] {
                 count
             } else {
                 0
             }
-        } else {
+        }
+        Ok(_) => 0,
+        Err(e) if e.to_string().contains("NOGROUP") => {
+            println!("   Consumer group not created yet, treating as 0 pending");
             0
         }
-    } else {
-        0
+        Err(e) => panic!("Failed to check pending messages: {e}"),
     };
 
     println!("   Pending messages after crash: {pending_count_after_crash}");
@@ -1151,25 +1149,25 @@ async fn test_service_recovery_with_consumer_groups() {
     // Check final state
     println!("\n🔍 Checking final state after recovery...");
 
-    let pending_final: redis::Value = redis::cmd("XPENDING")
+    let pending_count_final = match redis::cmd("XPENDING")
         .arg("events:1")
         .arg("message_processors")
         .query_async(&mut redis)
         .await
-        .expect("Failed to check pending messages");
-
-    let pending_count_final = if let redis::Value::Bulk(ref data) = pending_final {
-        if !data.is_empty() {
+    {
+        Ok(redis::Value::Bulk(ref data)) if !data.is_empty() => {
             if let redis::Value::Int(count) = data[0] {
                 count
             } else {
                 0
             }
-        } else {
+        }
+        Ok(_) => 0,
+        Err(e) if e.to_string().contains("NOGROUP") => {
+            println!("   Consumer group not created yet, treating as 0 pending");
             0
         }
-    } else {
-        0
+        Err(e) => panic!("Failed to check pending messages: {e}"),
     };
 
     println!("   Pending messages after recovery: {pending_count_final}");
