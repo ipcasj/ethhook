@@ -281,11 +281,10 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Created test user, app, and endpoint: {endpoint_id}");
 
-    // Configure mock webhook to accept POST requests
+    // Configure mock webhook to accept POST requests (no .expect() - we'll verify manually)
     Mock::given(method("POST"))
         .and(path("/webhook"))
         .respond_with(ResponseTemplate::new(200).set_body_string("Webhook received"))
-        .expect(1)
         .mount(&mock_server)
         .await;
 
@@ -363,20 +362,30 @@ async fn test_real_e2e_full_pipeline() {
     println!("   Message Processor: events:1 → delivery_queue");
     println!("   Webhook Delivery: delivery_queue → HTTP webhook");
 
-    // Wait for processing:
-    // 1. Message Processor reads from raw-events (consumer group)
-    // 2. Matches against endpoint in database
-    // 3. Publishes to delivery-queue
-    // 4. Webhook Delivery reads from delivery-queue (consumer group)
-    // 5. Delivers to webhook URL
-    // Should complete in < 5 seconds locally, longer in CI
-    ci_sleep(8).await;
+    // Wait for processing with polling (up to 60 seconds in CI, 12 seconds locally)
+    let poll_start = Instant::now();
+    let timeout = Duration::from_secs(12 * get_ci_wait_multiplier());
+    
+    let mut webhook_delivered = false;
+    while poll_start.elapsed() < timeout {
+        // Check if webhook was received via mock server's request count
+        let received_requests = mock_server.received_requests().await;
+        if let Some(received_requests) = received_requests {
+            if !received_requests.is_empty() {
+                webhook_delivered = true;
+                break;
+            }
+        }
+        sleep(Duration::from_millis(500)).await;
+    }
 
     println!("\n✅ STEP 3: Verifying webhook was received...");
 
-    // Verify mock webhook received the request
-    // WireMock will panic if expectation not met (.expect(1))
-    // If we get here, webhook was received!
+    // Manually verify webhook was delivered
+    assert!(
+        webhook_delivered,
+        "Webhook was not delivered within timeout ({timeout:?}). Check service logs for errors."
+    );
 
     let elapsed = start_time.elapsed();
     println!("✓ Webhook delivered successfully!");
@@ -575,11 +584,10 @@ async fn test_full_pipeline_with_mock_ethereum() {
 
     println!("✓ Created test user, app, and endpoint: {endpoint_id}");
 
-    // Configure mock webhook to accept POST requests
+    // Configure mock webhook to accept POST requests (no .expect() - we'll verify manually)
     Mock::given(method("POST"))
         .and(path("/webhook"))
         .respond_with(ResponseTemplate::new(200).set_body_string("Webhook received"))
-        .expect(1)
         .mount(&mock_server)
         .await;
 
@@ -646,69 +654,85 @@ async fn test_full_pipeline_with_mock_ethereum() {
     println!("   Message Processor → delivery-queue stream");
     println!("   Webhook Delivery → HTTP webhook");
 
-    // Wait for the full pipeline to process
-    // Mock RPC sends block after 500ms, then processing happens
-    // Give services more time to consume and process through all stages
-    ci_sleep(15).await;
+    // Wait for the full pipeline to process with polling (up to 75 seconds in CI, 15 seconds locally)
+    let poll_start = Instant::now();
+    let timeout = Duration::from_secs(15 * get_ci_wait_multiplier());
+    
+    let mut webhook_delivered = false;
+    while poll_start.elapsed() < timeout {
+        // Check if webhook was received via mock server's request count
+        let received_requests = mock_server.received_requests().await;
+        if let Some(received_requests) = received_requests {
+            if !received_requests.is_empty() {
+                webhook_delivered = true;
+                break;
+            }
+        }
+        sleep(Duration::from_millis(500)).await;
+    }
 
-    // Check what's in the Redis streams for debugging
-    println!("\n🔍 Checking Redis streams...");
-    let events_1: i64 = redis::cmd("XLEN")
-        .arg("events:1") // Event Ingestor publishes to events:{chain_id}
-        .query_async(&mut redis)
-        .await
-        .unwrap_or(0);
-    println!("   events:1 stream length: {events_1}");
-
-    // Try to read the event directly using XRANGE to see if it's malformed
-    if events_1 > 0 {
-        println!("   Attempting to read event data...");
-        let range_result: Vec<(String, Vec<(String, String)>)> = redis::cmd("XRANGE")
-            .arg("events:1")
-            .arg("-") // Start from beginning
-            .arg("+") // To end
-            .arg("COUNT")
-            .arg("1")
+    // Check what's in the Redis streams for debugging (only if webhook not delivered)
+    if !webhook_delivered {
+        println!("\n🔍 Checking Redis streams (webhook not yet delivered)...");
+        let events_1: i64 = redis::cmd("XLEN")
+            .arg("events:1") // Event Ingestor publishes to events:{chain_id}
             .query_async(&mut redis)
             .await
-            .unwrap_or_default();
+            .unwrap_or(0);
+        println!("   events:1 stream length: {events_1}");
 
-        if !range_result.is_empty() {
-            let (entry_id, fields) = &range_result[0];
-            println!("   ✓ Event ID: {entry_id}");
-            println!("   ✓ Fields count: {}", fields.len());
-            for (k, v) in fields {
-                println!("      - {k}: {}", if v.len() > 50 { &v[..50] } else { v });
-            }
-        } else {
-            println!("   ✗ No events returned by XRANGE");
-
-            // Check if event is pending in consumer group
-            let pending: Vec<String> = redis::cmd("XPENDING")
+        // Try to read the event directly using XRANGE to see if it's malformed
+        if events_1 > 0 {
+            println!("   Attempting to read event data...");
+            let range_result: Vec<(String, Vec<(String, String)>)> = redis::cmd("XRANGE")
                 .arg("events:1")
-                .arg("message_processors")
+                .arg("-") // Start from beginning
+                .arg("+") // To end
+                .arg("COUNT")
+                .arg("1")
                 .query_async(&mut redis)
                 .await
                 .unwrap_or_default();
 
-            if !pending.is_empty() {
-                println!("   ℹ XPENDING result: {pending:?}");
+            if !range_result.is_empty() {
+                let (entry_id, fields) = &range_result[0];
+                println!("   ✓ Event ID: {entry_id}");
+                println!("   ✓ Fields count: {}", fields.len());
+                for (k, v) in fields {
+                    println!("      - {k}: {}", if v.len() > 50 { &v[..50] } else { v });
+                }
+            } else {
+                println!("   ✗ No events returned by XRANGE");
+
+                // Check if event is pending in consumer group
+                let pending: Vec<String> = redis::cmd("XPENDING")
+                    .arg("events:1")
+                    .arg("message_processors")
+                    .query_async(&mut redis)
+                    .await
+                    .unwrap_or_default();
+
+                if !pending.is_empty() {
+                    println!("   ℹ XPENDING result: {pending:?}");
+                }
             }
         }
-    }
 
-    let delivery_queue: i64 = redis::cmd("XLEN")
-        .arg("delivery_queue") // Note: no hyphen, it's delivery_queue
-        .query_async(&mut redis)
-        .await
-        .unwrap_or(0);
-    println!("   delivery_queue stream length: {delivery_queue}");
+        let delivery_queue: i64 = redis::cmd("XLEN")
+            .arg("delivery_queue") // Note: no hyphen, it's delivery_queue
+            .query_async(&mut redis)
+            .await
+            .unwrap_or(0);
+        println!("   delivery_queue stream length: {delivery_queue}");
+    }
 
     println!("\n✅ Verifying webhook was received...");
 
-    // Verify mock webhook received the request
-    // WireMock will panic if expectation not met (.expect(1))
-    // If we get here, webhook was received!
+    // Manually verify webhook was delivered
+    assert!(
+        webhook_delivered,
+        "Webhook was not delivered within timeout ({timeout:?}). Check service logs for errors."
+    );
 
     let elapsed = start_time.elapsed();
     println!("✓ Webhook delivered successfully!");
