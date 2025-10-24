@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT e.id\n                FROM endpoints e\n                JOIN applications a ON e.application_id = a.id\n                WHERE e.id = $1 AND a.user_id = $2\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a3c0edc3cbdfa94d3af80a04966bd700a03419e042d50f02907c49931001e732"
+}

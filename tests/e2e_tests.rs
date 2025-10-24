@@ -94,6 +94,22 @@ async fn wait_for_service_ready(url: &str, timeout_secs: u64) -> bool {
     }
     false
 }
+
+/// Helper: Get wait time multiplier for CI environments
+fn get_ci_wait_multiplier() -> u64 {
+    if std::env::var("CI").is_ok() || std::env::var("GITHUB_ACTIONS").is_ok() {
+        3 // 3x longer waits in CI
+    } else {
+        1 // Normal waits locally
+    }
+}
+
+/// Helper: CI-aware sleep
+async fn ci_sleep(base_secs: u64) {
+    let multiplier = get_ci_wait_multiplier();
+    sleep(Duration::from_secs(base_secs * multiplier)).await;
+}
+
 /// Helper: Create test database pool
 async fn create_test_pool() -> PgPool {
     let database_url = std::env::var("DATABASE_URL")
@@ -298,7 +314,7 @@ async fn test_real_e2e_full_pipeline() {
         env_vars.clone(),
     )
     .expect("Failed to start Message Processor");
-    sleep(Duration::from_secs(3)).await;
+    ci_sleep(3).await;
 
     // Start Webhook Delivery
     let webhook_delivery = start_service(
@@ -307,7 +323,7 @@ async fn test_real_e2e_full_pipeline() {
         env_vars.clone(),
     )
     .expect("Failed to start Webhook Delivery");
-    sleep(Duration::from_secs(3)).await;
+    ci_sleep(3).await;
 
     println!("✓ Message Processor and Webhook Delivery started");
 
@@ -353,8 +369,8 @@ async fn test_real_e2e_full_pipeline() {
     // 3. Publishes to delivery-queue
     // 4. Webhook Delivery reads from delivery-queue (consumer group)
     // 5. Delivers to webhook URL
-    // Should complete in < 5 seconds
-    sleep(Duration::from_secs(8)).await;
+    // Should complete in < 5 seconds locally, longer in CI
+    ci_sleep(8).await;
 
     println!("\n✅ STEP 3: Verifying webhook was received...");
 
@@ -603,12 +619,12 @@ async fn test_full_pipeline_with_mock_ethereum() {
         env_vars.clone(),
     )
     .expect("Failed to start Message Processor");
-    sleep(Duration::from_secs(3)).await;
+    ci_sleep(3).await;
 
     // Start Event Ingestor with mock RPC (after Message Processor is ready)
     let event_ingestor = start_service("Event Ingestor", "event-ingestor", env_vars.clone())
         .expect("Failed to start Event Ingestor");
-    sleep(Duration::from_secs(3)).await;
+    ci_sleep(3).await;
 
     // Start Webhook Delivery
     let webhook_delivery = start_service(
@@ -617,7 +633,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
         env_vars.clone(),
     )
     .expect("Failed to start Webhook Delivery");
-    sleep(Duration::from_secs(3)).await;
+    ci_sleep(3).await;
 
     println!("✓ All services started");
     println!("   - Event Ingestor (connected to mock Ethereum RPC)");
@@ -633,7 +649,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
     // Wait for the full pipeline to process
     // Mock RPC sends block after 500ms, then processing happens
     // Give services more time to consume and process through all stages
-    sleep(Duration::from_secs(15)).await;
+    ci_sleep(15).await;
 
     // Check what's in the Redis streams for debugging
     println!("\n🔍 Checking Redis streams...");
@@ -792,8 +808,8 @@ async fn test_consumer_group_acknowledgment() {
             .expect("Failed to start Message Processor");
 
     // Wait for service to initialize
-    println!("⏳ Waiting 3 seconds for Message Processor to initialize...");
-    sleep(Duration::from_secs(3)).await;
+    println!("⏳ Waiting for Message Processor to initialize...");
+    ci_sleep(3).await;
 
     // Now publish events (after consumer group is ready)
     println!("\n📤 Publishing 5 test events to events:1 stream...");
@@ -841,8 +857,8 @@ async fn test_consumer_group_acknowledgment() {
     assert_eq!(stream_len, 5, "Should have 5 events in stream");
 
     // Wait for processing (need enough time for 5 events with 5-second XREADGROUP blocks)
-    println!("⏳ Waiting 12 seconds for Message Processor to process all events...");
-    sleep(Duration::from_secs(12)).await;
+    println!("⏳ Waiting for Message Processor to process all events...");
+    ci_sleep(12).await;
 
     println!("\n🔍 Checking consumer group state...");
 
@@ -996,8 +1012,8 @@ async fn test_service_recovery_with_consumer_groups() {
     .expect("Failed to start Message Processor");
 
     // Wait for service to initialize
-    println!("⏳ Waiting 3 seconds for Message Processor to initialize...");
-    sleep(Duration::from_secs(3)).await;
+    println!("⏳ Waiting for Message Processor to initialize...");
+    ci_sleep(3).await;
 
     // Publish 10 test events
     println!("\n📤 Publishing 10 test events to events:1 stream...");
@@ -1046,8 +1062,8 @@ async fn test_service_recovery_with_consumer_groups() {
     assert_eq!(stream_len, 10, "Should have 10 events in stream");
 
     // Wait a bit for it to start processing (just enough to read but not ACK)
-    println!("\n⏳ Waiting 2 seconds for partial processing...");
-    sleep(Duration::from_secs(2)).await;
+    println!("\n⏳ Waiting for partial processing...");
+    ci_sleep(2).await;
 
     // Check how many are still pending before killing
     let pending_before: redis::Value = redis::cmd("XPENDING")
@@ -1080,7 +1096,7 @@ async fn test_service_recovery_with_consumer_groups() {
     println!("✓ Service killed");
 
     // Wait a moment
-    sleep(Duration::from_secs(2)).await;
+    ci_sleep(2).await;
 
     // Check XPENDING - should have unprocessed/unacknowledged messages
     println!("\n🔍 Checking pending messages after crash...");
@@ -1129,8 +1145,8 @@ async fn test_service_recovery_with_consumer_groups() {
             .expect("Failed to restart Message Processor");
 
     // Wait for it to process remaining messages
-    println!("⏳ Waiting 12 seconds for recovery and processing...");
-    sleep(Duration::from_secs(12)).await;
+    println!("⏳ Waiting for recovery and processing...");
+    ci_sleep(12).await;
 
     // Check final state
     println!("\n🔍 Checking final state after recovery...");

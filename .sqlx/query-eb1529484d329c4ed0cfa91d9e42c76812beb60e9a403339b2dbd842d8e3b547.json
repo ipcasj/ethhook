@@ -1,0 +1,102 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT da.id, da.event_id, da.endpoint_id, ep.name as endpoint_name,\n               da.attempt_number, da.http_status_code, da.response_body,\n               da.error_message, da.attempted_at, da.completed_at,\n               da.duration_ms, da.success, da.should_retry, da.next_retry_at\n        FROM delivery_attempts da\n        JOIN endpoints ep ON da.endpoint_id = ep.id\n        JOIN applications a ON ep.application_id = a.id\n        WHERE a.user_id = $1\n        ORDER BY da.attempted_at DESC\n        LIMIT $2 OFFSET $3\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "event_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "endpoint_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "endpoint_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "attempt_number",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "http_status_code",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "response_body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "error_message",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "attempted_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "completed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "duration_ms",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "success",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 12,
+        "name": "should_retry",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 13,
+        "name": "next_retry_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "eb1529484d329c4ed0cfa91d9e42c76812beb60e9a403339b2dbd842d8e3b547"
+}

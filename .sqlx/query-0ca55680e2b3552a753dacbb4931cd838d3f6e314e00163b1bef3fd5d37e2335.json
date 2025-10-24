@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            COUNT(*)::bigint as \"total_deliveries!\",\n            COUNT(*) FILTER (WHERE success = true)::bigint as \"successful_deliveries!\",\n            COUNT(*) FILTER (WHERE success = false)::bigint as \"failed_deliveries!\",\n            AVG(duration_ms)::float8 as \"avg_duration_ms\"\n        FROM delivery_attempts da\n        JOIN endpoints ep ON da.endpoint_id = ep.id\n        JOIN applications a ON ep.application_id = a.id\n        WHERE a.user_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total_deliveries!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "successful_deliveries!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "failed_deliveries!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "avg_duration_ms",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "0ca55680e2b3552a753dacbb4931cd838d3f6e314e00163b1bef3fd5d37e2335"
+}
