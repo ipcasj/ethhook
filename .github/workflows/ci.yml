@@ -189,9 +189,9 @@ jobs:
       
       - name: Build service binaries for E2E tests
         run: |
-          cargo build --bin ethhook-message-processor
-          cargo build --bin ethhook-webhook-delivery
-          cargo build --bin event-ingestor
+          cargo build -p ethhook-message-processor
+          cargo build -p ethhook-webhook-delivery
+          cargo build -p ethhook-event-ingestor
         env:
           SQLX_OFFLINE: true
       
@@ -199,6 +199,7 @@ jobs:
         run: cargo test --test e2e_tests -- --ignored --test-threads=1
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
+          REDIS_URL: redis://localhost:6379
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           JWT_SECRET: test-secret-for-e2e-tests
