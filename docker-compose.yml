@@ -10,6 +10,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ethhook-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ethhook"]
       interval: 5s
@@ -23,6 +25,8 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - ethhook-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -37,6 +41,8 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
+    networks:
+      - ethhook-network
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -51,64 +57,120 @@ services:
       GF_USERS_ALLOW_SIGN_UP: false
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/ethhook.json
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./monitoring/grafana/dashboards:/etc/dashboards
+    networks:
+      - ethhook-network
     depends_on:
       - prometheus
 
-  # Uncomment when services are ready
-  # event-ingestor:
-  #   build:
-  #     context: .
-  #     dockerfile: crates/event-ingestor/Dockerfile
-  #   container_name: ethhook-event-ingestor
-  #   env_file: .env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   restart: unless-stopped
+  event-ingestor:
+    build:
+      context: .
+      dockerfile: crates/event-ingestor/Dockerfile
+    container_name: ethhook-event-ingestor
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://ethhook:password@postgres:5432/ethhook
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+    networks:
+      - ethhook-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
-  # message-processor:
-  #   build:
-  #     context: .
-  #     dockerfile: crates/message-processor/Dockerfile
-  #   container_name: ethhook-message-processor
-  #   env_file: .env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   restart: unless-stopped
+  message-processor:
+    build:
+      context: .
+      dockerfile: crates/message-processor/Dockerfile
+    container_name: ethhook-message-processor
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://ethhook:password@postgres:5432/ethhook
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+    networks:
+      - ethhook-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
-  # webhook-delivery:
-  #   build:
-  #     context: .
-  #     dockerfile: crates/webhook-delivery/Dockerfile
-  #   container_name: ethhook-webhook-delivery
-  #   env_file: .env
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   restart: unless-stopped
+  webhook-delivery:
+    build:
+      context: .
+      dockerfile: crates/webhook-delivery/Dockerfile
+    container_name: ethhook-webhook-delivery
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://ethhook:password@postgres:5432/ethhook
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+    networks:
+      - ethhook-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
-  # admin-api:
-  #   build:
-  #     context: .
-  #     dockerfile: crates/admin-api/Dockerfile
-  #   container_name: ethhook-admin-api
-  #   env_file: .env
-  #   ports:
-  #     - "8080:8080"
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   restart: unless-stopped
+  admin-api:
+    build:
+      context: .
+      dockerfile: crates/admin-api/Dockerfile
+    container_name: ethhook-admin-api
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://ethhook:password@postgres:5432/ethhook
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HOST=redis
+    ports:
+      - "8080:3000"
+    networks:
+      - ethhook-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: ethhook-redis-exporter
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+      - REDIS_PASSWORD=
+    networks:
+      - ethhook-network
+    depends_on:
+      - redis
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: ethhook-postgres-exporter
+    ports:
+      - "9187:9187"
+    environment:
+      - DATA_SOURCE_NAME=postgresql://ethhook:password@postgres:5432/ethhook?sslmode=disable
+    networks:
+      - ethhook-network
+    depends_on:
+      - postgres
+
+networks:
+  ethhook-network:
+    driver: bridge
 
 volumes:
   postgres_data:

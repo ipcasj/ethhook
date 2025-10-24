@@ -30,6 +30,11 @@ serde_json = { workspace = true }
 # Logging
 tracing = { workspace = true }
 
+# Metrics
+prometheus = "0.13"
+lazy_static = "1.4"
+axum = { workspace = true }
+
 # Utilities
 uuid = { workspace = true }
 dotenvy = { workspace = true }

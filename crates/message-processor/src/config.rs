@@ -99,25 +99,51 @@ impl ProcessorConfig {
             .parse::<u16>()
             .context("METRICS_PORT must be a valid port number")?;
 
-        // Chain configurations
-        let chains = vec![
-            ChainToProcess {
-                chain_id: 1,
-                stream_name: "events:1".to_string(),
-            },
-            ChainToProcess {
-                chain_id: 42161,
-                stream_name: "events:42161".to_string(),
-            },
-            ChainToProcess {
-                chain_id: 10,
-                stream_name: "events:10".to_string(),
-            },
-            ChainToProcess {
-                chain_id: 8453,
-                stream_name: "events:8453".to_string(),
-            },
-        ];
+        // Determine environment (default to development = Sepolia)
+        let environment = env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
+
+        // Chain configurations based on environment
+        let chains = if environment == "production" {
+            // Production: Mainnet chains
+            vec![
+                ChainToProcess {
+                    chain_id: 1,
+                    stream_name: "events:1".to_string(),
+                },
+                ChainToProcess {
+                    chain_id: 42161,
+                    stream_name: "events:42161".to_string(),
+                },
+                ChainToProcess {
+                    chain_id: 10,
+                    stream_name: "events:10".to_string(),
+                },
+                ChainToProcess {
+                    chain_id: 8453,
+                    stream_name: "events:8453".to_string(),
+                },
+            ]
+        } else {
+            // Development/Staging: Sepolia testnet + Mainnet L2s
+            vec![
+                ChainToProcess {
+                    chain_id: 11155111, // Sepolia Testnet
+                    stream_name: "events:11155111".to_string(),
+                },
+                ChainToProcess {
+                    chain_id: 42161, // Arbitrum (mainnet - no testnet configured)
+                    stream_name: "events:42161".to_string(),
+                },
+                ChainToProcess {
+                    chain_id: 10, // Optimism (mainnet - no testnet configured)
+                    stream_name: "events:10".to_string(),
+                },
+                ChainToProcess {
+                    chain_id: 8453, // Base (mainnet - no testnet configured)
+                    stream_name: "events:8453".to_string(),
+                },
+            ]
+        };
 
         Ok(Self {
             database_url,

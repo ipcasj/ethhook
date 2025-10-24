@@ -16,6 +16,13 @@ use crate::handlers::users::ErrorResponse;
 pub struct CreateEndpointRequest {
     pub application_id: Uuid,
 
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Name must be between 1 and 100 characters"
+    ))]
+    pub name: String,
+
     #[validate(url(message = "Invalid webhook URL"))]
     pub webhook_url: String,
 
@@ -52,6 +59,7 @@ pub struct UpdateEndpointRequest {
 pub struct EndpointResponse {
     pub id: Uuid,
     pub application_id: Uuid,
+    pub name: String,
     pub webhook_url: String,
     pub description: Option<String>,
     pub hmac_secret: String,
@@ -118,15 +126,16 @@ pub async fn create_endpoint(
     let endpoint = sqlx::query!(
         r#"
         INSERT INTO endpoints (
-            application_id, webhook_url, description, hmac_secret,
+            application_id, name, webhook_url, description, hmac_secret,
             chain_ids, contract_addresses, event_signatures
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, application_id, webhook_url, description, hmac_secret,
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, application_id, name, webhook_url, description, hmac_secret,
                   chain_ids, contract_addresses, event_signatures,
                   is_active, created_at, updated_at
         "#,
         payload.application_id,
+        payload.name,
         payload.webhook_url,
         payload.description,
         hmac_secret,
@@ -150,6 +159,7 @@ pub async fn create_endpoint(
         Json(EndpointResponse {
             id: endpoint.id,
             application_id: endpoint.application_id,
+            name: endpoint.name,
             webhook_url: endpoint.webhook_url,
             description: endpoint.description,
             hmac_secret: endpoint.hmac_secret,
@@ -197,7 +207,7 @@ pub async fn list_endpoints(
     // Get endpoints
     let endpoints = sqlx::query!(
         r#"
-        SELECT id, application_id, webhook_url, description, hmac_secret,
+        SELECT id, application_id, name, webhook_url, description, hmac_secret,
                chain_ids, contract_addresses, event_signatures,
                is_active, created_at, updated_at
         FROM endpoints
@@ -223,6 +233,58 @@ pub async fn list_endpoints(
         .map(|ep| EndpointResponse {
             id: ep.id,
             application_id: ep.application_id,
+            name: ep.name,
+            webhook_url: ep.webhook_url,
+            description: ep.description,
+            hmac_secret: ep.hmac_secret,
+            chain_ids: ep.chain_ids.unwrap_or_default(),
+            contract_addresses: ep.contract_addresses.unwrap_or_default(),
+            event_signatures: ep.event_signatures.unwrap_or_default(),
+            is_active: ep.is_active.unwrap_or(true),
+            created_at: ep.created_at.unwrap_or_else(chrono::Utc::now),
+            updated_at: ep.updated_at.unwrap_or_else(chrono::Utc::now),
+        })
+        .collect();
+
+    Ok(Json(EndpointListResponse { endpoints, total }))
+}
+
+/// List all endpoints for the authenticated user across all their applications
+pub async fn list_all_user_endpoints(
+    State(pool): State<PgPool>,
+    auth_user: AuthUser,
+) -> Result<Json<EndpointListResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Get all endpoints for user's applications
+    let endpoints = sqlx::query!(
+        r#"
+        SELECT e.id, e.application_id, e.name, e.webhook_url, e.description, e.hmac_secret,
+               e.chain_ids, e.contract_addresses, e.event_signatures,
+               e.is_active, e.created_at, e.updated_at
+        FROM endpoints e
+        JOIN applications a ON e.application_id = a.id
+        WHERE a.user_id = $1
+        ORDER BY e.created_at DESC
+        "#,
+        auth_user.user_id
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Failed to fetch endpoints: {e}"),
+            }),
+        )
+    })?;
+
+    let total = endpoints.len() as i64;
+    let endpoints = endpoints
+        .into_iter()
+        .map(|ep| EndpointResponse {
+            id: ep.id,
+            application_id: ep.application_id,
+            name: ep.name,
             webhook_url: ep.webhook_url,
             description: ep.description,
             hmac_secret: ep.hmac_secret,
@@ -246,7 +308,7 @@ pub async fn get_endpoint(
 ) -> Result<Json<EndpointResponse>, (StatusCode, Json<ErrorResponse>)> {
     let endpoint = sqlx::query!(
         r#"
-        SELECT e.id, e.application_id, e.webhook_url, e.description, e.hmac_secret,
+        SELECT e.id, e.application_id, e.name, e.webhook_url, e.description, e.hmac_secret,
                e.chain_ids, e.contract_addresses, e.event_signatures,
                e.is_active, e.created_at, e.updated_at
         FROM endpoints e
@@ -278,6 +340,7 @@ pub async fn get_endpoint(
     Ok(Json(EndpointResponse {
         id: endpoint.id,
         application_id: endpoint.application_id,
+        name: endpoint.name,
         webhook_url: endpoint.webhook_url,
         description: endpoint.description,
         hmac_secret: endpoint.hmac_secret,
@@ -565,7 +628,7 @@ pub async fn regenerate_hmac_secret(
         AND application_id IN (
             SELECT id FROM applications WHERE user_id = $3
         )
-        RETURNING id, application_id, webhook_url, description, hmac_secret,
+        RETURNING id, application_id, name, webhook_url, description, hmac_secret,
                   chain_ids, contract_addresses, event_signatures,
                   is_active, created_at, updated_at
         "#,
@@ -595,6 +658,7 @@ pub async fn regenerate_hmac_secret(
     Ok(Json(EndpointResponse {
         id: endpoint.id,
         application_id: endpoint.application_id,
+        name: endpoint.name,
         webhook_url: endpoint.webhook_url,
         description: endpoint.description,
         hmac_secret: endpoint.hmac_secret,
@@ -633,6 +697,7 @@ mod tests {
         // Valid request
         let valid = CreateEndpointRequest {
             application_id: app_id,
+            name: "Test Endpoint".to_string(),
             webhook_url: "https://example.com/webhook".to_string(),
             description: Some("Test endpoint".to_string()),
             chain_ids: vec![1, 137],
@@ -644,6 +709,7 @@ mod tests {
         // Invalid URL
         let invalid = CreateEndpointRequest {
             application_id: app_id,
+            name: "Test Endpoint".to_string(),
             webhook_url: "not-a-url".to_string(),
             description: None,
             chain_ids: vec![1],

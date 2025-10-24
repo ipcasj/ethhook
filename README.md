@@ -1,3 +1,19 @@
+## 🌐 Custom Domain Setup (DigitalOcean)
+
+To use a real project domain (e.g., `ethhook.io`) on DigitalOcean App Platform:
+
+1. **Buy a domain** from a registrar (Cloudflare, Namecheap, Google Domains)
+2. **Configure DNS**:
+    - Add CNAME records for `api.ethhook.io` (admin-api) and `app.ethhook.io` (frontend)
+    - Point to DigitalOcean App Platform endpoints (see DO dashboard)
+3. **Add custom domains** in DigitalOcean App Platform dashboard for each service
+4. **Wait for DNS propagation and SSL certificate provisioning** (automatic)
+5. **Update environment variables**:
+    - Set `CORS_ALLOWED_ORIGINS=https://app.ethhook.io` for backend
+    - Set `API_URL=https://api.ethhook.io` for frontend
+6. **Update documentation** to reference your new domain URLs
+
+See `docs/CUSTOM_DOMAIN_SETUP.md` for a step-by-step guide.
 # EthHook 🦀
 
 > Production-grade real-time Ethereum webhook service built in Rust
@@ -54,7 +70,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ethhook.git
+git clone https://github.com/ipcasj/ethhook.git
 cd ethhook
 
 # Set up environment variables
@@ -83,16 +99,58 @@ cargo watch -x 'run --bin admin-api'
 docker compose up -d
 ```
 
-Access the dashboard at [http://localhost:3000](http://localhost:3000)
+
+## 🌐 MVP Demo & Monitoring
+
+**Live MVP Demo:**
+[https://ethhook-mvp.digitalocean.app](https://ethhook-mvp.digitalocean.app)
+
+**Grafana Dashboard (Live Metrics):**
+[https://ethhook-mvp.digitalocean.app/grafana](https://ethhook-mvp.digitalocean.app/grafana)
+
+Access the dashboard locally at [http://localhost:3002](http://localhost:3002)
 
 ## 🔧 Configuration
+
+### Environment-Based Network Selection
+
+EthHook supports automatic network switching between **Sepolia testnet** (for development/demo) and **Ethereum mainnet** (for production):
+
+```bash
+# ENVIRONMENT controls which Ethereum network to use
+# - development: Sepolia Testnet (free, safe for testing)
+# - staging: Sepolia Testnet (pre-production)
+# - production: Ethereum Mainnet (real money)
+ENVIRONMENT=development
+
+# For MVP demo (Oct 20, 2025): Use Sepolia testnet
+# For production launch: Change to production
+```
+
+**Key Benefits:**
+
+- ✅ **Safe testing**: Use free Sepolia testnet for development/demo
+- ✅ **One-line switch**: Change `ENVIRONMENT=production` to go live
+- ✅ **No code changes**: Same codebase works for both networks
+
+See [docs/ENVIRONMENT_CONFIGURATION.md](docs/ENVIRONMENT_CONFIGURATION.md) for details.
+
+### Complete .env File
 
 Create a `.env` file:
 
 ```bash
-# Ethereum RPC
-ETH_RPC_WS=wss://mainnet.infura.io/ws/v3/YOUR_PROJECT_ID
-ETH_RPC_HTTP=https://mainnet.infura.io/v3/YOUR_PROJECT_ID
+# Environment (development=Sepolia, production=Mainnet)
+ENVIRONMENT=development
+
+# Ethereum RPC (Sepolia for testing)
+ETHEREUM_WS_URL=wss://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+SEPOLIA_RPC_WS=wss://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+SEPOLIA_RPC_HTTP=https://eth-sepolia.g.alchemy.com/v2/YOUR_API_KEY
+
+# For production, use mainnet endpoints
+ETH_RPC_WS=wss://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY
+ETH_RPC_HTTP=https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY
 
 # Database
 DATABASE_URL=postgresql://ethhook:password@localhost/ethhook
@@ -131,16 +189,18 @@ cargo tarpaulin --out Html
 
 See [E2E Test Documentation](tests/README.md) for details on integration testing.
 
+
 ## 📊 Monitoring
 
-EthHook exposes Prometheus metrics on `/metrics`:
+EthHook exposes Prometheus metrics on `/metrics`.
 
-ethhook_events_ingested_total
-ethhook_webhooks_sent_total{status="success|failure"}
-ethhook_webhook_delivery_latency_seconds
-ethhook_active_endpoints
+**Live Grafana Dashboard:**
+[https://ethhook-mvp.digitalocean.app/grafana](https://ethhook-mvp.digitalocean.app/grafana)
 
-Import the Grafana dashboard from `monitoring/grafana-dashboard.json`.
+**Local Grafana Dashboard:**
+[http://localhost:3001/d/ethhook-overview/ethhook-system-overview](http://localhost:3001/d/ethhook-overview/ethhook-system-overview)
+
+Import the dashboard from `monitoring/grafana/dashboards/ethhook-dashboard.json` for custom setups.
 
 ## 🚀 Deployment
 
@@ -512,6 +572,7 @@ public class EventData
 
 ## � Documentation
 
+
 ## 📚 Documentation
 
 - [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Installation and configuration
@@ -551,4 +612,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 
 ---
 
-Built with 🦀 Rust
+
+---
+
+**Built with 🦀 Rust**

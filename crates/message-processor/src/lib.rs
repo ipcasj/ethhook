@@ -54,4 +54,5 @@
 pub mod config;
 pub mod consumer;
 pub mod matcher;
+pub mod metrics;
 pub mod publisher;

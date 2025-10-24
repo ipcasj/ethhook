@@ -310,12 +310,14 @@ erDiagram
 **Purpose**: Monitor Ethereum blockchain and capture events in real-time.
 
 **Technology Stack**:
+
 - Runtime: Tokio async runtime
 - Blockchain: ethers-rs / Alloy
 - Queue: redis-rs (XADD to streams)
 - Metrics: Prometheus client
 
 **Key Features**:
+
 - ✅ Multi-provider WebSocket connections
 - ✅ Automatic reconnection with exponential backoff
 - ✅ Event deduplication (block_hash + tx_hash + log_index)
@@ -324,6 +326,7 @@ erDiagram
 - ✅ Structured logging with tracing
 
 **Configuration**:
+
 ```rust
 pub struct IngestorConfig {
     pub rpc_urls: Vec<String>,           // Multiple RPC endpoints
@@ -337,6 +340,7 @@ pub struct IngestorConfig {
 ```
 
 **Metrics Exposed**:
+
 - `ethhook_events_ingested_total{chain_id, provider}`
 - `ethhook_rpc_connection_status{provider}`
 - `ethhook_dedup_cache_hits_total`
@@ -347,12 +351,14 @@ pub struct IngestorConfig {
 **Purpose**: Match events to endpoints and fan-out delivery jobs.
 
 **Technology Stack**:
+
 - Runtime: Tokio async runtime
 - Database: SQLx (PostgreSQL)
 - Queue: redis-rs (XREADGROUP + XADD)
 - Matching: SQL queries with GIN indexes
 
 **Key Features**:
+
 - ✅ Consumer group processing (multiple instances)
 - ✅ Batch event processing (up to 100 events)
 - ✅ Efficient endpoint matching via indexed queries
@@ -361,6 +367,7 @@ pub struct IngestorConfig {
 - ✅ Automatic acknowledgment (XACK)
 
 **Matching Algorithm**:
+
 ```rust
 // Pseudo-code for endpoint matching
 async fn find_matching_endpoints(
@@ -394,6 +401,7 @@ async fn find_matching_endpoints(
 ```
 
 **Metrics Exposed**:
+
 - `ethhook_events_processed_total`
 - `ethhook_endpoints_matched_total`
 - `ethhook_jobs_created_total`
@@ -404,6 +412,7 @@ async fn find_matching_endpoints(
 **Purpose**: Deliver events to customer endpoints via HTTP POST.
 
 **Technology Stack**:
+
 - Runtime: Tokio async runtime
 - HTTP Client: reqwest with connection pooling
 - Queue: redis-rs (XREADGROUP)
@@ -411,6 +420,7 @@ async fn find_matching_endpoints(
 - Crypto: hmac + sha2 for signatures
 
 **Key Features**:
+
 - ✅ Worker pool for concurrent deliveries
 - ✅ HMAC-SHA256 signature generation
 - ✅ Exponential backoff retry strategy
@@ -419,6 +429,7 @@ async fn find_matching_endpoints(
 - ✅ Dead letter queue for permanent failures
 
 **Delivery Flow**:
+
 ```mermaid
 flowchart TD
     START[Receive Job from Queue] --> CHECK{Is Endpoint<br/>Healthy?}
@@ -447,6 +458,7 @@ flowchart TD
 ```
 
 **Retry Strategy**:
+
 ```rust
 pub fn calculate_backoff(attempt: u32) -> Duration {
     match attempt {
@@ -461,6 +473,7 @@ pub fn calculate_backoff(attempt: u32) -> Duration {
 ```
 
 **Metrics Exposed**:
+
 - `ethhook_webhooks_sent_total{status}`
 - `ethhook_webhook_delivery_latency_seconds`
 - `ethhook_webhook_retries_total`
@@ -471,6 +484,7 @@ pub fn calculate_backoff(attempt: u32) -> Duration {
 **Purpose**: REST API for managing applications, endpoints, and viewing events.
 
 **Technology Stack**:
+
 - Framework: Axum 0.8
 - Database: SQLx with compile-time verification
 - Auth: jsonwebtoken (RS256)
@@ -478,7 +492,8 @@ pub fn calculate_backoff(attempt: u32) -> Duration {
 - Rate Limiting: tower middleware
 
 **API Structure**:
-```
+
+```text
 /api/v1/
 ├── auth/
 │   ├── POST   /register          # User registration
@@ -511,6 +526,7 @@ pub fn calculate_backoff(attempt: u32) -> Duration {
 ```
 
 **Authentication Flow**:
+
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -537,6 +553,7 @@ sequenceDiagram
 ```
 
 **Security Measures**:
+
 - ✅ JWT with short-lived access tokens (15 min)
 - ✅ Refresh tokens with rotation
 - ✅ Argon2 password hashing
@@ -547,6 +564,7 @@ sequenceDiagram
 - ✅ Audit logging for mutations
 
 **Metrics Exposed**:
+
 - `ethhook_api_requests_total{method, path, status}`
 - `ethhook_api_request_duration_seconds`
 - `ethhook_auth_attempts_total{result}`
@@ -557,6 +575,7 @@ sequenceDiagram
 **Purpose**: Web-based dashboard for managing webhooks.
 
 **Technology Stack**:
+
 - Framework: Leptos 0.5+ (Rust → WASM)
 - Styling: TailwindCSS
 - State: Leptos reactive signals
@@ -564,6 +583,7 @@ sequenceDiagram
 - Routing: leptos_router
 
 **Pages**:
+
 - **Dashboard** (`/`) - Overview, stats, recent events
 - **Applications** (`/applications`) - Manage applications
 - **Endpoints** (`/applications/{id}/endpoints`) - Manage endpoints
@@ -572,6 +592,8 @@ sequenceDiagram
 - **Login** (`/login`) - Authentication
 
 **Key Features**:
+
+- ✅ Responsive design (mobile + desktop)
 - ✅ Server-side rendering (SSR) capable
 - ✅ Client-side routing (no page reloads)
 - ✅ Reactive state management
@@ -873,12 +895,14 @@ spec:
 ### Database Scaling
 
 **PostgreSQL**:
+
 - **Read Replicas**: 2-3 read replicas for query offloading
 - **Connection Pooling**: PgBouncer with 100 connections per pod
 - **Partitioning**: Events table partitioned by month
 - **Archiving**: Move old events to cold storage after 90 days
 
 **Redis**:
+
 - **Cluster Mode**: 3 master nodes + 3 replicas
 - **Memory**: 8GB per node (24GB total)
 - **Eviction**: No eviction on streams (persistent)
@@ -1027,6 +1051,8 @@ graph TB
 ```
 
 **Log Levels**:
+
+- `FATAL`: Critical failures causing shutdown
 - `ERROR`: Failed operations requiring investigation
 - `WARN`: Degraded performance or retries
 - `INFO`: Normal operation events
@@ -1063,6 +1089,7 @@ sequenceDiagram
 ### Alerting Rules
 
 **Critical Alerts** (PagerDuty):
+
 - Service crashes > 3 in 10 minutes
 - Error rate > 5% for 5 minutes
 - Database connection pool exhausted
@@ -1070,6 +1097,7 @@ sequenceDiagram
 - All RPC providers disconnected
 
 **Warning Alerts** (Slack):
+
 - Error rate > 1% for 10 minutes
 - P99 latency > 1 second
 - Disk usage > 80%
@@ -1146,6 +1174,7 @@ sequenceDiagram
 ### Resource Utilization
 
 **Per 1,000 events/sec**:
+
 - CPU: 0.8 cores
 - Memory: 512 MB
 - Network: 2 Mbps
@@ -1166,6 +1195,7 @@ The EthHook architecture is designed for:
 ✅ **Maintainability**: Clean architecture, Rust type safety, extensive testing  
 
 The system is production-ready and has been validated through:
+
 - ✅ 54 unit tests passing
 - ✅ 4 integration tests passing
 - ✅ 5 E2E tests passing (including service recovery)
@@ -1173,6 +1203,7 @@ The system is production-ready and has been validated through:
 - ✅ Zero security vulnerabilities
 
 **Next Steps**:
+
 1. Deploy to staging environment
 2. Perform load testing with realistic traffic
 3. Set up production monitoring and alerting

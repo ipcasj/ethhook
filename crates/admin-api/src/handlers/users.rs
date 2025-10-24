@@ -1,6 +1,7 @@
 use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use tracing::{debug, error};
 use uuid::Uuid;
 use validator::Validate;
 
@@ -10,19 +11,27 @@ use crate::config::Config;
 /// Request to register a new user
 #[derive(Debug, Deserialize, Validate)]
 pub struct RegisterRequest {
-    #[validate(email(message = "Invalid email format"))]
+    #[validate(email(message = "Please enter a valid email address (e.g., user@example.com)"))]
     pub email: String,
-    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
+    #[validate(length(
+        min = 8,
+        message = "Password must be at least 8 characters long for security"
+    ))]
     pub password: String,
-    #[validate(length(min = 1, message = "Name cannot be empty"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Name must be between 1 and 100 characters"
+    ))]
     pub name: String,
 }
 
 /// Request to login
 #[derive(Debug, Deserialize, Validate)]
 pub struct LoginRequest {
-    #[validate(email(message = "Invalid email format"))]
+    #[validate(email(message = "Please enter a valid email address"))]
     pub email: String,
+    #[validate(length(min = 1, message = "Password is required"))]
     pub password: String,
 }
 
@@ -66,15 +75,20 @@ pub async fn register(
 
     // Hash password
     let password_hash = hash_password(&payload.password).map_err(|e| {
+        error!("Password hashing failed: {:?}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to hash password: {e}"),
+                error: "Unable to process your password. Please try again.".to_string(),
             }),
         )
     })?;
 
     // Insert user
+    debug!(
+        "Attempting to create user with email: {}, name: {}",
+        payload.email, payload.name
+    );
     let user = sqlx::query!(
         r#"
         INSERT INTO users (email, password_hash, name)
@@ -88,10 +102,19 @@ pub async fn register(
     .fetch_one(&pool)
     .await
     .map_err(|e| {
+        error!("Database error during user creation: {:?}", e);
+
+        // Check for duplicate email constraint violation
+        let error_message = if e.to_string().contains("duplicate key") && e.to_string().contains("users_email_key") {
+            "An account with this email already exists. Please use a different email or try logging in.".to_string()
+        } else {
+            "Unable to create account. Please try again later.".to_string()
+        };
+
         (
-            StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::BAD_REQUEST,
             Json(ErrorResponse {
-                error: format!("Failed to create user: {e}"),
+                error: error_message,
             }),
         )
     })?;
@@ -104,10 +127,12 @@ pub async fn register(
         config.jwt_expiration_hours,
     )
     .map_err(|e| {
+        error!("Token generation failed: {:?}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to generate token: {e}"),
+                error: "Account created but unable to log you in. Please try logging in manually."
+                    .to_string(),
             }),
         )
     })?;
@@ -192,10 +217,12 @@ pub async fn login(
         config.jwt_expiration_hours,
     )
     .map_err(|e| {
+        error!("Token generation failed during login: {:?}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse {
-                error: format!("Failed to generate token: {e}"),
+                error: "Login credentials verified but unable to create session. Please try again."
+                    .to_string(),
             }),
         )
     })?;

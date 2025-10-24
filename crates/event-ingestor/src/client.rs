@@ -354,21 +354,44 @@ impl WebSocketClient {
             .await
             .context("Failed to send getBlockByNumber request")?;
 
-        // Wait for response
-        if let Some(msg) = self.stream.next().await {
-            let msg = msg.context("Failed to receive getBlockByNumber response")?;
+        // Wait for response - skip subscription notifications
+        loop {
+            if let Some(msg) = self.stream.next().await {
+                let msg = msg.context("Failed to receive getBlockByNumber response")?;
 
-            if let Message::Text(text) = msg {
-                debug!("[{}] Received getBlockByNumber response", self.chain_name);
+                if let Message::Text(text) = msg {
+                    // Check if this is a subscription notification (no "id" field) - skip it
+                    let json_value: Value = match serde_json::from_str(&text) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            warn!(
+                                "[{}] Failed to parse message as JSON: {}",
+                                self.chain_name, e
+                            );
+                            continue;
+                        }
+                    };
 
-                let response: crate::types::BlockResponse = serde_json::from_str(&text)
-                    .context("Failed to parse getBlockByNumber response")?;
+                    // Skip subscription notifications (they have "method": "eth_subscription" but no "id")
+                    if json_value.get("method").is_some() && json_value.get("id").is_none() {
+                        debug!(
+                            "[{}] Skipping subscription notification while waiting for getBlockByNumber response",
+                            self.chain_name
+                        );
+                        continue;
+                    }
 
-                return Ok(response.result);
+                    debug!("[{}] Received getBlockByNumber response", self.chain_name);
+
+                    let response: crate::types::BlockResponse = serde_json::from_str(&text)
+                        .context("Failed to parse getBlockByNumber response")?;
+
+                    return Ok(response.result);
+                }
+            } else {
+                return Ok(None);
             }
         }
-
-        Ok(None)
     }
 
     /// Fetch transaction receipt containing event logs
@@ -396,21 +419,57 @@ impl WebSocketClient {
             .await
             .context("Failed to send receipt request")?;
 
-        // Wait for response
-        if let Some(msg) = self.stream.next().await {
-            let msg = msg.context("Failed to receive receipt response")?;
+        // Wait for response - skip subscription notifications
+        loop {
+            if let Some(msg) = self.stream.next().await {
+                let msg = msg.context("Failed to receive receipt response")?;
 
-            if let Message::Text(text) = msg {
-                let response: ReceiptResponse =
-                    serde_json::from_str(&text).context("Failed to parse receipt response")?;
+                if let Message::Text(text) = msg {
+                    // Check if this is a subscription notification (no "id" field) - skip it
+                    let json_value: Value = match serde_json::from_str(&text) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            warn!(
+                                "[{}] Failed to parse message as JSON: {}",
+                                self.chain_name, e
+                            );
+                            continue;
+                        }
+                    };
 
-                if let Some(receipt) = response.result {
-                    return Ok(Some(receipt.logs));
+                    // Skip subscription notifications (they have "method": "eth_subscription" but no "id")
+                    if json_value.get("method").is_some() && json_value.get("id").is_none() {
+                        debug!(
+                            "[{}] Skipping subscription notification while waiting for receipt response",
+                            self.chain_name
+                        );
+                        continue;
+                    }
+
+                    // This should be our RPC response
+                    let response: ReceiptResponse = serde_json::from_str(&text)
+                        .map_err(|e| {
+                            // Log the failing JSON for debugging
+                            error!("[{}] Failed to parse receipt JSON: {}", self.chain_name, e);
+                            error!(
+                                "[{}] Raw response: {}",
+                                self.chain_name,
+                                &text[..text.len().min(500)]
+                            );
+                            e
+                        })
+                        .context("Failed to parse receipt response")?;
+
+                    if let Some(receipt) = response.result {
+                        return Ok(Some(receipt.logs));
+                    }
+
+                    return Ok(None);
                 }
+            } else {
+                return Ok(None);
             }
         }
-
-        Ok(None)
     }
 
     /// Close the WebSocket connection gracefully

@@ -3,10 +3,13 @@ name = "ethhook-domain"
 version.workspace = true
 edition.workspace = true
 
+[features]
+default = ["sqlx"]
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
-uuid = { workspace = true }
-chrono = { workspace = true }
+uuid = { workspace = true, features = ["serde", "v4", "js"] }
+chrono = { workspace = true, features = ["serde", "wasmbind"] }
 validator = { workspace = true }
-sqlx = { workspace = true }
+sqlx = { workspace = true, optional = true }

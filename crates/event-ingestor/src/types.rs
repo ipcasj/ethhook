@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 /*!
  * Type Definitions
  *
@@ -89,6 +88,11 @@ pub struct Log {
     /// Whether this log was removed (due to chain reorg)
     #[serde(default)]
     pub removed: bool,
+
+    /// Capture any additional fields without failing
+    #[serde(flatten)]
+    #[allow(dead_code)]
+    pub extra: serde_json::Value,
 }
 
 /// RPC subscription message for newHeads
@@ -115,7 +119,6 @@ pub struct SubscriptionMessage {
     pub method: String,
     pub params: SubscriptionParams,
 }
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubscriptionParams {
     pub subscription: String,
@@ -202,14 +205,22 @@ pub struct ReceiptResponse {
 }
 
 /// Transaction receipt with logs (events)
+///
+/// This struct is lenient - it only requires the fields we actually use (logs).
+/// All other fields from the RPC response are ignored via #[serde(flatten)].
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionReceipt {
-    pub transaction_hash: String,
-    pub block_number: String,
-    pub block_hash: String,
+    pub transaction_hash: Option<String>,
+    pub block_number: Option<String>,
+    pub block_hash: Option<String>,
     pub logs: Vec<Log>,
     pub status: Option<String>,
+
+    // Capture all other fields without failing
+    #[serde(flatten)]
+    #[allow(dead_code)]
+    pub extra: serde_json::Value,
 }
 
 /// Processed event ready for Redis Stream

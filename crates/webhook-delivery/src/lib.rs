@@ -57,4 +57,5 @@ pub mod circuit_breaker;
 pub mod config;
 pub mod consumer;
 pub mod delivery;
+pub mod metrics;
 pub mod retry;

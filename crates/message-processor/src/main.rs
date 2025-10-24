@@ -45,11 +45,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 mod config;
 mod consumer;
 mod matcher;
+mod metrics;
 mod publisher;
 
 use config::ProcessorConfig;
@@ -87,7 +88,10 @@ async fn main() -> Result<()> {
     info!("✅ PostgreSQL connected");
 
     // Create endpoint matcher
-    let matcher = Arc::new(EndpointMatcher::new(db_pool));
+    let matcher = Arc::new(EndpointMatcher::new(db_pool.clone()));
+
+    // Share db_pool for event storage
+    let db_pool = Arc::new(db_pool);
 
     // Create Redis Stream consumer
     info!("📡 Connecting to Redis Streams...");
@@ -123,6 +127,18 @@ async fn main() -> Result<()> {
     }
     info!("✅ Consumer groups ready");
 
+    // Start metrics server on port 9090
+    info!("📊 Starting metrics server on :9090...");
+    let metrics_handle = tokio::spawn(async move {
+        let app = axum::Router::new().route("/metrics", axum::routing::get(metrics_handler));
+
+        let addr = "0.0.0.0:9090";
+        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+        info!("✅ Metrics server listening on {}", addr);
+
+        axum::serve(listener, app).await.unwrap();
+    });
+
     // Create shutdown channel
     let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
 
@@ -147,6 +163,7 @@ async fn main() -> Result<()> {
 
         let matcher = Arc::clone(&matcher);
         let publisher = Arc::clone(&publisher);
+        let pool = Arc::clone(&db_pool);
         let mut shutdown_rx = shutdown_tx.subscribe();
         let batch_size = config.batch_size;
         let block_time_ms = config.block_time_ms;
@@ -159,6 +176,7 @@ async fn main() -> Result<()> {
                 consumer,
                 matcher,
                 publisher,
+                pool,
                 batch_size,
                 block_time_ms,
                 &mut shutdown_rx,
@@ -222,6 +240,7 @@ async fn process_stream_loop(
     consumer: Arc<Mutex<StreamConsumer>>,
     matcher: Arc<EndpointMatcher>,
     publisher: Arc<Mutex<DeliveryPublisher>>,
+    db_pool: Arc<sqlx::PgPool>,
     batch_size: usize,
     block_time_ms: usize,
     shutdown_rx: &mut tokio::sync::broadcast::Receiver<()>,
@@ -268,6 +287,11 @@ async fn process_stream_loop(
             events_processed + entries.len() as u64
         );
 
+        // Record metrics: events consumed from stream
+        metrics::EVENTS_CONSUMED_TOTAL
+            .with_label_values(&[stream_name])
+            .inc_by(entries.len() as u64);
+
         // Process each event
         let mut message_ids = Vec::new();
         for entry in &entries {
@@ -296,23 +320,60 @@ async fn process_stream_loop(
                 continue;
             }
 
+            // Store event in database for dashboard and API queries
+            match store_event_in_database(&db_pool, &entry.event).await {
+                Ok(Some(event_id)) => {
+                    debug!(
+                        "[{}] Stored event {} in database with ID {}",
+                        stream_name, entry.event.transaction_hash, event_id
+                    );
+                }
+                Ok(None) => {
+                    // Event already exists (duplicate), this is fine
+                    debug!(
+                        "[{}] Event {} already exists in database",
+                        stream_name, entry.event.transaction_hash
+                    );
+                }
+                Err(e) => {
+                    // Log error but continue - event is already in Redis Stream
+                    error!(
+                        "[{}] Failed to store event {} in database: {:?}",
+                        stream_name, entry.event.transaction_hash, e
+                    );
+                }
+            }
+
             // Create delivery jobs with error recovery
             let mut pub_client = publisher.lock().await;
             for endpoint in &endpoints {
                 match pub_client.publish(endpoint, &entry.event).await {
                     Ok(_) => {
                         jobs_created += 1;
+                        // Record metrics: webhook published
+                        metrics::WEBHOOKS_PUBLISHED_TOTAL
+                            .with_label_values(&[&endpoint.endpoint_id.to_string()])
+                            .inc();
                     }
                     Err(e) => {
                         error!(
                             "[{}] Failed to publish delivery job for endpoint {}: {:?}",
                             stream_name, endpoint.endpoint_id, e
                         );
+                        // Record error metric
+                        metrics::PROCESSING_ERRORS_TOTAL
+                            .with_label_values(&["publish_failed"])
+                            .inc();
                         // Continue with other endpoints
                     }
                 }
             }
             drop(pub_client);
+
+            // Record metrics: event processed successfully
+            metrics::EVENTS_PROCESSED_TOTAL
+                .with_label_values(&[stream_name])
+                .inc();
 
             info!(
                 "[{}] Created {} delivery jobs for event {}",
@@ -351,4 +412,51 @@ async fn process_stream_loop(
     }
 
     Ok(())
+}
+
+/// Store event in database for API queries and dashboard statistics
+///
+/// This inserts the event into the `events` table so it can be:
+/// 1. Queried via GET /api/v1/events
+/// 2. Counted in dashboard statistics
+/// 3. Linked to delivery_attempts for tracking
+///
+/// Uses ON CONFLICT DO NOTHING to handle duplicates gracefully.
+async fn store_event_in_database(
+    pool: &sqlx::PgPool,
+    event: &consumer::StreamEvent,
+) -> Result<Option<uuid::Uuid>> {
+    let event_id = sqlx::query_scalar::<_, uuid::Uuid>(
+        r#"
+        INSERT INTO events (
+            block_number,
+            block_hash,
+            transaction_hash,
+            log_index,
+            contract_address,
+            topics,
+            data
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (transaction_hash, log_index) DO NOTHING
+        RETURNING id
+        "#,
+    )
+    .bind(event.block_number as i64)
+    .bind(&event.block_hash)
+    .bind(&event.transaction_hash)
+    .bind(event.log_index as i32)
+    .bind(&event.contract_address)
+    .bind(&event.topics)
+    .bind(&event.data)
+    .fetch_optional(pool)
+    .await
+    .context("Failed to insert event into database")?;
+
+    Ok(event_id)
+}
+
+/// Metrics endpoint handler
+async fn metrics_handler() -> Result<String, (axum::http::StatusCode, String)> {
+    metrics::render_metrics()
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }

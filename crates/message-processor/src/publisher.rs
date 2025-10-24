@@ -60,43 +60,14 @@
 
 use anyhow::{Context, Result};
 use redis::AsyncCommands;
-use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
-use uuid::Uuid;
 
 use crate::consumer::StreamEvent;
 use crate::matcher::MatchedEndpoint;
+use crate::metrics::REDIS_QUEUE_LENGTH;
 
-/// Delivery job for webhook delivery service
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeliveryJob {
-    /// Endpoint UUID
-    pub endpoint_id: Uuid,
-
-    /// Application UUID
-    pub application_id: Uuid,
-
-    /// Webhook URL
-    pub url: String,
-
-    /// HMAC secret for signature
-    pub hmac_secret: String,
-
-    /// Blockchain event data
-    pub event: StreamEvent,
-
-    /// Current attempt number
-    pub attempt: u32,
-
-    /// Maximum retry attempts
-    pub max_retries: i32,
-
-    /// HTTP timeout in seconds
-    pub timeout_seconds: i32,
-
-    /// Rate limit (requests per second)
-    pub rate_limit_per_second: i32,
-}
+// Use shared types from common crate
+use ethhook_common::{BlockchainEvent, DeliveryJob};
 
 /// Redis Queue publisher for delivery jobs
 pub struct DeliveryPublisher {
@@ -149,12 +120,25 @@ impl DeliveryPublisher {
     /// * `Ok(())` - Job published successfully
     /// * `Err(_)` - Redis connection or serialization error
     pub async fn publish(&mut self, endpoint: &MatchedEndpoint, event: &StreamEvent) -> Result<()> {
+        // Convert StreamEvent to BlockchainEvent (shared type)
+        let blockchain_event = BlockchainEvent {
+            chain_id: event.chain_id,
+            block_number: event.block_number,
+            block_hash: event.block_hash.clone(),
+            transaction_hash: event.transaction_hash.clone(),
+            log_index: event.log_index,
+            contract_address: event.contract_address.clone(),
+            topics: event.topics.clone(),
+            data: event.data.clone(),
+            timestamp: event.timestamp,
+        };
+
         let job = DeliveryJob {
             endpoint_id: endpoint.endpoint_id,
             application_id: endpoint.application_id,
             url: endpoint.url.clone(),
             hmac_secret: endpoint.hmac_secret.clone(),
-            event: event.clone(),
+            event: blockchain_event,
             attempt: 1,
             max_retries: endpoint.max_retries,
             timeout_seconds: endpoint.timeout_seconds,
@@ -171,9 +155,19 @@ impl DeliveryPublisher {
             .await
             .context("Failed to push job to queue")?;
 
+        // Update queue length metric
+        let queue_len: usize = self
+            .client
+            .llen(&self.queue_name)
+            .await
+            .context("Failed to get queue length")?;
+        REDIS_QUEUE_LENGTH
+            .with_label_values(&[&self.queue_name])
+            .set(queue_len as i64);
+
         debug!(
-            "Published delivery job: endpoint={} event={}",
-            endpoint.endpoint_id, event.transaction_hash
+            "Published delivery job: endpoint={} event={} (queue length: {})",
+            endpoint.endpoint_id, event.transaction_hash, queue_len
         );
 
         Ok(())
@@ -203,12 +197,25 @@ impl DeliveryPublisher {
         let mut pipe = redis::pipe();
 
         for (endpoint, event) in &jobs {
+            // Convert StreamEvent to BlockchainEvent (shared type)
+            let blockchain_event = BlockchainEvent {
+                chain_id: event.chain_id,
+                block_number: event.block_number,
+                block_hash: event.block_hash.clone(),
+                transaction_hash: event.transaction_hash.clone(),
+                log_index: event.log_index,
+                contract_address: event.contract_address.clone(),
+                topics: event.topics.clone(),
+                data: event.data.clone(),
+                timestamp: event.timestamp,
+            };
+
             let job = DeliveryJob {
                 endpoint_id: endpoint.endpoint_id,
                 application_id: endpoint.application_id,
                 url: endpoint.url.clone(),
                 hmac_secret: endpoint.hmac_secret.clone(),
-                event: (*event).clone(),
+                event: blockchain_event,
                 attempt: 1,
                 max_retries: endpoint.max_retries,
                 timeout_seconds: endpoint.timeout_seconds,
@@ -250,6 +257,7 @@ impl DeliveryPublisher {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use uuid::Uuid;
 
     #[tokio::test]
     #[ignore] // Requires Redis

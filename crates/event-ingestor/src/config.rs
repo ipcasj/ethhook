@@ -50,6 +50,7 @@ impl IngestorConfig {
     /// Load configuration from environment variables
     ///
     /// Required environment variables:
+    /// - ENVIRONMENT (development, staging, production)
     /// - REDIS_HOST
     /// - REDIS_PORT
     /// - ETHEREUM_WS_URL
@@ -59,6 +60,9 @@ impl IngestorConfig {
     pub fn from_env() -> Result<Self> {
         // Load .env file if present
         dotenvy::dotenv().ok();
+
+        // Environment detection (development, staging, production)
+        let environment = env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
 
         // Redis configuration
         let redis_host = env::var("REDIS_HOST").context("REDIS_HOST not set")?;
@@ -80,37 +84,51 @@ impl IngestorConfig {
             .parse::<u64>()
             .context("DEDUP_TTL_SECONDS must be a valid number")?;
 
-        // Chain configurations
-        let chains = vec![
-            ChainConfig {
-                name: "Ethereum Mainnet".to_string(),
-                chain_id: 1,
-                ws_url: env::var("ETHEREUM_WS_URL").context("ETHEREUM_WS_URL not set")?,
-                max_reconnect_attempts: 10,
-                reconnect_delay_secs: 1,
-            },
-            ChainConfig {
-                name: "Arbitrum One".to_string(),
-                chain_id: 42161,
-                ws_url: env::var("ARBITRUM_WS_URL").context("ARBITRUM_WS_URL not set")?,
-                max_reconnect_attempts: 10,
-                reconnect_delay_secs: 1,
-            },
-            ChainConfig {
-                name: "Optimism".to_string(),
-                chain_id: 10,
-                ws_url: env::var("OPTIMISM_WS_URL").context("OPTIMISM_WS_URL not set")?,
-                max_reconnect_attempts: 10,
-                reconnect_delay_secs: 1,
-            },
-            ChainConfig {
-                name: "Base".to_string(),
-                chain_id: 8453,
-                ws_url: env::var("BASE_WS_URL").context("BASE_WS_URL not set")?,
-                max_reconnect_attempts: 10,
-                reconnect_delay_secs: 1,
-            },
-        ];
+        // Determine chain configurations based on environment
+        // - development/staging: Testnets (safe, free)
+        // - production: Mainnets (real money)
+        let chains = match environment.as_str() {
+            "production" => vec![
+                ChainConfig {
+                    name: "Ethereum Mainnet".to_string(),
+                    chain_id: 1,
+                    ws_url: env::var("ETHEREUM_WS_URL").context("ETHEREUM_WS_URL not set")?,
+                    max_reconnect_attempts: 10,
+                    reconnect_delay_secs: 1,
+                },
+                ChainConfig {
+                    name: "Arbitrum One".to_string(),
+                    chain_id: 42161,
+                    ws_url: env::var("ARBITRUM_WS_URL").context("ARBITRUM_WS_URL not set")?,
+                    max_reconnect_attempts: 10,
+                    reconnect_delay_secs: 1,
+                },
+                ChainConfig {
+                    name: "Optimism".to_string(),
+                    chain_id: 10,
+                    ws_url: env::var("OPTIMISM_WS_URL").context("OPTIMISM_WS_URL not set")?,
+                    max_reconnect_attempts: 10,
+                    reconnect_delay_secs: 1,
+                },
+                ChainConfig {
+                    name: "Base".to_string(),
+                    chain_id: 8453,
+                    ws_url: env::var("BASE_WS_URL").context("BASE_WS_URL not set")?,
+                    max_reconnect_attempts: 10,
+                    reconnect_delay_secs: 1,
+                },
+            ],
+            _ => vec![
+                // Development/Staging: Focus on Sepolia for reliable demo
+                ChainConfig {
+                    name: "Sepolia Testnet".to_string(),
+                    chain_id: 11155111,
+                    ws_url: env::var("ETHEREUM_WS_URL").context("ETHEREUM_WS_URL not set")?,
+                    max_reconnect_attempts: 10,
+                    reconnect_delay_secs: 1,
+                },
+            ],
+        };
 
         Ok(IngestorConfig {
             chains,

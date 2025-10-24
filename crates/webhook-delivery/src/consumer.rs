@@ -6,37 +6,10 @@
 
 use anyhow::{Context, Result};
 use redis::AsyncCommands;
-use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
-use uuid::Uuid;
 
-/// Blockchain event data (matches StreamEvent from message-processor)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EventData {
-    pub chain_id: u64,
-    pub block_number: u64,
-    pub block_hash: String,
-    pub transaction_hash: String,
-    pub log_index: u32,
-    pub contract_address: String,
-    pub topics: Vec<String>,
-    pub data: String,
-    pub timestamp: i64,
-}
-
-/// Delivery job from message processor
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeliveryJob {
-    pub endpoint_id: Uuid,
-    pub application_id: Uuid,
-    pub url: String,
-    pub hmac_secret: String,
-    pub event: EventData,
-    pub attempt: u32,
-    pub max_retries: i32,
-    pub timeout_seconds: i32,
-    pub rate_limit_per_second: i32,
-}
+// Use shared types from common crate
+use ethhook_common::DeliveryJob;
 
 /// Redis Queue consumer for delivery jobs
 pub struct JobConsumer {

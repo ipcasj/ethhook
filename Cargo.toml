@@ -5,6 +5,7 @@ members = [
     "crates/message-processor",      # ✓ COMPLETE!
     "crates/webhook-delivery",       # ✓ COMPLETE!
     "crates/admin-api",              # ✓ COMPLETE!
+    "crates/leptos-portal",          # ✓ Frontend Portal
     
     # Foundation crates
     "crates/common",                 # ✓ COMPLETE!

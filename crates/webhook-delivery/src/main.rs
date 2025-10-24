@@ -46,6 +46,7 @@ mod circuit_breaker;
 mod config;
 mod consumer;
 mod delivery;
+mod metrics;
 mod retry;
 
 use circuit_breaker::CircuitBreakerManager;
@@ -96,6 +97,18 @@ async fn main() -> Result<()> {
         config.circuit_breaker_threshold,
         Duration::from_secs(config.circuit_breaker_timeout_secs),
     ));
+
+    // Start metrics server on port 9090
+    info!("📊 Starting metrics server on :9090...");
+    let metrics_handle = tokio::spawn(async move {
+        let app = axum::Router::new().route("/metrics", axum::routing::get(metrics_handler));
+
+        let addr = "0.0.0.0:9090";
+        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+        info!("✅ Metrics server listening on {}", addr);
+
+        axum::serve(listener, app).await.unwrap();
+    });
 
     // Create shutdown channel
     let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
@@ -223,6 +236,11 @@ async fn worker_loop(
 
         jobs_processed += 1;
 
+        // Record metrics: job consumed
+        metrics::JOBS_CONSUMED_TOTAL
+            .with_label_values(&[&worker_id.to_string()])
+            .inc();
+
         // Check circuit breaker
         if !circuit_breaker.should_allow_request(job.endpoint_id).await {
             warn!(
@@ -249,10 +267,31 @@ async fn worker_loop(
                         "[Worker {}] Failed to deliver webhook: {:?}. Continuing to next job...",
                         worker_id, e
                     );
+                    // Record metrics: delivery attempt failed
+                    metrics::DELIVERY_ATTEMPTS_TOTAL
+                        .with_label_values(&[&job.endpoint_id.to_string(), "false"])
+                        .inc();
                     // Break retry loop and move to next job
                     break;
                 }
             };
+
+            // Record metrics: delivery attempt
+            metrics::DELIVERY_ATTEMPTS_TOTAL
+                .with_label_values(&[&job.endpoint_id.to_string(), &result.success.to_string()])
+                .inc();
+
+            // Record metrics: delivery duration
+            metrics::DELIVERY_DURATION
+                .with_label_values(&[&job.endpoint_id.to_string()])
+                .observe(result.duration_ms as f64 / 1000.0);
+
+            // Record metrics: HTTP status code
+            if let Some(status) = result.status_code {
+                metrics::HTTP_RESPONSES_TOTAL
+                    .with_label_values(&[&status.to_string()])
+                    .inc();
+            }
 
             // Log to database
             if let Err(e) = delivery::log_delivery_attempt(
@@ -282,6 +321,11 @@ async fn worker_loop(
                 circuit_breaker.record_failure(job.endpoint_id).await;
 
                 if result.should_retry && attempt < max_attempts {
+                    // Record metrics: retry attempt
+                    metrics::RETRY_ATTEMPTS_TOTAL
+                        .with_label_values(&[&job.endpoint_id.to_string()])
+                        .inc();
+
                     // Calculate backoff
                     let backoff =
                         retry::calculate_backoff(attempt - 1, config.retry_base_delay_secs, 60);
@@ -311,4 +355,10 @@ async fn worker_loop(
     }
 
     Ok(())
+}
+
+/// Metrics endpoint handler
+async fn metrics_handler() -> Result<String, (axum::http::StatusCode, String)> {
+    metrics::render_metrics()
+        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }

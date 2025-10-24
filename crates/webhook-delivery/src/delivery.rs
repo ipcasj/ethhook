@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use crate::consumer::{DeliveryJob, EventData};
+use ethhook_common::{BlockchainEvent, DeliveryJob};
 
 /// Webhook delivery result
 #[derive(Debug, Clone)]
@@ -155,7 +155,7 @@ impl WebhookDelivery {
     }
 
     /// Build webhook payload from event data
-    fn build_payload(&self, event: &EventData) -> serde_json::Value {
+    fn build_payload(&self, event: &BlockchainEvent) -> serde_json::Value {
         json!({
             "chain_id": event.chain_id,
             "block_number": event.block_number,
@@ -174,19 +174,40 @@ impl WebhookDelivery {
 pub async fn log_delivery_attempt(
     pool: &sqlx::PgPool,
     endpoint_id: Uuid,
-    _event_tx_hash: &str,
-    _event_log_index: u32,
+    event_tx_hash: &str,
+    event_log_index: u32,
     result: &DeliveryResult,
 ) -> Result<()> {
-    // Note: We're not storing event in database for this demo
-    // In production, you might want to:
-    // 1. Insert event into events table (if not exists)
-    // 2. Insert delivery_attempt record
-    // For now, just log to database without foreign key constraint
+    // First, lookup the event_id from the events table using tx_hash and log_index
+    let event_id: Option<Uuid> = sqlx::query_scalar(
+        r#"
+        SELECT id FROM events 
+        WHERE transaction_hash = $1 AND log_index = $2
+        "#,
+    )
+    .bind(event_tx_hash)
+    .bind(event_log_index as i32)
+    .fetch_optional(pool)
+    .await
+    .context("Failed to lookup event_id")?;
 
+    // If event doesn't exist in database, we can't create delivery attempt
+    let event_id = match event_id {
+        Some(id) => id,
+        None => {
+            warn!(
+                "Cannot log delivery attempt: event not found (tx={}, log_index={})",
+                event_tx_hash, event_log_index
+            );
+            return Ok(()); // Not an error, just means event wasn't stored yet
+        }
+    };
+
+    // Insert delivery attempt with event_id
     sqlx::query(
         r#"
         INSERT INTO delivery_attempts (
+            event_id,
             endpoint_id,
             attempt_number,
             http_status_code,
@@ -195,9 +216,10 @@ pub async fn log_delivery_attempt(
             duration_ms,
             success,
             should_retry
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         "#,
     )
+    .bind(event_id)
     .bind(endpoint_id)
     .bind(1) // We don't track attempt number in DB for simplicity
     .bind(result.status_code.map(|c| c as i32))
@@ -211,8 +233,8 @@ pub async fn log_delivery_attempt(
     .context("Failed to log delivery attempt")?;
 
     debug!(
-        "Logged delivery attempt: endpoint={} success={}",
-        endpoint_id, result.success
+        "Logged delivery attempt: event_id={} endpoint={} success={}",
+        event_id, endpoint_id, result.success
     );
 
     Ok(())
@@ -233,7 +255,7 @@ mod tests {
     fn test_build_payload() {
         let delivery = WebhookDelivery::new(Duration::from_secs(30)).unwrap();
 
-        let event = EventData {
+        let event = BlockchainEvent {
             chain_id: 1,
             block_number: 18000000,
             block_hash: "0xabc123".to_string(),

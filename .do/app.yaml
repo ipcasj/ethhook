@@ -1,0 +1,97 @@
+# DigitalOcean App Platform Spec
+# See https://docs.digitalocean.com/products/app-platform/reference/app-spec/ for details
+
+name: ethhook-mvp
+services:
+  - name: admin-api
+    image: registry.digitalocean.com/${DO_REGISTRY}/admin-api:latest
+    environment_slug: docker
+    envs:
+      - key: DATABASE_URL
+        value: ${DATABASE_URL}
+      - key: REDIS_URL
+        value: ${REDIS_URL}
+      - key: JWT_SECRET
+        value: ${JWT_SECRET}
+      - key: CORS_ALLOWED_ORIGINS
+        value: ${CORS_ALLOWED_ORIGINS}
+      - key: RUST_LOG
+        value: info,ethhook=info,sqlx=warn
+    http_port: 3000
+    routes:
+      - path: /api
+
+  - name: event-ingestor
+    image: registry.digitalocean.com/${DO_REGISTRY}/event-ingestor:latest
+    environment_slug: docker
+    envs:
+      - key: SEPOLIA_RPC_WS
+        value: ${SEPOLIA_RPC_WS}
+      - key: SEPOLIA_RPC_HTTP
+        value: ${SEPOLIA_RPC_HTTP}
+      - key: ETHEREUM_WS_URL
+        value: ${ETHEREUM_WS_URL}
+      - key: REDIS_HOST
+        value: redis
+      - key: REDIS_PORT
+        value: 6379
+      - key: RUST_LOG
+        value: info,ethhook=info
+
+  - name: message-processor
+    image: registry.digitalocean.com/${DO_REGISTRY}/message-processor:latest
+    environment_slug: docker
+    envs:
+      - key: REDIS_HOST
+        value: redis
+      - key: REDIS_PORT
+        value: 6379
+      - key: CONSUMER_GROUP
+        value: message_processors
+      - key: CONSUMER_NAME
+        value: processor-1
+      - key: BATCH_SIZE
+        value: 100
+      - key: BLOCK_TIME_MS
+        value: 5000
+      - key: RUST_LOG
+        value: info,ethhook=info,sqlx=warn
+
+  - name: webhook-delivery
+    image: registry.digitalocean.com/${DO_REGISTRY}/webhook-delivery:latest
+    environment_slug: docker
+    envs:
+      - key: REDIS_HOST
+        value: redis
+      - key: REDIS_PORT
+        value: 6379
+      - key: WEBHOOK_TIMEOUT_SECONDS
+        value: 30
+      - key: WEBHOOK_MAX_RETRIES
+        value: 5
+      - key: WEBHOOK_WORKER_THREADS
+        value: 50
+      - key: RUST_LOG
+        value: info,ethhook=info,sqlx=warn
+
+  - name: leptos-portal
+    image: registry.digitalocean.com/${DO_REGISTRY}/leptos-portal:latest
+    environment_slug: docker
+    envs:
+      - key: API_URL
+        value: ${API_URL}
+    http_port: 80
+    routes:
+      - path: /
+
+static_sites:
+  - name: grafana-dashboard
+    git:
+      repo_clone_url: https://github.com/ipcasj/ethhook-grafana-dashboard.git
+      branch: main
+    build_command: ""
+    output_dir: "/"
+    routes:
+      - path: /grafana
+
+# Add managed databases and redis as needed
