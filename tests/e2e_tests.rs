@@ -98,7 +98,7 @@ async fn wait_for_service_ready(url: &str, timeout_secs: u64) -> bool {
 /// Helper: Get wait time multiplier for CI environments
 fn get_ci_wait_multiplier() -> u64 {
     if std::env::var("CI").is_ok() || std::env::var("GITHUB_ACTIONS").is_ok() {
-        3 // 3x longer waits in CI
+        5 // 5x longer waits in CI (GitHub Actions VMs are slower)
     } else {
         1 // Normal waits locally
     }

@@ -123,7 +123,7 @@ async fn test_user_registration_duplicate_email() {
 
     assert_eq!(response1.status(), StatusCode::OK);
 
-    // Second registration with same email - should fail
+    // Second registration with same email - should fail with 400 Bad Request
     let response2 = app
         .oneshot(
             Request::builder()
@@ -136,7 +136,7 @@ async fn test_user_registration_duplicate_email() {
         .await
         .unwrap();
 
-    assert_eq!(response2.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(response2.status(), StatusCode::BAD_REQUEST);
 
     cleanup_test_data(&pool, test_email).await;
 }

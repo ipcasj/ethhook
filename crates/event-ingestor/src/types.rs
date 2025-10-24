@@ -137,6 +137,7 @@ pub struct SubscriptionParams {
 /// }
 /// ```
 #[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)] // RPC request type for future use
 pub struct GetBlockRequest {
     pub jsonrpc: String,
     pub method: String,
@@ -190,6 +191,7 @@ pub struct Transaction {
 /// }
 /// ```
 #[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)] // RPC request type for future use
 pub struct GetReceiptRequest {
     pub jsonrpc: String,
     pub method: String,
