@@ -1,8 +1,14 @@
 name: DigitalOcean Deploy
 
+# Disabled: Enable this workflow when you're ready to deploy to DigitalOcean
+# and have configured the required secrets:
+# - DIGITALOCEAN_ACCESS_TOKEN
+# - DIGITALOCEAN_USERNAME
+# - DO_REGISTRY
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:  # Manual trigger only
+  # push:
+  #   branches: [ main ]
 
 jobs:
   build-and-deploy:

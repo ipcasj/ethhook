@@ -589,10 +589,41 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Write tests
-5. Run `cargo fmt` and `cargo clippy`
+5. **Run CI checks locally** (recommended before pushing):
+   ```bash
+   ./scripts/ci-check.sh
+   ```
+   This catches issues before they reach GitHub CI:
+   - Format check (`cargo fmt`)
+   - Clippy lints (all warnings as errors)
+   - Unit tests
+   - Build verification
+   - SQLX offline mode check
+   - Security audit
+   
+   See [CI_CD_PRECHECK_GUIDE.md](docs/CI_CD_PRECHECK_GUIDE.md) for details.
+
 6. Commit (`git commit -m 'Add amazing feature'`)
 7. Push (`git push origin feature/amazing-feature`)
 8. Open a Pull Request
+
+### Quick Fixes
+
+If CI checks fail:
+
+```bash
+# Fix formatting
+cargo fmt --all
+
+# Auto-fix clippy warnings
+cargo clippy --fix --allow-dirty --allow-staged
+
+# Run tests
+cargo test --workspace
+
+# Regenerate SQLX cache (if queries changed)
+cargo sqlx prepare --workspace
+```
 
 ## 📜 License
 

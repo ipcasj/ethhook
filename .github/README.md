@@ -94,40 +94,6 @@ cargo install cargo-audit
 cargo audit
 ```
 
-## CI Status Badges
-
-✅ **Already added to main README.md:**
-
-- CI workflow badge (shows build status)
-- Optional: Codecov badge (requires Codecov account setup)
-
-```markdown
-![CI](https://github.com/ipcasj/ethhook/workflows/CI/badge.svg)
-[![codecov](https://codecov.io/gh/ipcasj/ethhook/branch/main/graph/badge.svg)](https://codecov.io/gh/ipcasj/ethhook)
-```
-
-## Workflow Triggers
-
-### CI Workflow
-
-```yaml
-# Runs on:
-- Push to main or develop
-- Pull requests to main or develop
-- Manual trigger via workflow_dispatch
-```
-
-### Release Workflow
-
-```yaml
-# Runs on:
-- Git tags matching v*.*.* (e.g., v1.0.0, v1.2.3)
-
-# To create a release:
-git tag v1.0.0
-git push origin v1.0.0
-```
-
 ## Troubleshooting
 
 ### "SQLX_OFFLINE but no cached data"

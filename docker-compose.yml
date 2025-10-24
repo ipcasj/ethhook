@@ -168,6 +168,27 @@ services:
     depends_on:
       - postgres
 
+  demo-webhook-receiver:
+    build:
+      context: ./demo-webhook-receiver
+      dockerfile: Dockerfile
+    container_name: ethhook-demo-receiver
+    env_file: .env
+    environment:
+      - PORT=8000
+      - HMAC_SECRET=${HMAC_SECRET:-change-this-in-production}
+    ports:
+      - "8000:8000"
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 networks:
   ethhook-network:
     driver: bridge
