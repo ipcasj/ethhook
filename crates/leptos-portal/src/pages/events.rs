@@ -188,7 +188,7 @@ pub fn EventsPage() -> impl IntoView {
     };
 
     // Format the event data for display
-    let format_data = move |data: &str| -> String {
+    let _format_data = move |data: &str| -> String {
         if data.len() <= 20 {
             data.to_string()
         } else {

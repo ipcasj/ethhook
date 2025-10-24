@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Frontend utilities - not all used yet
+
 pub fn format_date(date_str: &str) -> String {
     // In a production app, you might want to use a date formatting library
     // This is a simple implementation that handles ISO strings like "2023-04-15T12:34:56Z"

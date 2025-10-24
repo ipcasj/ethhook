@@ -146,6 +146,7 @@ pub struct GetBlockRequest {
 
 /// RPC response for eth_getBlockByNumber
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // JSON-RPC response fields
 pub struct BlockResponse {
     pub jsonrpc: String,
     pub id: u64,
@@ -198,6 +199,7 @@ pub struct GetReceiptRequest {
 
 /// RPC response for eth_getTransactionReceipt
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // JSON-RPC response fields
 pub struct ReceiptResponse {
     pub jsonrpc: String,
     pub id: u64,

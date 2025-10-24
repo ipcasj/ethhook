@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Frontend is under development, not all API functions are used yet
+
 use crate::auth;
 use gloo_net::http::{Request, Response};
 use serde::{Deserialize, Serialize};
@@ -72,6 +74,7 @@ pub async fn register(
     handle_response(response).await
 }
 
+#[allow(dead_code)]
 pub async fn get_profile() -> Result<UserInfo, String> {
     let token = auth::get_token().ok_or("Not authenticated")?;
 

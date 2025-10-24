@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Component under development
+
 use leptos::*;
 
 /// Popular Sepolia events with real-world data

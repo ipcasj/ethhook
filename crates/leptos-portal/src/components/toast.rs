@@ -1,3 +1,5 @@
+#![allow(dead_code)] // Toast variants for future use
+
 use leptos::*;
 use std::time::Duration;
 

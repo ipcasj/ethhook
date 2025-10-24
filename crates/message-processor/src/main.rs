@@ -129,7 +129,7 @@ async fn main() -> Result<()> {
 
     // Start metrics server on port 9090
     info!("📊 Starting metrics server on :9090...");
-    let metrics_handle = tokio::spawn(async move {
+    let _metrics_handle = tokio::spawn(async move {
         let app = axum::Router::new().route("/metrics", axum::routing::get(metrics_handler));
 
         let addr = "0.0.0.0:9090";
@@ -235,6 +235,7 @@ async fn main() -> Result<()> {
 }
 
 /// Process events from a single stream
+#[allow(clippy::too_many_arguments)]
 async fn process_stream_loop(
     stream_name: &str,
     consumer: Arc<Mutex<StreamConsumer>>,
