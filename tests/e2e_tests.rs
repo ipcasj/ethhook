@@ -565,13 +565,9 @@ async fn test_full_pipeline_with_mock_ethereum() {
         .execute(&pool)
         .await;
 
-    // Flush entire Redis database for clean test state
-    let _: () = redis::cmd("FLUSHDB")
-        .query_async(&mut redis)
-        .await
-        .expect("Failed to flush Redis");
-
-    println!("✓ Cleared test data and flushed Redis");
+    // NOTE: We don't FLUSHDB here because tests run in parallel and would destroy
+    // other tests' consumer groups. Instead, use targeted cleanup with clear_redis_streams.
+    println!("✓ Cleared test data from PostgreSQL");
     let _ = sqlx::query("DELETE FROM users WHERE email LIKE 'test-fullpipeline-%'")
         .execute(&pool)
         .await;
@@ -822,14 +818,10 @@ async fn test_consumer_group_acknowledgment() {
         .execute(&pool)
         .await;
 
-    // Flush Redis for clean state
-    let _: () = redis::cmd("FLUSHDB")
-        .query_async(&mut redis)
-        .await
-        .expect("Failed to flush Redis");
-
+    // NOTE: We don't FLUSHDB here because tests run in parallel and would destroy
+    // other tests' consumer groups. Instead, use targeted cleanup with clear_redis_streams.
     clear_redis_streams(&mut redis).await;
-    println!("✓ Cleared test data and flushed Redis");
+    println!("✓ Cleared test data from PostgreSQL and Redis streams");
 
     // Create test data
     let user_id = create_test_user(&pool, "consumergroup").await;
@@ -1020,13 +1012,10 @@ async fn test_service_recovery_with_consumer_groups() {
         .await;
 
     // Flush Redis for clean state
-    let _: () = redis::cmd("FLUSHDB")
-        .query_async(&mut redis)
-        .await
-        .expect("Failed to flush Redis");
-
+    // NOTE: We don't FLUSHDB here because tests run in parallel and would destroy
+    // other tests' consumer groups. Instead, use targeted cleanup with clear_redis_streams.
     clear_redis_streams(&mut redis).await;
-    println!("✓ Cleared test data and flushed Redis");
+    println!("✓ Cleared test data from PostgreSQL and Redis streams");
 
     // Create test data
     let user_id = create_test_user(&pool, "servicerecovery").await;
