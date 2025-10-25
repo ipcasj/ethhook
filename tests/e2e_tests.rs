@@ -281,12 +281,13 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Created test user, app, and endpoint: {endpoint_id}");
 
-    // Configure mock webhook to accept POST requests
-    // Use .expect(0..) to allow 0+ requests (disables automatic verification on drop)
+    // Configure mock webhook server to accept any POST requests
+    // Note: We don't use Mock expectations because WireMock verifies on drop
+    // Instead, we manually check received_requests() after webhook delivery
     Mock::given(method("POST"))
         .and(path("/webhook"))
         .respond_with(ResponseTemplate::new(200).set_body_string("Webhook received"))
-        .expect(0..)
+        .up_to_n_times(999) // Accept unlimited requests, no verification needed
         .mount(&mock_server)
         .await;
 
@@ -586,12 +587,13 @@ async fn test_full_pipeline_with_mock_ethereum() {
 
     println!("✓ Created test user, app, and endpoint: {endpoint_id}");
 
-    // Configure mock webhook to accept POST requests
-    // Use .expect(0..) to allow 0+ requests (disables automatic verification on drop)
+    // Configure mock webhook server to accept any POST requests
+    // Note: We don't use Mock expectations because WireMock verifies on drop
+    // Instead, we manually check received_requests() after webhook delivery
     Mock::given(method("POST"))
         .and(path("/webhook"))
         .respond_with(ResponseTemplate::new(200).set_body_string("Webhook received"))
-        .expect(0..)
+        .up_to_n_times(999) // Accept unlimited requests, no verification needed
         .mount(&mock_server)
         .await;
 
