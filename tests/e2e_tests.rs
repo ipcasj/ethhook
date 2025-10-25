@@ -32,6 +32,7 @@
 
 use chrono::Utc;
 use redis::RedisError;
+use serial_test::serial;
 use sqlx::PgPool;
 use std::process::{Child, Command};
 use std::time::{Duration, Instant};
@@ -43,6 +44,22 @@ use wiremock::{
 };
 
 mod mock_eth_rpc;
+
+/// E2E Test Configuration
+/// 
+/// Uses fixed ports and URLs to ensure predictable behavior across test runs.
+/// This prevents issues with random port assignments causing cross-test contamination
+/// when tests share the PostgreSQL database.
+mod test_config {
+    /// Fixed port for WireMock webhook receiver in E2E tests
+    /// This ensures all tests use the same port, preventing database cross-contamination
+    pub const MOCK_WEBHOOK_PORT: u16 = 9876;
+    
+    /// Mock webhook URL that all E2E tests will use
+    pub fn mock_webhook_url() -> String {
+        format!("http://127.0.0.1:{}/webhook", MOCK_WEBHOOK_PORT)
+    }
+}
 
 /// Helper: Start a service and return handle
 fn start_service(
@@ -76,6 +93,9 @@ fn stop_service(mut child: Child, name: &str) {
     println!("🛑 Stopping {name} service...");
     let _ = child.kill();
     let _ = child.wait();
+    // Give the OS time to release ports
+    std::thread::sleep(Duration::from_millis(500));
+    println!("✓ {name} service stopped");
 }
 
 /// Helper: Wait for service to be ready (check health endpoint or port)
@@ -98,7 +118,7 @@ async fn wait_for_service_ready(url: &str, timeout_secs: u64) -> bool {
 /// Helper: Get wait time multiplier for CI environments
 fn get_ci_wait_multiplier() -> u64 {
     if std::env::var("CI").is_ok() || std::env::var("GITHUB_ACTIONS").is_ok() {
-        5 // 5x longer waits in CI (GitHub Actions VMs are slower)
+        2 // 2x longer waits in CI (reduced from 5x for faster tests)
     } else {
         1 // Normal waits locally
     }
@@ -224,15 +244,32 @@ async fn cleanup_test_data(pool: &PgPool, user_id: Uuid) {
 
 /// Helper: Clear Redis streams
 async fn clear_redis_streams(redis: &mut redis::aio::MultiplexedConnection) {
-    let _: Result<(), RedisError> = redis::cmd("DEL")
-        .arg("raw-events")
-        .arg("delivery-queue")
-        .query_async(redis)
-        .await;
+    // Clear messages from streams without deleting the streams themselves
+    // This preserves consumer groups which are deleted if streams are DEL'd
+    let streams = vec![
+        "raw-events",
+        "delivery-queue",
+        "events:1",        // Ethereum mainnet (used by tests)
+        "events:11155111", // Sepolia testnet
+        "events:42161",    // Arbitrum
+        "events:10",       // Optimism
+        "events:8453",     // Base
+    ];
+    
+    for stream in streams {
+        // XTRIM with MAXLEN 0 removes all messages but keeps the stream and consumer groups
+        let _: Result<(), RedisError> = redis::cmd("XTRIM")
+            .arg(stream)
+            .arg("MAXLEN")
+            .arg(0)
+            .query_async(redis)
+            .await;
+    }
 }
 
 #[tokio::test]
 #[ignore] // Requires all services to be built and infrastructure running
+#[serial]
 async fn test_real_e2e_full_pipeline() {
     println!("\n🚀 Starting REAL E2E Pipeline Test");
     println!("=====================================\n");
@@ -256,9 +293,13 @@ async fn test_real_e2e_full_pipeline() {
 
     clear_redis_streams(&mut redis).await;
 
-    // Setup mock webhook server
-    let mock_server = MockServer::start().await;
-    let webhook_url = format!("{}/webhook", mock_server.uri());
+    // Setup mock webhook server on fixed port
+    // Using fixed port prevents database cross-contamination when tests share PostgreSQL
+    let mock_server = MockServer::builder()
+        .listener(std::net::TcpListener::bind(format!("127.0.0.1:{}", test_config::MOCK_WEBHOOK_PORT)).unwrap())
+        .start()
+        .await;
+    let webhook_url = test_config::mock_webhook_url();
 
     println!("✓ Mock webhook server started at: {webhook_url}");
 
@@ -434,6 +475,7 @@ async fn test_real_e2e_full_pipeline() {
 
 #[tokio::test]
 #[ignore]
+#[serial]
 async fn test_real_e2e_redis_stream_consumption() {
     println!("\n🚀 Testing Redis Stream Consumption");
     println!("======================================\n");
@@ -544,6 +586,7 @@ async fn test_real_e2e_redis_stream_consumption() {
 
 #[tokio::test]
 #[ignore] // Requires all services to be built
+#[serial]
 async fn test_full_pipeline_with_mock_ethereum() {
     println!("\n🚀 Starting Full E2E Pipeline Test (with Mock Ethereum RPC)");
     println!("================================================================\n");
@@ -578,9 +621,13 @@ async fn test_full_pipeline_with_mock_ethereum() {
 
     clear_redis_streams(&mut redis).await;
 
-    // Setup mock webhook server
-    let mock_server = MockServer::start().await;
-    let webhook_url = format!("{}/webhook", mock_server.uri());
+    // Setup mock webhook server on fixed port
+    // Using fixed port prevents database cross-contamination when tests share PostgreSQL
+    let mock_server = MockServer::builder()
+        .listener(std::net::TcpListener::bind(format!("127.0.0.1:{}", test_config::MOCK_WEBHOOK_PORT)).unwrap())
+        .start()
+        .await;
+    let webhook_url = test_config::mock_webhook_url();
 
     println!("✓ Mock webhook server started at: {webhook_url}");
 
@@ -801,6 +848,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
 
 #[tokio::test]
 #[ignore] // Requires all services to be built
+#[serial]
 async fn test_consumer_group_acknowledgment() {
     println!("\n🚀 Starting Consumer Group E2E Test");
     println!("===============================================\n");
@@ -842,7 +890,7 @@ async fn test_consumer_group_acknowledgment() {
     let _endpoint_id = create_test_endpoint(
         &pool,
         app_id,
-        "http://localhost:9999/webhook".to_string(),
+        test_config::mock_webhook_url(),
         Some(usdc_address),
         Some(vec![transfer_topic.to_string()]),
         "ConsumerGroup",
@@ -861,6 +909,8 @@ async fn test_consumer_group_acknowledgment() {
         ("REDIS_URL", "redis://localhost:6379"),
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
+        ("ENVIRONMENT", "production"),  // Use production chains including events:1
+        ("METRICS_PORT", "9091"),  // Use unique port to avoid conflicts
         ("RUST_LOG", "info,ethhook_message_processor=debug"),
     ];
 
@@ -870,7 +920,7 @@ async fn test_consumer_group_acknowledgment() {
 
     // Wait for service to initialize
     println!("⏳ Waiting for Message Processor to initialize...");
-    ci_sleep(3).await;
+    ci_sleep(2).await;
 
     // Now publish events (after consumer group is ready)
     println!("\n📤 Publishing 5 test events to events:1 stream...");
@@ -917,9 +967,9 @@ async fn test_consumer_group_acknowledgment() {
     println!("✓ Stream events:1 contains {stream_len} events");
     assert_eq!(stream_len, 5, "Should have 5 events in stream");
 
-    // Wait for processing (need enough time for 5 events with 5-second XREADGROUP blocks)
+    // Wait for processing (XREADGROUP has 5-second block time)
     println!("⏳ Waiting for Message Processor to process all events...");
-    ci_sleep(12).await;
+    ci_sleep(6).await;
 
     println!("\n🔍 Checking consumer group state...");
 
@@ -993,6 +1043,7 @@ async fn test_consumer_group_acknowledgment() {
 
 #[tokio::test]
 #[ignore] // Requires all services to be built
+#[serial]
 async fn test_service_recovery_with_consumer_groups() {
     println!("\n🚀 Starting Service Recovery E2E Test");
     println!("==============================================\n");
@@ -1036,7 +1087,7 @@ async fn test_service_recovery_with_consumer_groups() {
     let _endpoint_id = create_test_endpoint(
         &pool,
         app_id,
-        "http://localhost:9999/webhook".to_string(),
+        test_config::mock_webhook_url(),
         Some(usdc_address),
         Some(vec![transfer_topic.to_string()]),
         "ServiceRecovery",
@@ -1056,6 +1107,8 @@ async fn test_service_recovery_with_consumer_groups() {
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
         ("CONSUMER_NAME", "test-recovery-consumer"), // Use same consumer name for both instances
+        ("ENVIRONMENT", "production"),  // Use production chains including events:1
+        ("METRICS_PORT", "9092"),  // Use unique port to avoid conflicts
         ("RUST_LOG", "info,ethhook_message_processor=debug"),
     ];
 
@@ -1068,7 +1121,7 @@ async fn test_service_recovery_with_consumer_groups() {
 
     // Wait for service to initialize
     println!("⏳ Waiting for Message Processor to initialize...");
-    ci_sleep(3).await;
+    ci_sleep(2).await;
 
     // Publish 10 test events
     println!("\n📤 Publishing 10 test events to events:1 stream...");
@@ -1202,7 +1255,7 @@ async fn test_service_recovery_with_consumer_groups() {
 
     // Wait for it to process remaining messages
     println!("⏳ Waiting for recovery and processing...");
-    ci_sleep(12).await;
+    ci_sleep(6).await;
 
     // Check final state
     println!("\n🔍 Checking final state after recovery...");
