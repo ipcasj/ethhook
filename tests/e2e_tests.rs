@@ -293,6 +293,18 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Mock webhook configured to accept requests");
 
+    // Pre-create consumer group to avoid race condition
+    println!("\n🔧 Pre-creating Redis consumer groups...");
+    let _: Result<String, _> = redis::cmd("XGROUP")
+        .arg("CREATE")
+        .arg("events:1")
+        .arg("message_processors")
+        .arg("$")
+        .arg("MKSTREAM")
+        .query_async(&mut redis)
+        .await;
+    println!("✓ Consumer group 'message_processors' ready for events:1");
+
     // Start services (skip Event Ingestor - requires real Ethereum connection)
     let start_time = Instant::now();
 
@@ -599,6 +611,18 @@ async fn test_full_pipeline_with_mock_ethereum() {
         .await;
 
     println!("✓ Mock webhook configured to accept requests");
+
+    // Pre-create consumer groups to avoid race condition with Event Ingestor
+    println!("\n🔧 Pre-creating Redis consumer groups...");
+    let _: Result<String, _> = redis::cmd("XGROUP")
+        .arg("CREATE")
+        .arg("events:1")
+        .arg("message_processors")
+        .arg("$")
+        .arg("MKSTREAM")
+        .query_async(&mut redis)
+        .await;
+    println!("✓ Consumer group 'message_processors' ready for events:1");
 
     // Start services with mock RPC URL
     let start_time = Instant::now();
