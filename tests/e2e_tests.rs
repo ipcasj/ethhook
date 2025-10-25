@@ -242,13 +242,12 @@ async fn cleanup_test_data(pool: &PgPool, user_id: Uuid) {
         .await;
 }
 
-/// Helper: Clear Redis streams
+/// Helper: Clear Redis streams and lists between tests
 async fn clear_redis_streams(redis: &mut redis::aio::MultiplexedConnection) {
     // Clear messages from streams without deleting the streams themselves
     // This preserves consumer groups which are deleted if streams are DEL'd
     let streams = vec![
         "raw-events",
-        "delivery-queue",
         "events:1",        // Ethereum mainnet (used by tests)
         "events:11155111", // Sepolia testnet
         "events:42161",    // Arbitrum
@@ -265,6 +264,12 @@ async fn clear_redis_streams(redis: &mut redis::aio::MultiplexedConnection) {
             .query_async(redis)
             .await;
     }
+    
+    // Clear delivery_queue LIST (not a stream, so use DEL)
+    let _: Result<(), RedisError> = redis::cmd("DEL")
+        .arg("delivery_queue")
+        .query_async(redis)
+        .await;
 }
 
 #[tokio::test]
