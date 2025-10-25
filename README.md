@@ -1,3 +1,5 @@
+<!-- CI Trigger -->
+
 ## 🌐 Custom Domain Setup (DigitalOcean)
 
 To use a real project domain (e.g., `ethhook.io`) on DigitalOcean App Platform:
@@ -68,7 +70,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design.
 
 ### Local Development
 
-```bash
+   ```bash
 # Clone the repository
 git clone https://github.com/ipcasj/ethhook.git
 cd ethhook
@@ -98,7 +100,6 @@ cargo watch -x 'run --bin admin-api'
 ```bash
 docker compose up -d
 ```
-
 
 ## 🌐 MVP Demo & Monitoring
 
@@ -188,7 +189,6 @@ cargo tarpaulin --out Html
 ```
 
 See [E2E Test Documentation](tests/README.md) for details on integration testing.
-
 
 ## 📊 Monitoring
 
