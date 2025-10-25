@@ -93,8 +93,9 @@ fn stop_service(mut child: Child, name: &str) {
     println!("🛑 Stopping {name} service...");
     let _ = child.kill();
     let _ = child.wait();
-    // Give the OS time to release ports
-    std::thread::sleep(Duration::from_millis(500));
+    // Give the OS time to release ports and clean up resources
+    // Webhook delivery has 50 workers, so needs extra time
+    std::thread::sleep(Duration::from_secs(2));
     println!("✓ {name} service stopped");
 }
 
