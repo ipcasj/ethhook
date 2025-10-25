@@ -366,6 +366,7 @@ async fn test_real_e2e_full_pipeline() {
         ("REDIS_PORT", "6379"),
         ("RUST_LOG", "info,ethhook=debug"),
         ("ENVIRONMENT", "production"), // Use production config to watch chain ID 1
+        ("DELIVERY_METRICS_PORT", "9093"), // Unique metrics port for webhook-delivery
     ];
 
     println!("\n📦 Starting services...");
@@ -705,6 +706,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
         ("ARBITRUM_WS_URL", "ws://dummy:9999"),
         ("OPTIMISM_WS_URL", "ws://dummy:9999"),
         ("BASE_WS_URL", "ws://dummy:9999"),
+        ("DELIVERY_METRICS_PORT", "9094"), // Unique metrics port for webhook-delivery
     ];
 
     println!("\n📦 Starting all services...");

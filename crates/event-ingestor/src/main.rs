@@ -103,7 +103,7 @@ async fn main() -> Result<()> {
     // This starts an HTTP server on :9090/metrics for Prometheus to scrape
     let metrics_port = config.metrics_port;
     let metrics_shutdown = shutdown_tx.subscribe();
-    let mut metrics_handle = tokio::spawn(async move {
+    let _metrics_handle = tokio::spawn(async move {
         if let Err(e) = metrics::start_metrics_server(metrics_port, metrics_shutdown).await {
             warn!("Metrics server failed: {}", e);
         }
@@ -127,16 +127,14 @@ async fn main() -> Result<()> {
     info!("✅ Event Ingestor is running");
     info!("   - Press Ctrl+C to shutdown gracefully");
 
-    // Wait for shutdown signal (Ctrl+C or SIGTERM)
+    // Wait for shutdown signal (Ctrl+C or SIGTERM) or ingestion failure
+    // Note: We don't wait for metrics_handle because metrics server failures should not stop event ingestion
     let shutdown_reason = tokio::select! {
         _ = signal::ctrl_c() => {
             "Received Ctrl+C signal"
         }
         _ = &mut ingestion_handle => {
             "Ingestion stopped unexpectedly"
-        }
-        _ = &mut metrics_handle => {
-            "Metrics server stopped unexpectedly"
         }
     };
 
@@ -150,8 +148,7 @@ async fn main() -> Result<()> {
     // Shutdown ingestion manager
     manager.shutdown().await?;
 
-    // Wait for metrics server to finish (with timeout)
-    let _ = tokio::time::timeout(std::time::Duration::from_secs(10), metrics_handle).await;
+    // Note: Metrics server will receive shutdown signal via broadcast channel
 
     info!("👋 Event Ingestor stopped");
     Ok(())

@@ -98,16 +98,26 @@ async fn main() -> Result<()> {
         Duration::from_secs(config.circuit_breaker_timeout_secs),
     ));
 
-    // Start metrics server on port 9090
-    info!("📊 Starting metrics server on :9090...");
+    // Start metrics server (configurable port via DELIVERY_METRICS_PORT env var)
+    let metrics_port = std::env::var("DELIVERY_METRICS_PORT")
+        .unwrap_or_else(|_| "9090".to_string());
+    let metrics_addr = format!("0.0.0.0:{}", metrics_port);
+    
+    info!("📊 Starting metrics server on {}...", metrics_addr);
     let _metrics_handle = tokio::spawn(async move {
         let app = axum::Router::new().route("/metrics", axum::routing::get(metrics_handler));
 
-        let addr = "0.0.0.0:9090";
-        let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-        info!("✅ Metrics server listening on {}", addr);
-
-        axum::serve(listener, app).await.unwrap();
+        match tokio::net::TcpListener::bind(&metrics_addr).await {
+            Ok(listener) => {
+                info!("✅ Metrics server listening on {}", metrics_addr);
+                if let Err(e) = axum::serve(listener, app).await {
+                    warn!("⚠️  Metrics server error: {}", e);
+                }
+            }
+            Err(e) => {
+                warn!("⚠️  Failed to bind metrics server to {}: {}. Metrics will be unavailable.", metrics_addr, e);
+            }
+        }
     });
 
     // Create shutdown channel
