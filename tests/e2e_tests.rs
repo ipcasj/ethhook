@@ -262,6 +262,10 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Mock webhook server started at: {webhook_url}");
 
+    // Wait for mock server to be fully ready to accept connections
+    // Without this, the first webhook delivery attempts may fail with connection refused
+    ci_sleep(1).await;
+
     // Create test data
     let user_id = create_test_user(&pool, "realpipeline").await;
     let app_id = create_test_application(&pool, user_id, "RealPipeline").await;
@@ -579,6 +583,10 @@ async fn test_full_pipeline_with_mock_ethereum() {
     let webhook_url = format!("{}/webhook", mock_server.uri());
 
     println!("✓ Mock webhook server started at: {webhook_url}");
+
+    // Wait for mock server to be fully ready to accept connections
+    // Without this, the first webhook delivery attempts may fail with connection refused
+    ci_sleep(1).await;
 
     // Create test data
     let user_id = create_test_user(&pool, "fullpipeline").await;
