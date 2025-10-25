@@ -305,6 +305,7 @@ async fn test_real_e2e_full_pipeline() {
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
         ("RUST_LOG", "info,ethhook=debug"),
+        ("ENVIRONMENT", "production"), // Use production config to watch chain ID 1
     ];
 
     println!("\n📦 Starting services...");
@@ -334,11 +335,12 @@ async fn test_real_e2e_full_pipeline() {
 
     // Publish event to events:1 stream (simulating Event Ingestor output)
     // We skip the Event Ingestor since it requires real Ethereum connection
+    // Using chain ID 1 (Ethereum mainnet) which works with ENVIRONMENT=production
     let event_id: String = redis::cmd("XADD")
         .arg("events:1")
         .arg("*")
         .arg("chain_id")
-        .arg("1")
+        .arg("1") // Ethereum mainnet - matches production config
         .arg("block_number")
         .arg("18000000")
         .arg("block_hash")
@@ -617,6 +619,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
             "debug,event_ingestor=trace,ethhook_message_processor=trace,webhook_delivery=trace",
         ), // Trace level for all services
         ("ETHEREUM_WS_URL", mock_rpc_url.as_str()), // Point to mock RPC for Ethereum
+        ("ENVIRONMENT", "production"), // Use production config to watch chain ID 1
         // Set dummy URLs for other chains (Event Ingestor requires all 4)
         ("ARBITRUM_WS_URL", "ws://dummy:9999"),
         ("OPTIMISM_WS_URL", "ws://dummy:9999"),
