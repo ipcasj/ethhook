@@ -293,17 +293,20 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Mock webhook configured to accept requests");
 
-    // Pre-create consumer group to avoid race condition
-    println!("\n🔧 Pre-creating Redis consumer groups...");
-    let _: Result<String, _> = redis::cmd("XGROUP")
-        .arg("CREATE")
-        .arg("events:1")
-        .arg("message_processors")
-        .arg("$")
-        .arg("MKSTREAM")
-        .query_async(&mut redis)
-        .await;
-    println!("✓ Consumer group 'message_processors' ready for events:1");
+    // Pre-create consumer groups for all production chains to avoid race condition
+    // With ENVIRONMENT=production, Message Processor watches: events:1, events:42161, events:10, events:8453
+    println!("\n🔧 Pre-creating Redis consumer groups for all production chains...");
+    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
+        let _: Result<String, _> = redis::cmd("XGROUP")
+            .arg("CREATE")
+            .arg(stream)
+            .arg("message_processors")
+            .arg("$")
+            .arg("MKSTREAM")
+            .query_async(&mut redis)
+            .await;
+    }
+    println!("✓ Consumer groups ready for all production chains");
 
     // Start services (skip Event Ingestor - requires real Ethereum connection)
     let start_time = Instant::now();
@@ -612,17 +615,20 @@ async fn test_full_pipeline_with_mock_ethereum() {
 
     println!("✓ Mock webhook configured to accept requests");
 
-    // Pre-create consumer groups to avoid race condition with Event Ingestor
-    println!("\n🔧 Pre-creating Redis consumer groups...");
-    let _: Result<String, _> = redis::cmd("XGROUP")
-        .arg("CREATE")
-        .arg("events:1")
-        .arg("message_processors")
-        .arg("$")
-        .arg("MKSTREAM")
-        .query_async(&mut redis)
-        .await;
-    println!("✓ Consumer group 'message_processors' ready for events:1");
+    // Pre-create consumer groups for all production chains to avoid race condition
+    // With ENVIRONMENT=production, Message Processor watches: events:1, events:42161, events:10, events:8453
+    println!("\n🔧 Pre-creating Redis consumer groups for all production chains...");
+    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
+        let _: Result<String, _> = redis::cmd("XGROUP")
+            .arg("CREATE")
+            .arg(stream)
+            .arg("message_processors")
+            .arg("$")
+            .arg("MKSTREAM")
+            .query_async(&mut redis)
+            .await;
+    }
+    println!("✓ Consumer groups ready for all production chains");
 
     // Start services with mock RPC URL
     let start_time = Instant::now();
