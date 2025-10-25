@@ -368,7 +368,6 @@ async fn test_real_e2e_full_pipeline() {
     // Wait for processing with polling (up to 60 seconds in CI, 12 seconds locally)
     let poll_start = Instant::now();
     let timeout = Duration::from_secs(12 * get_ci_wait_multiplier());
-    
     let mut webhook_delivered = false;
     while poll_start.elapsed() < timeout {
         // Check if webhook was received via mock server's request count
@@ -663,7 +662,6 @@ async fn test_full_pipeline_with_mock_ethereum() {
     // Wait for the full pipeline to process with polling (up to 75 seconds in CI, 15 seconds locally)
     let poll_start = Instant::now();
     let timeout = Duration::from_secs(15 * get_ci_wait_multiplier());
-    
     let mut webhook_delivered = false;
     while poll_start.elapsed() < timeout {
         // Check if webhook was received via mock server's request count
