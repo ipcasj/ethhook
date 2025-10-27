@@ -927,6 +927,7 @@ name = "ethhook-event-ingestor"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "chrono",
  "dotenvy",
  "ethhook-common",
@@ -954,6 +955,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "chrono",
  "dotenvy",
  "ethhook-common",
  "hostname",

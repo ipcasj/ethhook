@@ -100,7 +100,7 @@ fn stop_service(mut child: Child, name: &str) {
 }
 
 /// Helper: Wait for service to be ready via Redis readiness key
-/// This is enterprise-grade synchronization - no sleep timers!
+/// DEPRECATED: Use wait_for_http_readiness() instead (HTTP health checks)
 async fn wait_for_service_ready_via_redis(
     redis: &mut redis::aio::MultiplexedConnection,
     service_name: &str,
@@ -109,7 +109,7 @@ async fn wait_for_service_ready_via_redis(
     let start = Instant::now();
     let key = format!("{}:ready", service_name);
 
-    println!("⏳ Waiting for {} to signal readiness...", service_name);
+    println!("⏳ [DEPRECATED] Waiting for {} to signal readiness via Redis...", service_name);
 
     while start.elapsed().as_secs() < timeout_secs {
         let result: Result<String, _> = redis::cmd("GET")
@@ -132,6 +132,48 @@ async fn wait_for_service_ready_via_redis(
         service_name, timeout_secs
     ))
 }
+
+/// Helper: Wait for service readiness via HTTP health check (ENTERPRISE PATTERN)
+/// This is the industry-standard approach used by Kubernetes, ECS, Cloud Run, etc.
+async fn wait_for_http_readiness(
+    url: &str,
+    timeout_secs: u64,
+) -> Result<(), String> {
+    let client = reqwest::Client::new();
+    let start = Instant::now();
+    
+    println!("⏳ Waiting for service to become ready: {}", url);
+    
+    while start.elapsed().as_secs() < timeout_secs {
+        match client.get(url).send().await {
+            Ok(resp) if resp.status() == reqwest::StatusCode::OK => {
+                println!("✅ Service ready!");
+                return Ok(());
+            }
+            Ok(resp) if resp.status() == reqwest::StatusCode::SERVICE_UNAVAILABLE => {
+                // Service alive but not ready yet - expected during startup
+                if let Ok(body) = resp.text().await {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
+                        if let Some(msg) = json.get("message").and_then(|m| m.as_str()) {
+                            println!("   ⏳ Still initializing: {}", msg);
+                        }
+                    }
+                }
+            }
+            Ok(resp) => {
+                println!("   ⚠️  Unexpected status: {}", resp.status());
+            }
+            Err(_) => {
+                // Service not listening yet - expected during early startup
+            }
+        }
+        
+        sleep(Duration::from_millis(100)).await;
+    }
+    
+    Err(format!("Service did not become ready within {}s: {}", timeout_secs, url))
+}
+
 
 /// Helper: Wait for service to be ready (check health endpoint or port)
 #[allow(dead_code)]
@@ -428,24 +470,34 @@ async fn test_real_e2e_full_pipeline() {
     println!("\n📦 Starting services...");
 
     // Start Message Processor
+    let mut env_vars_processor = env_vars.clone();
+    env_vars_processor.push(("PROCESSOR_HEALTH_PORT", "8081"));
     let message_processor = start_service(
         "Message Processor",
         "ethhook-message-processor",
-        env_vars.clone(),
+        env_vars_processor,
     )
     .expect("Failed to start Message Processor");
-    ci_sleep(3).await;
+    
+    wait_for_http_readiness("http://localhost:8081/ready", 10)
+        .await
+        .expect("Message Processor failed to become ready");
 
     // Start Webhook Delivery
+    let mut env_vars_delivery = env_vars.clone();
+    env_vars_delivery.push(("DELIVERY_HEALTH_PORT", "8080"));
     let webhook_delivery = start_service(
         "Webhook Delivery",
         "ethhook-webhook-delivery",
-        env_vars.clone(),
+        env_vars_delivery,
     )
     .expect("Failed to start Webhook Delivery");
-    ci_sleep(3).await;
+    
+    wait_for_http_readiness("http://localhost:8080/ready", 10)
+        .await
+        .expect("Webhook Delivery failed to become ready");
 
-    println!("✓ Message Processor and Webhook Delivery started");
+    println!("✓ Message Processor and Webhook Delivery ready");
 
     println!("\n📥 STEP 1: Publishing event to events:1 stream...");
     println!("   (Skipping Event Ingestor - publishing directly to chain stream)");
@@ -768,42 +820,52 @@ async fn test_full_pipeline_with_mock_ethereum() {
     println!("\n📦 Starting all services...");
 
     // Start Message Processor FIRST so consumer group is ready before events arrive
+    let mut env_vars_processor = env_vars.clone();
+    env_vars_processor.push(("PROCESSOR_HEALTH_PORT", "8081"));
     let message_processor = start_service(
         "Message Processor",
         "ethhook-message-processor",
-        env_vars.clone(),
+        env_vars_processor,
     )
     .expect("Failed to start Message Processor");
 
-    // Wait for Message Processor to signal readiness (enterprise-grade sync!)
-    wait_for_service_ready_via_redis(&mut redis, "message_processor", 10)
+    // Wait for Message Processor to become ready via HTTP (enterprise-grade!)
+    wait_for_http_readiness("http://localhost:8081/ready", 10)
         .await
         .expect("Message Processor failed to become ready");
 
     // Start Webhook Delivery BEFORE Event Ingestor so workers are ready to consume jobs
     // CRITICAL: Must wait for ALL 50 workers to enter BRPOP before Event Ingestor publishes jobs
+    let mut env_vars_delivery = env_vars.clone();
+    env_vars_delivery.push(("DELIVERY_HEALTH_PORT", "8080"));
     let webhook_delivery = start_service(
         "Webhook Delivery",
         "ethhook-webhook-delivery",
-        env_vars.clone(),
+        env_vars_delivery,
     )
     .expect("Failed to start Webhook Delivery");
 
     // Wait for Webhook Delivery to signal readiness (all 50 workers in BRPOP!)
-    wait_for_service_ready_via_redis(&mut redis, "webhook_delivery", 10)
+    wait_for_http_readiness("http://localhost:8080/ready", 10)
         .await
         .expect("Webhook Delivery failed to become ready");
 
     // Start Event Ingestor LAST (after all consumers are ready)
     // Mock RPC will send block notification as soon as ingestor connects
-    let event_ingestor = start_service("Event Ingestor", "event-ingestor", env_vars.clone())
+    let mut env_vars_ingestor = env_vars.clone();
+    env_vars_ingestor.push(("INGESTOR_HEALTH_PORT", "8082"));
+    let event_ingestor = start_service("Event Ingestor", "event-ingestor", env_vars_ingestor)
         .expect("Failed to start Event Ingestor");
-    ci_sleep(3).await; // Event Ingestor doesn't have readiness check yet, so use brief delay
+    
+    // Wait for Event Ingestor readiness via HTTP (no more sleep!)
+    wait_for_http_readiness("http://localhost:8082/ready", 10)
+        .await
+        .expect("Event Ingestor failed to become ready");
 
-    println!("✓ All services started");
+    println!("✓ All services started and ready");
     println!("   - Event Ingestor (connected to mock Ethereum RPC)");
-    println!("   - Message Processor");
-    println!("   - Webhook Delivery");
+    println!("   - Message Processor (consumers active in XREADGROUP)");
+    println!("   - Webhook Delivery (50 workers in BRPOP)");
 
     println!("\n⏳ Waiting for pipeline processing...");
     println!("   Mock RPC will send block notification");
@@ -969,7 +1031,7 @@ async fn test_consumer_group_acknowledgment() {
 
     // Start Message Processor FIRST
     println!("\n📦 Starting Message Processor...");
-    let env_vars = vec![
+    let mut env_vars = vec![
         (
             "DATABASE_URL",
             "postgres://ethhook:password@localhost:5432/ethhook",
@@ -980,15 +1042,18 @@ async fn test_consumer_group_acknowledgment() {
         ("ENVIRONMENT", "production"),  // Use production chains including events:1
         ("METRICS_PORT", "9091"),  // Use unique port to avoid conflicts
         ("RUST_LOG", "info,ethhook_message_processor=debug"),
+        ("PROCESSOR_HEALTH_PORT", "8081"),
     ];
 
     let message_processor =
         start_service("Message Processor", "ethhook-message-processor", env_vars)
             .expect("Failed to start Message Processor");
 
-    // Wait for service to initialize
-    println!("⏳ Waiting for Message Processor to initialize...");
-    ci_sleep(2).await;
+    // Wait for service to be ready via HTTP
+    println!("⏳ Waiting for Message Processor to become ready...");
+    wait_for_http_readiness("http://localhost:8081/ready", 10)
+        .await
+        .expect("Message Processor failed to become ready");
 
     // Now publish events (after consumer group is ready)
     println!("\n📤 Publishing 5 test events to events:1 stream...");
@@ -1035,9 +1100,9 @@ async fn test_consumer_group_acknowledgment() {
     println!("✓ Stream events:1 contains {stream_len} events");
     assert_eq!(stream_len, 5, "Should have 5 events in stream");
 
-    // Wait for processing (XREADGROUP has 5-second block time)
+    // Wait for processing (XREADGROUP has 5-second block time, but should be fast once events arrive)
     println!("⏳ Waiting for Message Processor to process all events...");
-    ci_sleep(6).await;
+    ci_sleep(3).await; // Reduced from 6s - service is already confirmed ready
 
     println!("\n🔍 Checking consumer group state...");
 
@@ -1166,7 +1231,7 @@ async fn test_service_recovery_with_consumer_groups() {
 
     // Start Message Processor (first instance)
     println!("\n📦 Starting Message Processor (instance 1)...");
-    let env_vars = vec![
+    let mut env_vars = vec![
         (
             "DATABASE_URL",
             "postgres://ethhook:password@localhost:5432/ethhook",
@@ -1178,6 +1243,7 @@ async fn test_service_recovery_with_consumer_groups() {
         ("ENVIRONMENT", "production"),  // Use production chains including events:1
         ("METRICS_PORT", "9092"),  // Use unique port to avoid conflicts
         ("RUST_LOG", "info,ethhook_message_processor=debug"),
+        ("PROCESSOR_HEALTH_PORT", "8081"),
     ];
 
     let mut message_processor = start_service(
@@ -1187,9 +1253,11 @@ async fn test_service_recovery_with_consumer_groups() {
     )
     .expect("Failed to start Message Processor");
 
-    // Wait for service to initialize
-    println!("⏳ Waiting for Message Processor to initialize...");
-    ci_sleep(2).await;
+    // Wait for service to be ready via HTTP
+    println!("⏳ Waiting for Message Processor to become ready...");
+    wait_for_http_readiness("http://localhost:8081/ready", 10)
+        .await
+        .expect("Message Processor failed to become ready");
 
     // Publish 10 test events
     println!("\n📤 Publishing 10 test events to events:1 stream...");
@@ -1321,9 +1389,15 @@ async fn test_service_recovery_with_consumer_groups() {
         start_service("Message Processor", "ethhook-message-processor", env_vars)
             .expect("Failed to restart Message Processor");
 
+    // Wait for service to be ready via HTTP
+    println!("⏳ Waiting for restarted Message Processor to become ready...");
+    wait_for_http_readiness("http://localhost:8081/ready", 10)
+        .await
+        .expect("Restarted Message Processor failed to become ready");
+
     // Wait for it to process remaining messages
     println!("⏳ Waiting for recovery and processing...");
-    ci_sleep(6).await;
+    ci_sleep(3).await; // Reduced from 6s - service confirmed ready
 
     // Check final state
     println!("\n🔍 Checking final state after recovery...");

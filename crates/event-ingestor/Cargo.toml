@@ -27,6 +27,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # Metrics (Prometheus)
 prometheus = { version = "0.13", features = ["process"] }
+axum = { workspace = true }
 
 # Environment variables
 dotenvy = "0.15"
@@ -46,13 +47,14 @@ rand = "0.8"
 lazy_static = "1.5"
 
 # URL parsing
+# URL parsing
 url = "2.5"
 
 # Hex encoding/decoding
 hex = "0.4"
 
 # Time utilities
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 
 [lib]
 name = "ethhook_event_ingestor"

@@ -41,6 +41,9 @@
  */
 
 use anyhow::{Context, Result};
+use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
+use serde_json::{json, Value};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
@@ -57,6 +60,12 @@ use config::ProcessorConfig;
 use consumer::StreamConsumer;
 use matcher::EndpointMatcher;
 use publisher::DeliveryPublisher;
+
+/// Shared service state for health checks
+#[derive(Clone)]
+struct ServiceState {
+    ready: Arc<AtomicBool>,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -92,6 +101,22 @@ async fn main() -> Result<()> {
 
     // Share db_pool for event storage
     let db_pool = Arc::new(db_pool);
+
+    // Initialize service state for health checks
+    let service_state = ServiceState {
+        ready: Arc::new(AtomicBool::new(false)),
+    };
+
+    // Start HTTP health server FIRST (before consumers)
+    let health_port = std::env::var("PROCESSOR_HEALTH_PORT")
+        .unwrap_or_else(|_| "8081".to_string());
+    info!("🏥 Starting health server on port {}...", health_port);
+    let health_state = service_state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = start_health_server(health_port, health_state).await {
+            error!("Health server failed: {}", e);
+        }
+    });
 
     // Create Redis Stream consumer
     info!("📡 Connecting to Redis Streams...");
@@ -132,7 +157,7 @@ async fn main() -> Result<()> {
         .unwrap_or_else(|_| "9090".to_string());
     info!("📊 Starting metrics server on :{}...", metrics_port);
     let _metrics_handle = tokio::spawn(async move {
-        let app = axum::Router::new().route("/metrics", axum::routing::get(metrics_handler));
+        let app = Router::new().route("/metrics", get(metrics_handler));
 
         let addr = format!("0.0.0.0:{}", metrics_port);
         match tokio::net::TcpListener::bind(&addr).await {
@@ -206,23 +231,14 @@ async fn main() -> Result<()> {
         handles.push(handle);
     }
 
-    info!("✅ Message Processor is running");
-    info!("   - Press Ctrl+C to shutdown gracefully");
+    // Mark service as ready (all stream consumers initialized)
+    service_state.ready.store(true, Ordering::SeqCst);
 
-    // Signal readiness: Set a key in Redis to indicate all stream consumers are ready
-    // This allows orchestrators/tests to wait for confirmed readiness before publishing events
-    if let Ok(redis_client) = redis::Client::open(config.redis_url().as_str()) {
-        if let Ok(mut conn) = redis_client.get_multiplexed_async_connection().await {
-            let _: Result<(), _> = redis::cmd("SET")
-                .arg("message_processor:ready")
-                .arg("true")
-                .arg("EX")
-                .arg(60) // Expire after 60 seconds
-                .query_async(&mut conn)
-                .await;
-            info!("📡 Readiness signal published to Redis");
-        }
-    }
+    info!("✅ Message Processor is READY");
+    info!("   - All stream consumers active in XREADGROUP");
+    info!("   - Health: http://0.0.0.0:{}/health", std::env::var("PROCESSOR_HEALTH_PORT").unwrap_or_else(|_| "8081".to_string()));
+    info!("   - Ready:  http://0.0.0.0:{}/ready", std::env::var("PROCESSOR_HEALTH_PORT").unwrap_or_else(|_| "8081".to_string()));
+    info!("   - Press Ctrl+C to shutdown gracefully");
 
     // Wait for shutdown signal
     let shutdown_reason = tokio::select! {
@@ -479,7 +495,67 @@ async fn store_event_in_database(
 }
 
 /// Metrics endpoint handler
-async fn metrics_handler() -> Result<String, (axum::http::StatusCode, String)> {
+async fn metrics_handler() -> Result<String, (StatusCode, String)> {
     metrics::render_metrics()
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+}
+
+/// Start HTTP health server for Kubernetes-style health checks
+async fn start_health_server(port: String, state: ServiceState) -> Result<()> {
+    let app = Router::new()
+        .route("/health", get(health_check))
+        .route("/ready", get(readiness_check))
+        .route("/metrics", get(metrics_handler))
+        .with_state(state);
+
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .with_context(|| format!("Failed to bind health server to {}", addr))?;
+
+    info!("🏥 Health server listening on http://{}", addr);
+    info!("   - GET /health  - Liveness probe");
+    info!("   - GET /ready   - Readiness probe");
+    info!("   - GET /metrics - Prometheus metrics");
+
+    axum::serve(listener, app)
+        .await
+        .context("Health server failed")?;
+
+    Ok(())
+}
+
+/// Liveness probe - is the process alive?
+async fn health_check() -> Json<Value> {
+    Json(json!({
+        "status": "healthy",
+        "service": "message-processor",
+        "version": env!("CARGO_PKG_VERSION"),
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    }))
+}
+
+/// Readiness probe - can this service accept traffic?
+async fn readiness_check(State(state): State<ServiceState>) -> (StatusCode, Json<Value>) {
+    let is_ready = state.ready.load(Ordering::SeqCst);
+
+    if is_ready {
+        (
+            StatusCode::OK,
+            Json(json!({
+                "ready": true,
+                "service": "message-processor",
+                "message": "All stream consumers active in XREADGROUP"
+            }))
+        )
+    } else {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "ready": false,
+                "service": "message-processor",
+                "message": "Initializing stream consumers..."
+            }))
+        )
+    }
 }

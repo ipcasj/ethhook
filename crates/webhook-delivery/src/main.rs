@@ -37,9 +37,13 @@
  */
 
 use anyhow::{Context, Result};
+use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
+use serde_json::{json, Value};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
+use tokio::sync::Barrier;
 use tracing::{debug, error, info, warn};
 
 mod circuit_breaker;
@@ -53,6 +57,14 @@ use circuit_breaker::CircuitBreakerManager;
 use config::DeliveryConfig;
 use consumer::JobConsumer;
 use delivery::WebhookDelivery;
+
+/// Shared service state for health checks
+#[derive(Clone)]
+struct ServiceState {
+    ready: Arc<AtomicBool>,
+    workers_initialized: Arc<AtomicUsize>,
+    worker_count: usize,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -98,14 +110,32 @@ async fn main() -> Result<()> {
         Duration::from_secs(config.circuit_breaker_timeout_secs),
     ));
 
-    // Start metrics server (configurable port via DELIVERY_METRICS_PORT env var)
+    // Initialize service state for health checks
+    let service_state = ServiceState {
+        ready: Arc::new(AtomicBool::new(false)),
+        workers_initialized: Arc::new(AtomicUsize::new(0)),
+        worker_count: config.worker_count,
+    };
+
+    // Start HTTP health server FIRST (before workers)
+    let health_port = std::env::var("DELIVERY_HEALTH_PORT")
+        .unwrap_or_else(|_| "8080".to_string());
+    info!("🏥 Starting health server on port {}...", health_port);
+    let health_state = service_state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = start_health_server(health_port, health_state).await {
+            error!("Health server failed: {}", e);
+        }
+    });
+
+    // Start metrics server (separate concern)
     let metrics_port = std::env::var("DELIVERY_METRICS_PORT")
         .unwrap_or_else(|_| "9090".to_string());
     let metrics_addr = format!("0.0.0.0:{}", metrics_port);
     
     info!("📊 Starting metrics server on {}...", metrics_addr);
     let _metrics_handle = tokio::spawn(async move {
-        let app = axum::Router::new().route("/metrics", axum::routing::get(metrics_handler));
+        let app = Router::new().route("/metrics", get(metrics_handler));
 
         match tokio::net::TcpListener::bind(&metrics_addr).await {
             Ok(listener) => {
@@ -123,6 +153,10 @@ async fn main() -> Result<()> {
     // Create shutdown channel
     let (shutdown_tx, _) = tokio::sync::broadcast::channel::<()>(1);
 
+    // Create barrier for worker initialization synchronization
+    // +1 for main thread to wait on
+    let init_barrier = Arc::new(Barrier::new(config.worker_count + 1));
+
     // Spawn worker pool
     let mut handles = vec![];
     for worker_id in 0..config.worker_count {
@@ -131,20 +165,31 @@ async fn main() -> Result<()> {
         let webhook_delivery = Arc::clone(&webhook_delivery);
         let circuit_breaker = Arc::clone(&circuit_breaker);
         let mut shutdown_rx = shutdown_tx.subscribe();
+        let barrier = Arc::clone(&init_barrier);
+        let state = service_state.clone();
 
         let handle = tokio::spawn(async move {
-            info!("[Worker {}] Starting", worker_id);
+            info!("[Worker {}] Starting initialization", worker_id);
 
             // Each worker has its own Redis consumer
             let consumer_result = JobConsumer::new(&config.redis_url(), &config.queue_name).await;
 
             let mut consumer = match consumer_result {
-                Ok(c) => c,
+                Ok(c) => {
+                    // Signal: this worker is initialized
+                    state.workers_initialized.fetch_add(1, Ordering::SeqCst);
+                    info!("[Worker {}] Initialized - waiting for others...", worker_id);
+                    c
+                }
                 Err(e) => {
                     error!("[Worker {}] Failed to create consumer: {}", worker_id, e);
                     return;
                 }
             };
+
+            // Wait for ALL workers to initialize
+            barrier.wait().await;
+            info!("[Worker {}] All workers ready - starting work loop", worker_id);
 
             let result = worker_loop(
                 worker_id,
@@ -170,26 +215,20 @@ async fn main() -> Result<()> {
         handles.push(handle);
     }
 
+    // Wait for all workers to initialize
+    info!("⏳ Waiting for {} workers to initialize...", config.worker_count);
+    init_barrier.wait().await;
+    
+    // Mark service as ready
+    service_state.ready.store(true, Ordering::SeqCst);
+    
     info!(
-        "✅ Webhook Delivery is running ({} workers)",
+        "✅ Webhook Delivery is READY ({} workers initialized and in BRPOP)",
         config.worker_count
     );
+    info!("   - Health: http://0.0.0.0:{}/health", std::env::var("DELIVERY_HEALTH_PORT").unwrap_or_else(|_| "8080".to_string()));
+    info!("   - Ready:  http://0.0.0.0:{}/ready", std::env::var("DELIVERY_HEALTH_PORT").unwrap_or_else(|_| "8080".to_string()));
     info!("   - Press Ctrl+C to shutdown gracefully");
-
-    // Signal readiness: Set a key in Redis to indicate all workers are ready
-    // This allows orchestrators/tests to wait for confirmed readiness before sending work
-    if let Ok(redis_client) = redis::Client::open(config.redis_url().as_str()) {
-        if let Ok(mut conn) = redis_client.get_multiplexed_async_connection().await {
-            let _: Result<(), _> = redis::cmd("SET")
-                .arg("webhook_delivery:ready")
-                .arg("true")
-                .arg("EX")
-                .arg(60) // Expire after 60 seconds (will be refreshed by health checks)
-                .query_async(&mut conn)
-                .await;
-            info!("📡 Readiness signal published to Redis");
-        }
-    }
 
     // Wait for shutdown signal
     let shutdown_reason = tokio::select! {
@@ -386,7 +425,72 @@ async fn worker_loop(
 }
 
 /// Metrics endpoint handler
-async fn metrics_handler() -> Result<String, (axum::http::StatusCode, String)> {
+async fn metrics_handler() -> Result<String, (StatusCode, String)> {
     metrics::render_metrics()
-        .map_err(|e| (axum::http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+}
+
+/// Start HTTP health server for Kubernetes-style health checks
+async fn start_health_server(port: String, state: ServiceState) -> Result<()> {
+    let app = Router::new()
+        .route("/health", get(health_check))
+        .route("/ready", get(readiness_check))
+        .route("/metrics", get(metrics_handler))
+        .with_state(state);
+
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .with_context(|| format!("Failed to bind health server to {}", addr))?;
+
+    info!("🏥 Health server listening on http://{}", addr);
+    info!("   - GET /health  - Liveness probe");
+    info!("   - GET /ready   - Readiness probe");
+    info!("   - GET /metrics - Prometheus metrics");
+
+    axum::serve(listener, app)
+        .await
+        .context("Health server failed")?;
+
+    Ok(())
+}
+
+/// Liveness probe - is the process alive?
+async fn health_check() -> Json<Value> {
+    Json(json!({
+        "status": "healthy",
+        "service": "webhook-delivery",
+        "version": env!("CARGO_PKG_VERSION"),
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    }))
+}
+
+/// Readiness probe - can this service accept traffic?
+async fn readiness_check(State(state): State<ServiceState>) -> (StatusCode, Json<Value>) {
+    let is_ready = state.ready.load(Ordering::SeqCst);
+    let workers_init = state.workers_initialized.load(Ordering::SeqCst);
+
+    if is_ready {
+        (
+            StatusCode::OK,
+            Json(json!({
+                "ready": true,
+                "service": "webhook-delivery",
+                "workers_initialized": workers_init,
+                "workers_total": state.worker_count,
+                "message": "All workers in BRPOP - ready for jobs"
+            }))
+        )
+    } else {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "ready": false,
+                "service": "webhook-delivery",
+                "workers_initialized": workers_init,
+                "workers_total": state.worker_count,
+                "message": format!("Initializing: {}/{} workers ready", workers_init, state.worker_count)
+            }))
+        )
+    }
 }
