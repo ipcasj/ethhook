@@ -99,6 +99,40 @@ fn stop_service(mut child: Child, name: &str) {
     println!("✓ {name} service stopped");
 }
 
+/// Helper: Wait for service to be ready via Redis readiness key
+/// This is enterprise-grade synchronization - no sleep timers!
+async fn wait_for_service_ready_via_redis(
+    redis: &mut redis::aio::MultiplexedConnection,
+    service_name: &str,
+    timeout_secs: u64,
+) -> Result<(), String> {
+    let start = Instant::now();
+    let key = format!("{}:ready", service_name);
+
+    println!("⏳ Waiting for {} to signal readiness...", service_name);
+
+    while start.elapsed().as_secs() < timeout_secs {
+        let result: Result<String, _> = redis::cmd("GET")
+            .arg(&key)
+            .query_async(redis)
+            .await;
+
+        if let Ok(value) = result {
+            if value == "true" {
+                println!("✅ {} is ready!", service_name);
+                return Ok(());
+            }
+        }
+
+        sleep(Duration::from_millis(100)).await;
+    }
+
+    Err(format!(
+        "{} did not signal readiness within {}s",
+        service_name, timeout_secs
+    ))
+}
+
 /// Helper: Wait for service to be ready (check health endpoint or port)
 #[allow(dead_code)]
 async fn wait_for_service_ready(url: &str, timeout_secs: u64) -> bool {
@@ -245,8 +279,7 @@ async fn cleanup_test_data(pool: &PgPool, user_id: Uuid) {
 
 /// Helper: Clear Redis streams and lists between tests
 async fn clear_redis_streams(redis: &mut redis::aio::MultiplexedConnection) {
-    // Clear messages from streams without deleting the streams themselves
-    // This preserves consumer groups which are deleted if streams are DEL'd
+    // Clear messages from streams AND destroy consumer groups for clean test isolation
     let streams = vec![
         "raw-events",
         "events:1",        // Ethereum mainnet (used by tests)
@@ -257,11 +290,9 @@ async fn clear_redis_streams(redis: &mut redis::aio::MultiplexedConnection) {
     ];
     
     for stream in streams {
-        // XTRIM with MAXLEN 0 removes all messages but keeps the stream and consumer groups
-        let _: Result<(), RedisError> = redis::cmd("XTRIM")
+        // Delete the entire stream (this also deletes consumer groups)
+        let _: Result<(), RedisError> = redis::cmd("DEL")
             .arg(stream)
-            .arg("MAXLEN")
-            .arg(0)
             .query_async(redis)
             .await;
     }
@@ -271,6 +302,25 @@ async fn clear_redis_streams(redis: &mut redis::aio::MultiplexedConnection) {
         .arg("delivery_queue")
         .query_async(redis)
         .await;
+    
+    // Also clear any deduplication sets that might persist between tests
+    let _: Result<(), RedisError> = redis::cmd("DEL")
+        .arg("event_dedup")
+        .query_async(redis)
+        .await;
+    
+    // Clear service readiness keys from previous runs
+    let readiness_keys = vec![
+        "message_processor:ready",
+        "webhook_delivery:ready",
+        "event_ingestor:ready",
+    ];
+    for key in readiness_keys {
+        let _: Result<(), RedisError> = redis::cmd("DEL")
+            .arg(key)
+            .query_async(redis)
+            .await;
+    }
 }
 
 #[tokio::test]
@@ -370,7 +420,7 @@ async fn test_real_e2e_full_pipeline() {
         ("REDIS_URL", "redis://localhost:6379"),
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
-        ("RUST_LOG", "info,ethhook=debug"),
+        ("RUST_LOG", "info,ethhook=debug,ethhook_webhook_delivery=debug"),
         ("ENVIRONMENT", "production"), // Use production config to watch chain ID 1
         ("DELIVERY_METRICS_PORT", "9093"), // Unique metrics port for webhook-delivery
     ];
@@ -411,9 +461,9 @@ async fn test_real_e2e_full_pipeline() {
         .arg("block_number")
         .arg("18000000")
         .arg("block_hash")
-        .arg("0xabc123def456789abc123def456789abc123def456789abc123def456789abc123")
+        .arg("0xabc123def456789abc123def456789abc123def456789abc123def456789abc1")
         .arg("tx_hash")
-        .arg("0xabc123def456789abc123def456789abc123def456789abc123def456789abc123")
+        .arg("0xabc123def456789abc123def456789abc123def456789abc123def456789abc1")
         .arg("log_index")
         .arg("0")
         .arg("contract")
@@ -704,7 +754,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
         ("REDIS_PORT", "6379"),                  // For Event Ingestor
         (
             "RUST_LOG",
-            "debug,event_ingestor=trace,ethhook_message_processor=trace,webhook_delivery=trace",
+            "debug,event_ingestor=trace,ethhook_message_processor=trace,ethhook_webhook_delivery=debug",
         ), // Trace level for all services
         ("ETHEREUM_WS_URL", mock_rpc_url.as_str()), // Point to mock RPC for Ethereum
         ("ENVIRONMENT", "production"),           // Use production config to watch chain ID 1
@@ -724,21 +774,31 @@ async fn test_full_pipeline_with_mock_ethereum() {
         env_vars.clone(),
     )
     .expect("Failed to start Message Processor");
-    ci_sleep(3).await;
 
-    // Start Event Ingestor with mock RPC (after Message Processor is ready)
-    let event_ingestor = start_service("Event Ingestor", "event-ingestor", env_vars.clone())
-        .expect("Failed to start Event Ingestor");
-    ci_sleep(3).await;
+    // Wait for Message Processor to signal readiness (enterprise-grade sync!)
+    wait_for_service_ready_via_redis(&mut redis, "message_processor", 10)
+        .await
+        .expect("Message Processor failed to become ready");
 
-    // Start Webhook Delivery
+    // Start Webhook Delivery BEFORE Event Ingestor so workers are ready to consume jobs
+    // CRITICAL: Must wait for ALL 50 workers to enter BRPOP before Event Ingestor publishes jobs
     let webhook_delivery = start_service(
         "Webhook Delivery",
         "ethhook-webhook-delivery",
         env_vars.clone(),
     )
     .expect("Failed to start Webhook Delivery");
-    ci_sleep(3).await;
+
+    // Wait for Webhook Delivery to signal readiness (all 50 workers in BRPOP!)
+    wait_for_service_ready_via_redis(&mut redis, "webhook_delivery", 10)
+        .await
+        .expect("Webhook Delivery failed to become ready");
+
+    // Start Event Ingestor LAST (after all consumers are ready)
+    // Mock RPC will send block notification as soon as ingestor connects
+    let event_ingestor = start_service("Event Ingestor", "event-ingestor", env_vars.clone())
+        .expect("Failed to start Event Ingestor");
+    ci_sleep(3).await; // Event Ingestor doesn't have readiness check yet, so use brief delay
 
     println!("✓ All services started");
     println!("   - Event Ingestor (connected to mock Ethereum RPC)");

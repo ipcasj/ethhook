@@ -62,6 +62,11 @@ impl JobConsumer {
     /// * `Ok(None)` - Timeout (if timeout > 0)
     /// * `Err(_)` - Redis connection or parsing error
     pub async fn consume(&mut self, timeout_secs: usize) -> Result<Option<DeliveryJob>> {
+        debug!(
+            "BRPOP queue={} timeout={}s",
+            self.queue_name, timeout_secs
+        );
+
         // BRPOP queue_name timeout
         // Returns: (queue_name, value) or None if timeout
         let result: Option<(String, String)> = self
@@ -69,6 +74,8 @@ impl JobConsumer {
             .brpop(&self.queue_name, timeout_secs as f64)
             .await
             .context("Failed to pop from queue")?;
+
+        debug!("BRPOP result: {}", if result.is_some() { "job received" } else { "timeout" });
 
         match result {
             Some((_queue, job_json)) => {

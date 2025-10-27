@@ -53,3 +53,9 @@ harness = true
 name = "e2e_tests"
 path = "e2e_tests.rs"
 harness = true
+
+# Modern E2E system test (streamlined, fast)
+[[test]]
+name = "e2e_system_test"
+path = "e2e_system_test.rs"
+harness = true

@@ -40,7 +40,7 @@ use anyhow::{Context, Result};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 mod circuit_breaker;
 mod config;
@@ -176,6 +176,21 @@ async fn main() -> Result<()> {
     );
     info!("   - Press Ctrl+C to shutdown gracefully");
 
+    // Signal readiness: Set a key in Redis to indicate all workers are ready
+    // This allows orchestrators/tests to wait for confirmed readiness before sending work
+    if let Ok(redis_client) = redis::Client::open(config.redis_url().as_str()) {
+        if let Ok(mut conn) = redis_client.get_multiplexed_async_connection().await {
+            let _: Result<(), _> = redis::cmd("SET")
+                .arg("webhook_delivery:ready")
+                .arg("true")
+                .arg("EX")
+                .arg(60) // Expire after 60 seconds (will be refreshed by health checks)
+                .query_async(&mut conn)
+                .await;
+            info!("📡 Readiness signal published to Redis");
+        }
+    }
+
     // Wait for shutdown signal
     let shutdown_reason = tokio::select! {
         _ = signal::ctrl_c() => {
@@ -218,6 +233,7 @@ async fn worker_loop(
     config: &DeliveryConfig,
     shutdown_rx: &mut tokio::sync::broadcast::Receiver<()>,
 ) -> Result<()> {
+    info!("[Worker {}] Entered worker_loop", worker_id);
     let mut jobs_processed = 0u64;
 
     loop {
@@ -226,6 +242,8 @@ async fn worker_loop(
             info!("[Worker {}] Shutdown signal received", worker_id);
             break;
         }
+
+        debug!("[Worker {}] Waiting for jobs (BRPOP 5s)...", worker_id);
 
         // Consume next job (block for 5 seconds) with error recovery
         let job = match consumer.consume(5).await {

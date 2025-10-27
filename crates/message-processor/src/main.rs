@@ -209,6 +209,21 @@ async fn main() -> Result<()> {
     info!("✅ Message Processor is running");
     info!("   - Press Ctrl+C to shutdown gracefully");
 
+    // Signal readiness: Set a key in Redis to indicate all stream consumers are ready
+    // This allows orchestrators/tests to wait for confirmed readiness before publishing events
+    if let Ok(redis_client) = redis::Client::open(config.redis_url().as_str()) {
+        if let Ok(mut conn) = redis_client.get_multiplexed_async_connection().await {
+            let _: Result<(), _> = redis::cmd("SET")
+                .arg("message_processor:ready")
+                .arg("true")
+                .arg("EX")
+                .arg(60) // Expire after 60 seconds
+                .query_async(&mut conn)
+                .await;
+            info!("📡 Readiness signal published to Redis");
+        }
+    }
+
     // Wait for shutdown signal
     let shutdown_reason = tokio::select! {
         _ = signal::ctrl_c() => {

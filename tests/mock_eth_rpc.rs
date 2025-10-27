@@ -8,6 +8,7 @@
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
 use std::net::SocketAddr;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
 use tokio_tungstenite::{accept_async, tungstenite::protocol::Message};
@@ -140,7 +141,12 @@ impl MockEthRpcServer {
                 }
                 // Handle eth_getBlockByNumber request
                 else if request["method"] == "eth_getBlockByNumber" {
-                    let block_with_txs = json!({
+            // Generate unique transaction hash using timestamp (must fit in 66 chars: 0x + 64 hex)
+            let timestamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos();
+            let tx_hash = format!("0x{:064x}", timestamp);                    let block_with_txs = json!({
                         "jsonrpc": "2.0",
                         "id": request["id"],
                         "result": {
@@ -151,7 +157,7 @@ impl MockEthRpcServer {
                             "miner": "0x1234567890123456789012345678901234567890",
                             "transactions": [
                                 {
-                                    "hash": "0xtx1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab",
+                                    "hash": tx_hash,
                                     "from": "0x742d35cc6634c0532925a3b844bc9e7595f0beb0",
                                     "to": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",  // USDC contract
                                     "value": "0x0",
@@ -168,7 +174,7 @@ impl MockEthRpcServer {
                     write
                         .send(Message::Text(block_with_txs.to_string()))
                         .await?;
-                    debug!("Sent block with transactions");
+                    debug!("Sent block with transactions (tx: {})", tx_hash);
                 }
                 // Handle eth_getTransactionReceipt request
                 else if request["method"] == "eth_getTransactionReceipt" {
@@ -188,7 +194,7 @@ impl MockEthRpcServer {
                                     ],
                                     "data": "0x0000000000000000000000000000000000000000000000000000000000000064",
                                     "blockNumber": "0x112a880",
-                                    "transactionHash": "0xtx1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab",
+                                    "transactionHash": request["params"][0],
                                     "logIndex": "0x0",
                                     "transactionIndex": "0x0",
                                     "removed": false
@@ -198,7 +204,7 @@ impl MockEthRpcServer {
                     });
 
                     write.send(Message::Text(receipt.to_string())).await?;
-                    debug!("Sent transaction receipt");
+                    debug!("Sent transaction receipt for {}", request["params"][0]);
                 }
             }
         }
