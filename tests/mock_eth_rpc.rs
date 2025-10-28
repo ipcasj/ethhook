@@ -141,12 +141,13 @@ impl MockEthRpcServer {
                 }
                 // Handle eth_getBlockByNumber request
                 else if request["method"] == "eth_getBlockByNumber" {
-            // Generate unique transaction hash using timestamp (must fit in 66 chars: 0x + 64 hex)
-            let timestamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            let tx_hash = format!("0x{:064x}", timestamp);                    let block_with_txs = json!({
+                    // Generate unique transaction hash using timestamp (must fit in 66 chars: 0x + 64 hex)
+                    let timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_nanos();
+                    let tx_hash = format!("0x{timestamp:064x}");
+                    let block_with_txs = json!({
                         "jsonrpc": "2.0",
                         "id": request["id"],
                         "result": {

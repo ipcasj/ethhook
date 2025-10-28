@@ -6,15 +6,18 @@ members = [
     "crates/webhook-delivery",       # ✓ COMPLETE!
     "crates/admin-api",              # ✓ COMPLETE!
     "crates/leptos-portal",          # ✓ Frontend Portal
-    
+
     # Foundation crates
     "crates/common",                 # ✓ COMPLETE!
     "crates/domain",                 # ✓ Exists
     "crates/config",                 # ✓ Exists
     "crates/validate-env",           # Validation tool
-    
+
     # E2E Tests
     "tests",                         # End-to-end integration tests
+
+    # Tools
+    "tools/load-tester",             # Load testing tool
 ]
 resolver = "2"
 

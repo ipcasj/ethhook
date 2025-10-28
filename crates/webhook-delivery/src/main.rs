@@ -37,10 +37,10 @@
  */
 
 use anyhow::{Context, Result};
-use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use serde_json::{json, Value};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
+use serde_json::{Value, json};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 use tokio::signal;
 use tokio::sync::Barrier;
@@ -118,8 +118,7 @@ async fn main() -> Result<()> {
     };
 
     // Start HTTP health server FIRST (before workers)
-    let health_port = std::env::var("DELIVERY_HEALTH_PORT")
-        .unwrap_or_else(|_| "8080".to_string());
+    let health_port = std::env::var("DELIVERY_HEALTH_PORT").unwrap_or_else(|_| "8080".to_string());
     info!("🏥 Starting health server on port {}...", health_port);
     let health_state = service_state.clone();
     tokio::spawn(async move {
@@ -129,10 +128,10 @@ async fn main() -> Result<()> {
     });
 
     // Start metrics server (separate concern)
-    let metrics_port = std::env::var("DELIVERY_METRICS_PORT")
-        .unwrap_or_else(|_| "9090".to_string());
-    let metrics_addr = format!("0.0.0.0:{}", metrics_port);
-    
+    let metrics_port =
+        std::env::var("DELIVERY_METRICS_PORT").unwrap_or_else(|_| "9090".to_string());
+    let metrics_addr = format!("0.0.0.0:{metrics_port}");
+
     info!("📊 Starting metrics server on {}...", metrics_addr);
     let _metrics_handle = tokio::spawn(async move {
         let app = Router::new().route("/metrics", get(metrics_handler));
@@ -145,7 +144,10 @@ async fn main() -> Result<()> {
                 }
             }
             Err(e) => {
-                warn!("⚠️  Failed to bind metrics server to {}: {}. Metrics will be unavailable.", metrics_addr, e);
+                warn!(
+                    "⚠️  Failed to bind metrics server to {}: {}. Metrics will be unavailable.",
+                    metrics_addr, e
+                );
             }
         }
     });
@@ -189,7 +191,10 @@ async fn main() -> Result<()> {
 
             // Wait for ALL workers to initialize
             barrier.wait().await;
-            info!("[Worker {}] All workers ready - starting work loop", worker_id);
+            info!(
+                "[Worker {}] All workers ready - starting work loop",
+                worker_id
+            );
 
             let result = worker_loop(
                 worker_id,
@@ -216,18 +221,27 @@ async fn main() -> Result<()> {
     }
 
     // Wait for all workers to initialize
-    info!("⏳ Waiting for {} workers to initialize...", config.worker_count);
+    info!(
+        "⏳ Waiting for {} workers to initialize...",
+        config.worker_count
+    );
     init_barrier.wait().await;
-    
+
     // Mark service as ready
     service_state.ready.store(true, Ordering::SeqCst);
-    
+
     info!(
         "✅ Webhook Delivery is READY ({} workers initialized and in BRPOP)",
         config.worker_count
     );
-    info!("   - Health: http://0.0.0.0:{}/health", std::env::var("DELIVERY_HEALTH_PORT").unwrap_or_else(|_| "8080".to_string()));
-    info!("   - Ready:  http://0.0.0.0:{}/ready", std::env::var("DELIVERY_HEALTH_PORT").unwrap_or_else(|_| "8080".to_string()));
+    info!(
+        "   - Health: http://0.0.0.0:{}/health",
+        std::env::var("DELIVERY_HEALTH_PORT").unwrap_or_else(|_| "8080".to_string())
+    );
+    info!(
+        "   - Ready:  http://0.0.0.0:{}/ready",
+        std::env::var("DELIVERY_HEALTH_PORT").unwrap_or_else(|_| "8080".to_string())
+    );
     info!("   - Press Ctrl+C to shutdown gracefully");
 
     // Wait for shutdown signal
@@ -426,8 +440,7 @@ async fn worker_loop(
 
 /// Metrics endpoint handler
 async fn metrics_handler() -> Result<String, (StatusCode, String)> {
-    metrics::render_metrics()
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    metrics::render_metrics().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 /// Start HTTP health server for Kubernetes-style health checks
@@ -438,10 +451,10 @@ async fn start_health_server(port: String, state: ServiceState) -> Result<()> {
         .route("/metrics", get(metrics_handler))
         .with_state(state);
 
-    let addr = format!("0.0.0.0:{}", port);
+    let addr = format!("0.0.0.0:{port}");
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
-        .with_context(|| format!("Failed to bind health server to {}", addr))?;
+        .with_context(|| format!("Failed to bind health server to {addr}"))?;
 
     info!("🏥 Health server listening on http://{}", addr);
     info!("   - GET /health  - Liveness probe");
@@ -479,7 +492,7 @@ async fn readiness_check(State(state): State<ServiceState>) -> (StatusCode, Json
                 "workers_initialized": workers_init,
                 "workers_total": state.worker_count,
                 "message": "All workers in BRPOP - ready for jobs"
-            }))
+            })),
         )
     } else {
         (
@@ -490,7 +503,7 @@ async fn readiness_check(State(state): State<ServiceState>) -> (StatusCode, Json
                 "workers_initialized": workers_init,
                 "workers_total": state.worker_count,
                 "message": format!("Initializing: {}/{} workers ready", workers_init, state.worker_count)
-            }))
+            })),
         )
     }
 }

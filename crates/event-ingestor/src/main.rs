@@ -59,10 +59,10 @@
  */
 
 use anyhow::{Context, Result};
-use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use serde_json::{json, Value};
-use std::sync::atomic::{AtomicBool, Ordering};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
+use serde_json::{Value, json};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::signal;
 use tracing::{info, warn};
 
@@ -114,8 +114,7 @@ async fn main() -> Result<()> {
     };
 
     // Start HTTP health server FIRST (before chain connections)
-    let health_port = std::env::var("INGESTOR_HEALTH_PORT")
-        .unwrap_or_else(|_| "8082".to_string());
+    let health_port = std::env::var("INGESTOR_HEALTH_PORT").unwrap_or_else(|_| "8082".to_string());
     info!("🏥 Starting health server on port {}...", health_port);
     let health_state = service_state.clone();
     tokio::spawn(async move {
@@ -154,8 +153,14 @@ async fn main() -> Result<()> {
 
     info!("✅ Event Ingestor is READY");
     info!("   - WebSocket connections establishing...");
-    info!("   - Health: http://0.0.0.0:{}/health", std::env::var("INGESTOR_HEALTH_PORT").unwrap_or_else(|_| "8082".to_string()));
-    info!("   - Ready:  http://0.0.0.0:{}/ready", std::env::var("INGESTOR_HEALTH_PORT").unwrap_or_else(|_| "8082".to_string()));
+    info!(
+        "   - Health: http://0.0.0.0:{}/health",
+        std::env::var("INGESTOR_HEALTH_PORT").unwrap_or_else(|_| "8082".to_string())
+    );
+    info!(
+        "   - Ready:  http://0.0.0.0:{}/ready",
+        std::env::var("INGESTOR_HEALTH_PORT").unwrap_or_else(|_| "8082".to_string())
+    );
     info!("   - Press Ctrl+C to shutdown gracefully");
 
     // Wait for shutdown signal (Ctrl+C or SIGTERM) or ingestion failure
@@ -192,10 +197,10 @@ async fn start_health_server(port: String, state: ServiceState) -> Result<()> {
         .route("/ready", get(readiness_check))
         .with_state(state);
 
-    let addr = format!("0.0.0.0:{}", port);
+    let addr = format!("0.0.0.0:{port}");
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
-        .with_context(|| format!("Failed to bind health server to {}", addr))?;
+        .with_context(|| format!("Failed to bind health server to {addr}"))?;
 
     info!("🏥 Health server listening on http://{}", addr);
     info!("   - GET /health - Liveness probe");
@@ -229,7 +234,7 @@ async fn readiness_check(State(state): State<ServiceState>) -> (StatusCode, Json
                 "ready": true,
                 "service": "event-ingestor",
                 "message": "Service initialized, WebSocket connections active"
-            }))
+            })),
         )
     } else {
         (
@@ -238,7 +243,7 @@ async fn readiness_check(State(state): State<ServiceState>) -> (StatusCode, Json
                 "ready": false,
                 "service": "event-ingestor",
                 "message": "Initializing..."
-            }))
+            })),
         )
     }
 }

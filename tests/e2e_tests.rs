@@ -46,7 +46,7 @@ use wiremock::{
 mod mock_eth_rpc;
 
 /// E2E Test Configuration
-/// 
+///
 /// Uses fixed ports and URLs to ensure predictable behavior across test runs.
 /// This prevents issues with random port assignments causing cross-test contamination
 /// when tests share the PostgreSQL database.
@@ -54,10 +54,10 @@ mod test_config {
     /// Fixed port for WireMock webhook receiver in E2E tests
     /// This ensures all tests use the same port, preventing database cross-contamination
     pub const MOCK_WEBHOOK_PORT: u16 = 9876;
-    
+
     /// Mock webhook URL that all E2E tests will use
     pub fn mock_webhook_url() -> String {
-        format!("http://127.0.0.1:{}/webhook", MOCK_WEBHOOK_PORT)
+        format!("http://127.0.0.1:{MOCK_WEBHOOK_PORT}/webhook")
     }
 }
 
@@ -108,19 +108,16 @@ async fn wait_for_service_ready_via_redis(
     timeout_secs: u64,
 ) -> Result<(), String> {
     let start = Instant::now();
-    let key = format!("{}:ready", service_name);
+    let key = format!("{service_name}:ready");
 
-    println!("⏳ [DEPRECATED] Waiting for {} to signal readiness via Redis...", service_name);
+    println!("⏳ [DEPRECATED] Waiting for {service_name} to signal readiness via Redis...");
 
     while start.elapsed().as_secs() < timeout_secs {
-        let result: Result<String, _> = redis::cmd("GET")
-            .arg(&key)
-            .query_async(redis)
-            .await;
+        let result: Result<String, _> = redis::cmd("GET").arg(&key).query_async(redis).await;
 
         if let Ok(value) = result {
             if value == "true" {
-                println!("✅ {} is ready!", service_name);
+                println!("✅ {service_name} is ready!");
                 return Ok(());
             }
         }
@@ -129,22 +126,18 @@ async fn wait_for_service_ready_via_redis(
     }
 
     Err(format!(
-        "{} did not signal readiness within {}s",
-        service_name, timeout_secs
+        "{service_name} did not signal readiness within {timeout_secs}s"
     ))
 }
 
 /// Helper: Wait for service readiness via HTTP health check (ENTERPRISE PATTERN)
 /// This is the industry-standard approach used by Kubernetes, ECS, Cloud Run, etc.
-async fn wait_for_http_readiness(
-    url: &str,
-    timeout_secs: u64,
-) -> Result<(), String> {
+async fn wait_for_http_readiness(url: &str, timeout_secs: u64) -> Result<(), String> {
     let client = reqwest::Client::new();
     let start = Instant::now();
-    
-    println!("⏳ Waiting for service to become ready: {}", url);
-    
+
+    println!("⏳ Waiting for service to become ready: {url}");
+
     while start.elapsed().as_secs() < timeout_secs {
         match client.get(url).send().await {
             Ok(resp) if resp.status() == reqwest::StatusCode::OK => {
@@ -156,7 +149,7 @@ async fn wait_for_http_readiness(
                 if let Ok(body) = resp.text().await {
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
                         if let Some(msg) = json.get("message").and_then(|m| m.as_str()) {
-                            println!("   ⏳ Still initializing: {}", msg);
+                            println!("   ⏳ Still initializing: {msg}");
                         }
                     }
                 }
@@ -168,13 +161,14 @@ async fn wait_for_http_readiness(
                 // Service not listening yet - expected during early startup
             }
         }
-        
+
         sleep(Duration::from_millis(100)).await;
     }
-    
-    Err(format!("Service did not become ready within {}s: {}", timeout_secs, url))
-}
 
+    Err(format!(
+        "Service did not become ready within {timeout_secs}s: {url}"
+    ))
+}
 
 /// Helper: Wait for service to be ready (check health endpoint or port)
 #[allow(dead_code)]
@@ -331,27 +325,24 @@ async fn clear_redis_streams(redis: &mut redis::aio::MultiplexedConnection) {
         "events:10",       // Optimism
         "events:8453",     // Base
     ];
-    
+
     for stream in streams {
         // Delete the entire stream (this also deletes consumer groups)
-        let _: Result<(), RedisError> = redis::cmd("DEL")
-            .arg(stream)
-            .query_async(redis)
-            .await;
+        let _: Result<(), RedisError> = redis::cmd("DEL").arg(stream).query_async(redis).await;
     }
-    
+
     // Clear delivery_queue LIST (not a stream, so use DEL)
     let _: Result<(), RedisError> = redis::cmd("DEL")
         .arg("delivery_queue")
         .query_async(redis)
         .await;
-    
+
     // Also clear any deduplication sets that might persist between tests
     let _: Result<(), RedisError> = redis::cmd("DEL")
         .arg("event_dedup")
         .query_async(redis)
         .await;
-    
+
     // Clear service readiness keys from previous runs
     let readiness_keys = vec![
         "message_processor:ready",
@@ -359,10 +350,7 @@ async fn clear_redis_streams(redis: &mut redis::aio::MultiplexedConnection) {
         "event_ingestor:ready",
     ];
     for key in readiness_keys {
-        let _: Result<(), RedisError> = redis::cmd("DEL")
-            .arg(key)
-            .query_async(redis)
-            .await;
+        let _: Result<(), RedisError> = redis::cmd("DEL").arg(key).query_async(redis).await;
     }
 }
 
@@ -395,7 +383,10 @@ async fn test_real_e2e_full_pipeline() {
     // Setup mock webhook server on fixed port
     // Using fixed port prevents database cross-contamination when tests share PostgreSQL
     let mock_server = MockServer::builder()
-        .listener(std::net::TcpListener::bind(format!("127.0.0.1:{}", test_config::MOCK_WEBHOOK_PORT)).unwrap())
+        .listener(
+            std::net::TcpListener::bind(format!("127.0.0.1:{}", test_config::MOCK_WEBHOOK_PORT))
+                .unwrap(),
+        )
         .start()
         .await;
     let webhook_url = test_config::mock_webhook_url();
@@ -463,7 +454,10 @@ async fn test_real_e2e_full_pipeline() {
         ("REDIS_URL", "redis://localhost:6379"),
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
-        ("RUST_LOG", "info,ethhook=debug,ethhook_webhook_delivery=debug"),
+        (
+            "RUST_LOG",
+            "info,ethhook=debug,ethhook_webhook_delivery=debug",
+        ),
         ("ENVIRONMENT", "production"), // Use production config to watch chain ID 1
         ("DELIVERY_METRICS_PORT", "9093"), // Unique metrics port for webhook-delivery
     ];
@@ -479,7 +473,7 @@ async fn test_real_e2e_full_pipeline() {
         env_vars_processor,
     )
     .expect("Failed to start Message Processor");
-    
+
     wait_for_http_readiness("http://localhost:8081/ready", 10)
         .await
         .expect("Message Processor failed to become ready");
@@ -493,7 +487,7 @@ async fn test_real_e2e_full_pipeline() {
         env_vars_delivery,
     )
     .expect("Failed to start Webhook Delivery");
-    
+
     wait_for_http_readiness("http://localhost:8080/ready", 10)
         .await
         .expect("Webhook Delivery failed to become ready");
@@ -734,7 +728,10 @@ async fn test_full_pipeline_with_mock_ethereum() {
     // Setup mock webhook server on fixed port
     // Using fixed port prevents database cross-contamination when tests share PostgreSQL
     let mock_server = MockServer::builder()
-        .listener(std::net::TcpListener::bind(format!("127.0.0.1:{}", test_config::MOCK_WEBHOOK_PORT)).unwrap())
+        .listener(
+            std::net::TcpListener::bind(format!("127.0.0.1:{}", test_config::MOCK_WEBHOOK_PORT))
+                .unwrap(),
+        )
         .start()
         .await;
     let webhook_url = test_config::mock_webhook_url();
@@ -857,7 +854,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
     env_vars_ingestor.push(("INGESTOR_HEALTH_PORT", "8082"));
     let event_ingestor = start_service("Event Ingestor", "event-ingestor", env_vars_ingestor)
         .expect("Failed to start Event Ingestor");
-    
+
     // Wait for Event Ingestor readiness via HTTP (no more sleep!)
     wait_for_http_readiness("http://localhost:8082/ready", 10)
         .await
@@ -1040,8 +1037,8 @@ async fn test_consumer_group_acknowledgment() {
         ("REDIS_URL", "redis://localhost:6379"),
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
-        ("ENVIRONMENT", "production"),  // Use production chains including events:1
-        ("METRICS_PORT", "9091"),  // Use unique port to avoid conflicts
+        ("ENVIRONMENT", "production"), // Use production chains including events:1
+        ("METRICS_PORT", "9091"),      // Use unique port to avoid conflicts
         ("RUST_LOG", "info,ethhook_message_processor=debug"),
         ("PROCESSOR_HEALTH_PORT", "8081"),
     ];
@@ -1241,8 +1238,8 @@ async fn test_service_recovery_with_consumer_groups() {
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
         ("CONSUMER_NAME", "test-recovery-consumer"), // Use same consumer name for both instances
-        ("ENVIRONMENT", "production"),  // Use production chains including events:1
-        ("METRICS_PORT", "9092"),  // Use unique port to avoid conflicts
+        ("ENVIRONMENT", "production"),               // Use production chains including events:1
+        ("METRICS_PORT", "9092"),                    // Use unique port to avoid conflicts
         ("RUST_LOG", "info,ethhook_message_processor=debug"),
         ("PROCESSOR_HEALTH_PORT", "8081"),
     ];

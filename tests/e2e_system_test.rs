@@ -19,7 +19,6 @@
  * Expected runtime: ~10-15 seconds
  */
 
-use redis::AsyncCommands;
 use sqlx::PgPool;
 use std::process::{Child, Command};
 use std::time::{Duration, Instant};
@@ -43,7 +42,8 @@ async fn create_pool() -> PgPool {
 
 // Helper: Create Redis connection
 async fn create_redis() -> redis::aio::MultiplexedConnection {
-    let client = redis::Client::open("redis://localhost:6379").expect("Failed to create Redis client");
+    let client =
+        redis::Client::open("redis://localhost:6379").expect("Failed to create Redis client");
     client
         .get_multiplexed_tokio_connection()
         .await
@@ -58,23 +58,23 @@ fn start_service(name: &str, bin_name: &str, env_vars: Vec<(&str, &str)>) -> Chi
         .parent()
         .expect("Failed to get parent directory")
         .to_path_buf();
-    
+
     let binary_path = workspace_root.join("target").join("debug").join(bin_name);
-    
+
     let mut cmd = Command::new(&binary_path);
     for (key, val) in env_vars {
         cmd.env(key, val);
     }
-    
+
     cmd.spawn()
-        .unwrap_or_else(|e| panic!("Failed to start {}: {}", name, e))
+        .unwrap_or_else(|e| panic!("Failed to start {name}: {e}"))
 }
 
 // Helper: Stop a service
 fn stop_service(mut child: Child, name: &str) {
     let _ = child.kill();
     let _ = child.wait();
-    println!("✓ Stopped {}", name);
+    println!("✓ Stopped {name}");
 }
 
 // Helper: Create test user
@@ -122,7 +122,7 @@ async fn create_test_endpoint(
     let endpoint_id = Uuid::new_v4();
     let contract_addresses = vec![contract.to_string()];
     let chain_ids = vec![1i32];
-    
+
     sqlx::query(
         "INSERT INTO endpoints 
          (id, application_id, name, webhook_url, hmac_secret, contract_addresses, event_signatures, 
@@ -144,7 +144,7 @@ async fn create_test_endpoint(
     .execute(pool)
     .await
     .expect("Failed to create endpoint");
-    
+
     endpoint_id
 }
 
@@ -154,54 +154,66 @@ async fn test_complete_system_flow() {
     println!("\n╔════════════════════════════════════════════╗");
     println!("║     EthHook E2E System Test (Modern)      ║");
     println!("╚════════════════════════════════════════════╝\n");
-    
+
     let test_start = Instant::now();
-    
+
     // ═══════════════════════════════════════════════════════════════
     // PHASE 1: SETUP - Clean slate
     // ═══════════════════════════════════════════════════════════════
     println!("📋 PHASE 1: Setup & Cleanup");
     println!("─────────────────────────────────────────");
-    
+
     let pool = create_pool().await;
     let mut redis = create_redis().await;
-    
+
     // Clean database
     sqlx::query("DELETE FROM endpoints WHERE name LIKE 'E2E System%'")
-        .execute(&pool).await.ok();
+        .execute(&pool)
+        .await
+        .ok();
     sqlx::query("DELETE FROM applications WHERE name LIKE 'E2E System%'")
-        .execute(&pool).await.ok();
+        .execute(&pool)
+        .await
+        .ok();
     sqlx::query("DELETE FROM users WHERE email LIKE 'test-system%'")
-        .execute(&pool).await.ok();
-    
+        .execute(&pool)
+        .await
+        .ok();
+
     // Clean Redis completely
     for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
         let _: Result<(), _> = redis::cmd("DEL").arg(stream).query_async(&mut redis).await;
     }
-    let _: Result<(), _> = redis::cmd("DEL").arg("delivery_queue").query_async(&mut redis).await;
-    let _: Result<(), _> = redis::cmd("DEL").arg("event_dedup").query_async(&mut redis).await;
-    
+    let _: Result<(), _> = redis::cmd("DEL")
+        .arg("delivery_queue")
+        .query_async(&mut redis)
+        .await;
+    let _: Result<(), _> = redis::cmd("DEL")
+        .arg("event_dedup")
+        .query_async(&mut redis)
+        .await;
+
     println!("✓ Database cleaned");
     println!("✓ Redis cleaned");
-    
+
     // Setup test data using helpers
     let user_id = create_test_user(&pool).await;
     let app_id = create_test_application(&pool, user_id).await;
-    
+
     // Setup mock webhook server
     let webhook_server = MockServer::builder()
-        .listener(std::net::TcpListener::bind(format!("127.0.0.1:{}", WEBHOOK_PORT)).unwrap())
+        .listener(std::net::TcpListener::bind(format!("127.0.0.1:{WEBHOOK_PORT}")).unwrap())
         .start()
         .await;
-    let webhook_url = format!("http://127.0.0.1:{}/webhook", WEBHOOK_PORT);
-    
+    let webhook_url = format!("http://127.0.0.1:{WEBHOOK_PORT}/webhook");
+
     Mock::given(method("POST"))
         .and(path("/webhook"))
         .respond_with(ResponseTemplate::new(200))
         .up_to_n_times(999)
         .mount(&webhook_server)
         .await;
-    
+
     // Create endpoint
     let usdc_address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
     let transfer_topic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -211,18 +223,19 @@ async fn test_complete_system_flow() {
         &webhook_url,
         usdc_address,
         vec![transfer_topic.to_string()],
-    ).await;
-    
+    )
+    .await;
+
     println!("✓ Test data created (user, app, endpoint)");
-    println!("✓ Mock webhook server: {}", webhook_url);
-    
+    println!("✓ Mock webhook server: {webhook_url}");
+
     // Setup mock Ethereum RPC
     let mock_rpc = mock_eth_rpc::MockEthRpcServer::start()
         .await
         .expect("Failed to start mock RPC");
     let mock_rpc_url = mock_rpc.url();
-    println!("✓ Mock Ethereum RPC: {}", mock_rpc_url);
-    
+    println!("✓ Mock Ethereum RPC: {mock_rpc_url}");
+
     // Pre-create consumer groups
     for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
         let _: Result<String, _> = redis::cmd("XGROUP")
@@ -235,18 +248,21 @@ async fn test_complete_system_flow() {
             .await;
     }
     println!("✓ Consumer groups created");
-    
+
     let setup_time = test_start.elapsed();
     println!("✓ Setup complete ({:.1}s)\n", setup_time.as_secs_f64());
-    
+
     // ═══════════════════════════════════════════════════════════════
     // PHASE 2: SERVICE STARTUP - Correct order
     // ═══════════════════════════════════════════════════════════════
     println!("🚀 PHASE 2: Service Startup (Ordered)");
     println!("─────────────────────────────────────────");
-    
+
     let env_vars = vec![
-        ("DATABASE_URL", "postgres://ethhook:password@localhost:5432/ethhook"),
+        (
+            "DATABASE_URL",
+            "postgres://ethhook:password@localhost:5432/ethhook",
+        ),
         ("REDIS_URL", "redis://localhost:6379"),
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
@@ -258,42 +274,53 @@ async fn test_complete_system_flow() {
         ("BASE_WS_URL", "ws://dummy:9999"),
         ("DELIVERY_METRICS_PORT", "9099"),
     ];
-    
+
     // 1. Message Processor (consumer must be ready)
     println!("1️⃣  Starting Message Processor...");
-    let message_processor = start_service("Message Processor", "ethhook-message-processor", env_vars.clone());
+    let message_processor = start_service(
+        "Message Processor",
+        "ethhook-message-processor",
+        env_vars.clone(),
+    );
     sleep(Duration::from_secs(2)).await;
     println!("   ✓ Message Processor ready");
-    
+
     // 2. Webhook Delivery (workers must be ready before jobs arrive)
     println!("2️⃣  Starting Webhook Delivery (50 workers)...");
-    let webhook_delivery = start_service("Webhook Delivery", "ethhook-webhook-delivery", env_vars.clone());
+    let webhook_delivery = start_service(
+        "Webhook Delivery",
+        "ethhook-webhook-delivery",
+        env_vars.clone(),
+    );
     sleep(Duration::from_secs(2)).await;
     println!("   ✓ Webhook Delivery ready");
-    
+
     // 3. Event Ingestor (triggers pipeline immediately)
     println!("3️⃣  Starting Event Ingestor...");
     let event_ingestor = start_service("Event Ingestor", "event-ingestor", env_vars.clone());
     sleep(Duration::from_secs(2)).await;
     println!("   ✓ Event Ingestor connected to mock RPC");
-    
+
     let startup_time = test_start.elapsed() - setup_time;
-    println!("✓ All services started ({:.1}s)\n", startup_time.as_secs_f64());
-    
+    println!(
+        "✓ All services started ({:.1}s)\n",
+        startup_time.as_secs_f64()
+    );
+
     // ═══════════════════════════════════════════════════════════════
     // PHASE 3: PIPELINE EXECUTION - Full flow
     // ═══════════════════════════════════════════════════════════════
     println!("⚡ PHASE 3: Pipeline Execution");
     println!("─────────────────────────────────────────");
-    
+
     let pipeline_start = Instant::now();
-    
+
     // Mock RPC automatically sends block on connection, but let's give it a moment
     println!("⏳ Waiting for pipeline to process...");
     println!("   Event Ingestor → events:1 stream");
     println!("   Message Processor → delivery_queue");
     println!("   Webhook Delivery → HTTP POST");
-    
+
     // Poll for webhook delivery (max 10 seconds)
     let mut webhook_delivered = false;
     for _ in 0..20 {
@@ -306,63 +333,61 @@ async fn test_complete_system_flow() {
             }
         }
     }
-    
+
     let pipeline_time = pipeline_start.elapsed();
-    
+
     // ═══════════════════════════════════════════════════════════════
     // PHASE 4: VALIDATION
     // ═══════════════════════════════════════════════════════════════
     println!("\n✅ PHASE 4: Validation");
     println!("─────────────────────────────────────────");
-    
+
     assert!(webhook_delivered, "❌ Webhook was not delivered within 10s");
     println!("✓ Webhook delivered successfully");
     println!("✓ Pipeline latency: {:.2}s", pipeline_time.as_secs_f64());
-    
+
     // Verify database record
-    let delivery_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM webhook_deliveries WHERE endpoint_id = $1"
-    )
-    .bind(endpoint_id)
-    .fetch_one(&pool)
-    .await
-    .expect("Failed to query deliveries");
-    
+    let delivery_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM webhook_deliveries WHERE endpoint_id = $1")
+            .bind(endpoint_id)
+            .fetch_one(&pool)
+            .await
+            .expect("Failed to query deliveries");
+
     assert!(delivery_count > 0, "❌ No delivery records in database");
-    println!("✓ Delivery logged in database ({} records)", delivery_count);
-    
+    println!("✓ Delivery logged in database ({delivery_count} records)");
+
     // Verify event in database
-    let event_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM events WHERE contract_address = $1"
-    )
-    .bind(usdc_address)
-    .fetch_one(&pool)
-    .await
-    .expect("Failed to query events");
-    
+    let event_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM events WHERE contract_address = $1")
+            .bind(usdc_address)
+            .fetch_one(&pool)
+            .await
+            .expect("Failed to query events");
+
     assert!(event_count > 0, "❌ No events in database");
-    println!("✓ Event stored in database ({} events)", event_count);
-    
+    println!("✓ Event stored in database ({event_count} events)");
+
     // ═══════════════════════════════════════════════════════════════
     // PHASE 5: CLEANUP
     // ═══════════════════════════════════════════════════════════════
     println!("\n🧹 PHASE 5: Cleanup");
     println!("─────────────────────────────────────────");
-    
+
     stop_service(event_ingestor, "Event Ingestor");
     stop_service(webhook_delivery, "Webhook Delivery");
     stop_service(message_processor, "Message Processor");
-    
+
     sqlx::query("DELETE FROM users WHERE id = $1")
         .bind(user_id)
         .execute(&pool)
         .await
         .ok();
-    
+
     println!("✓ Test data cleaned");
-    
+
     let total_time = test_start.elapsed();
-    
+
     // ═══════════════════════════════════════════════════════════════
     // SUMMARY
     // ═══════════════════════════════════════════════════════════════
@@ -375,8 +400,16 @@ async fn test_complete_system_flow() {
     println!("   Pipeline: {:.2}s", pipeline_time.as_secs_f64());
     println!("   Total:    {:.1}s", total_time.as_secs_f64());
     println!("\n✨ System is fully functional!\n");
-    
+
     // Assert performance targets
-    assert!(pipeline_time < Duration::from_secs(10), "Pipeline too slow: {:.2}s", pipeline_time.as_secs_f64());
-    assert!(total_time < Duration::from_secs(30), "Test too slow: {:.1}s", total_time.as_secs_f64());
+    assert!(
+        pipeline_time < Duration::from_secs(10),
+        "Pipeline too slow: {:.2}s",
+        pipeline_time.as_secs_f64()
+    );
+    assert!(
+        total_time < Duration::from_secs(30),
+        "Test too slow: {:.1}s",
+        total_time.as_secs_f64()
+    );
 }

@@ -41,10 +41,10 @@
  */
 
 use anyhow::{Context, Result};
-use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use serde_json::{json, Value};
-use std::sync::atomic::{AtomicBool, Ordering};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
+use serde_json::{Value, json};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::signal;
 use tokio::sync::Mutex;
@@ -108,8 +108,7 @@ async fn main() -> Result<()> {
     };
 
     // Start HTTP health server FIRST (before consumers)
-    let health_port = std::env::var("PROCESSOR_HEALTH_PORT")
-        .unwrap_or_else(|_| "8081".to_string());
+    let health_port = std::env::var("PROCESSOR_HEALTH_PORT").unwrap_or_else(|_| "8081".to_string());
     info!("🏥 Starting health server on port {}...", health_port);
     let health_state = service_state.clone();
     tokio::spawn(async move {
@@ -153,20 +152,22 @@ async fn main() -> Result<()> {
     info!("✅ Consumer groups ready");
 
     // Start metrics server (configurable port, default 9090)
-    let metrics_port = std::env::var("METRICS_PORT")
-        .unwrap_or_else(|_| "9090".to_string());
+    let metrics_port = std::env::var("METRICS_PORT").unwrap_or_else(|_| "9090".to_string());
     info!("📊 Starting metrics server on :{}...", metrics_port);
     let _metrics_handle = tokio::spawn(async move {
         let app = Router::new().route("/metrics", get(metrics_handler));
 
-        let addr = format!("0.0.0.0:{}", metrics_port);
+        let addr = format!("0.0.0.0:{metrics_port}");
         match tokio::net::TcpListener::bind(&addr).await {
             Ok(listener) => {
                 info!("✅ Metrics server listening on {}", addr);
                 axum::serve(listener, app).await.unwrap();
             }
             Err(e) => {
-                warn!("⚠️  Failed to bind metrics server to {}: {}. Metrics will be unavailable.", addr, e);
+                warn!(
+                    "⚠️  Failed to bind metrics server to {}: {}. Metrics will be unavailable.",
+                    addr, e
+                );
             }
         }
     });
@@ -236,8 +237,14 @@ async fn main() -> Result<()> {
 
     info!("✅ Message Processor is READY");
     info!("   - All stream consumers active in XREADGROUP");
-    info!("   - Health: http://0.0.0.0:{}/health", std::env::var("PROCESSOR_HEALTH_PORT").unwrap_or_else(|_| "8081".to_string()));
-    info!("   - Ready:  http://0.0.0.0:{}/ready", std::env::var("PROCESSOR_HEALTH_PORT").unwrap_or_else(|_| "8081".to_string()));
+    info!(
+        "   - Health: http://0.0.0.0:{}/health",
+        std::env::var("PROCESSOR_HEALTH_PORT").unwrap_or_else(|_| "8081".to_string())
+    );
+    info!(
+        "   - Ready:  http://0.0.0.0:{}/ready",
+        std::env::var("PROCESSOR_HEALTH_PORT").unwrap_or_else(|_| "8081".to_string())
+    );
     info!("   - Press Ctrl+C to shutdown gracefully");
 
     // Wait for shutdown signal
@@ -496,8 +503,7 @@ async fn store_event_in_database(
 
 /// Metrics endpoint handler
 async fn metrics_handler() -> Result<String, (StatusCode, String)> {
-    metrics::render_metrics()
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+    metrics::render_metrics().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }
 
 /// Start HTTP health server for Kubernetes-style health checks
@@ -508,10 +514,10 @@ async fn start_health_server(port: String, state: ServiceState) -> Result<()> {
         .route("/metrics", get(metrics_handler))
         .with_state(state);
 
-    let addr = format!("0.0.0.0:{}", port);
+    let addr = format!("0.0.0.0:{port}");
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
-        .with_context(|| format!("Failed to bind health server to {}", addr))?;
+        .with_context(|| format!("Failed to bind health server to {addr}"))?;
 
     info!("🏥 Health server listening on http://{}", addr);
     info!("   - GET /health  - Liveness probe");
@@ -546,7 +552,7 @@ async fn readiness_check(State(state): State<ServiceState>) -> (StatusCode, Json
                 "ready": true,
                 "service": "message-processor",
                 "message": "All stream consumers active in XREADGROUP"
-            }))
+            })),
         )
     } else {
         (
@@ -555,7 +561,7 @@ async fn readiness_check(State(state): State<ServiceState>) -> (StatusCode, Json
                 "ready": false,
                 "service": "message-processor",
                 "message": "Initializing stream consumers..."
-            }))
+            })),
         )
     }
 }
