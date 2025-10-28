@@ -101,6 +101,7 @@ fn stop_service(mut child: Child, name: &str) {
 
 /// Helper: Wait for service to be ready via Redis readiness key
 /// DEPRECATED: Use wait_for_http_readiness() instead (HTTP health checks)
+#[allow(dead_code)]
 async fn wait_for_service_ready_via_redis(
     redis: &mut redis::aio::MultiplexedConnection,
     service_name: &str,
@@ -1031,7 +1032,7 @@ async fn test_consumer_group_acknowledgment() {
 
     // Start Message Processor FIRST
     println!("\n📦 Starting Message Processor...");
-    let mut env_vars = vec![
+    let env_vars = vec![
         (
             "DATABASE_URL",
             "postgres://ethhook:password@localhost:5432/ethhook",
@@ -1231,7 +1232,7 @@ async fn test_service_recovery_with_consumer_groups() {
 
     // Start Message Processor (first instance)
     println!("\n📦 Starting Message Processor (instance 1)...");
-    let mut env_vars = vec![
+    let env_vars = vec![
         (
             "DATABASE_URL",
             "postgres://ethhook:password@localhost:5432/ethhook",
