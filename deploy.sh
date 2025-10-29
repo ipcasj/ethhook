@@ -153,7 +153,7 @@ echo ""
 # =============================================================================
 # Step 6: Build and start services
 # =============================================================================
-echo -e "${YELLOW}[6/7]${NC} Building and starting services..."
+echo -e "${YELLOW}[6/8]${NC} Building and starting services..."
 echo -e "${BLUE}This may take 10-15 minutes for the first build...${NC}"
 
 ssh ${SSH_USER}@${DROPLET_IP} << 'EOF'
@@ -166,20 +166,61 @@ ssh ${SSH_USER}@${DROPLET_IP} << 'EOF'
     echo "Building Docker images..."
     docker-compose -f docker-compose.prod.yml build --no-cache
 
-    # Start services
-    echo "Starting services..."
+    # Start infrastructure first (PostgreSQL + Redis)
+    echo "Starting infrastructure..."
+    docker-compose -f docker-compose.prod.yml up -d postgres redis
+
+    # Wait for PostgreSQL to be ready
+    echo "Waiting for PostgreSQL..."
+    sleep 10
+
+    echo "✓ Infrastructure started"
+EOF
+
+echo -e "${GREEN}✓${NC} Infrastructure ready"
+echo ""
+
+# =============================================================================
+# Step 7: Run database migrations
+# =============================================================================
+echo -e "${YELLOW}[7/8]${NC} Running database migrations..."
+
+ssh ${SSH_USER}@${DROPLET_IP} << 'EOF'
+    cd /root/ethhook
+
+    # Run migrations using Docker container (no need to install sqlx-cli on host)
+    echo "Running migrations via Docker..."
+    chmod +x scripts/run_migrations_docker.sh
+    ./scripts/run_migrations_docker.sh
+
+    echo "✓ Migrations complete"
+EOF
+
+echo -e "${GREEN}✓${NC} Database migrated"
+echo ""
+
+# =============================================================================
+# Step 8: Start application services
+# =============================================================================
+echo -e "${YELLOW}[8/9]${NC} Starting application services..."
+
+ssh ${SSH_USER}@${DROPLET_IP} << 'EOF'
+    cd /root/ethhook
+
+    # Start all application services
+    echo "Starting all services..."
     docker-compose -f docker-compose.prod.yml up -d
 
-    echo "✓ Services started"
+    echo "✓ All services started"
 EOF
 
 echo -e "${GREEN}✓${NC} Services deployed"
 echo ""
 
 # =============================================================================
-# Step 7: Verify deployment
+# Step 9: Verify deployment
 # =============================================================================
-echo -e "${YELLOW}[7/7]${NC} Verifying deployment..."
+echo -e "${YELLOW}[9/9]${NC} Verifying deployment..."
 
 echo "Waiting 30 seconds for services to start..."
 sleep 30
@@ -194,17 +235,36 @@ ssh ${SSH_USER}@${DROPLET_IP} << 'EOF'
     echo "Health Checks:"
     echo "─────────────────────────────────────────"
 
-    # Check each service
-    for service in event-ingestor message-processor webhook-delivery admin-api; do
-        port=$(docker-compose -f docker-compose.prod.yml port $service 808 2>/dev/null | cut -d: -f2 | head -1)
-        if [ -n "$port" ]; then
-            if curl -f -s http://localhost:$port/health > /dev/null 2>&1; then
-                echo "✓ $service: healthy"
-            else
-                echo "✗ $service: unhealthy"
-            fi
-        fi
-    done
+    # Check each service on their health ports
+    if curl -f -s http://localhost:8080/health > /dev/null 2>&1; then
+        echo "✓ event-ingestor: healthy (port 8080)"
+    else
+        echo "✗ event-ingestor: unhealthy"
+    fi
+
+    if curl -f -s http://localhost:8081/health > /dev/null 2>&1; then
+        echo "✓ message-processor: healthy (port 8081)"
+    else
+        echo "✗ message-processor: unhealthy"
+    fi
+
+    if curl -f -s http://localhost:8082/health > /dev/null 2>&1; then
+        echo "✓ webhook-delivery: healthy (port 8082)"
+    else
+        echo "✗ webhook-delivery: unhealthy"
+    fi
+
+    if curl -f -s http://localhost:3000/health > /dev/null 2>&1; then
+        echo "✓ admin-api: healthy (port 3000)"
+    else
+        echo "✗ admin-api: unhealthy"
+    fi
+
+    if curl -f -s http://localhost:80/health > /dev/null 2>&1; then
+        echo "✓ leptos-portal: healthy (port 3002)"
+    else
+        echo "✗ leptos-portal: unhealthy"
+    fi
 EOF
 
 echo ""
@@ -215,18 +275,27 @@ echo ""
 echo "Your EthHook instance is running at: http://${DROPLET_IP}"
 echo ""
 echo "Service URLs:"
+echo "  - Frontend (UI):     http://${DROPLET_IP}:3002"
 echo "  - Admin API:         http://${DROPLET_IP}:3000"
 echo "  - Event Ingestor:    http://${DROPLET_IP}:8080/health"
 echo "  - Message Processor: http://${DROPLET_IP}:8081/health"
 echo "  - Webhook Delivery:  http://${DROPLET_IP}:8082/health"
 echo "  - Grafana:           http://${DROPLET_IP}:3001 (admin/admin)"
 echo ""
+echo "🎯 Main Access Points:"
+echo "  📱 Web UI:  http://${DROPLET_IP}:3002"
+echo "  🔧 API:     http://${DROPLET_IP}:3000"
+echo ""
 echo "Next steps:"
-echo "  1. Set up DNS (point your domain to ${DROPLET_IP})"
-echo "  2. Configure SSL/TLS (use Caddy or nginx)"
-echo "  3. Run migrations: ssh ${SSH_USER}@${DROPLET_IP} 'cd ${PROJECT_DIR} && ./scripts/run_migrations.sh'"
-echo "  4. Create test endpoint via Admin API"
-echo "  5. Test webhook delivery"
+echo "  1. Open http://${DROPLET_IP}:3002 in your browser"
+echo "  2. Register a new account"
+echo "  3. Create your first application"
+echo "  4. Set up a webhook endpoint"
+echo "  5. Test with a blockchain event"
+echo ""
+echo "Optional:"
+echo "  - Set up DNS (point your domain to ${DROPLET_IP})"
+echo "  - Configure SSL/TLS (use Caddy or nginx)"
 echo ""
 echo "To view logs:"
 echo "  ssh ${SSH_USER}@${DROPLET_IP}"
