@@ -39,7 +39,7 @@ SSH_USER="root"  # Change if using different user
 PROJECT_DIR="/root/ethhook"
 
 echo -e "${BLUE}╔═══════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   EthHook DigitalOcean Deployment    ║${NC}"
+echo -e "${BLUE}║   EthHook DigitalOcean Deployment     ║${NC}"
 echo -e "${BLUE}╚═══════════════════════════════════════╝${NC}"
 echo ""
 

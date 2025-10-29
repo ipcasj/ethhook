@@ -4,7 +4,13 @@ use crate::auth;
 use gloo_net::http::{Request, Response};
 use serde::{Deserialize, Serialize};
 
-const API_BASE: &str = "http://localhost:8080";
+// In production, this will be replaced by the actual server IP
+// For local development, use localhost:3000
+#[cfg(debug_assertions)]
+const API_BASE: &str = "http://localhost:3000";
+
+#[cfg(not(debug_assertions))]
+const API_BASE: &str = "http://104.248.15.178:3000";
 
 #[derive(Debug, Serialize)]
 pub struct LoginRequest {

@@ -55,11 +55,16 @@ services:
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - ETHEREUM_RPC_URL=${ETHEREUM_RPC_URL}
+      - ETHEREUM_WS_URL=${ETHEREUM_WS_URL}
+      - ARBITRUM_WS_URL=${ARBITRUM_WS_URL}
+      - OPTIMISM_WS_URL=${OPTIMISM_WS_URL}
+      - BASE_WS_URL=${BASE_WS_URL}
       - HEALTH_CHECK_PORT=8080
       - ENVIRONMENT=production
+      - METRICS_PORT=9090
     ports:
       - "8080:8080"
+      - "9093:9090"
     networks:
       - ethhook-network
     depends_on:
@@ -174,6 +179,29 @@ services:
       retries: 3
       start_period: 40s
 
+  # =============================================================================
+  # FRONTEND UI (Leptos Portal)
+  # =============================================================================
+  leptos-portal:
+    build:
+      context: .
+      dockerfile: crates/leptos-portal/Dockerfile
+    container_name: ethhook-leptos-portal
+    ports:
+      - "3002:80"
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # =============================================================================
+  # MONITORING SERVICES
+  # =============================================================================
   # Optional: Prometheus for metrics
   prometheus:
     image: prom/prometheus:latest
