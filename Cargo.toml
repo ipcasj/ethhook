@@ -16,8 +16,8 @@ members = [
     # E2E Tests
     "tests",                         # End-to-end integration tests
 
-    # Tools
-    "tools/load-tester",             # Load testing tool
+    # Tools (commented out for production deployment)
+    # "tools/load-tester",             # Load testing tool
 ]
 resolver = "2"
 
