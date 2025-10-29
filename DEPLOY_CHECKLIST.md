@@ -2,7 +2,11 @@
 
 Quick reference for deploying EthHook to DigitalOcean.
 
+**Simple guide:** See [DO_DEPLOY_SIMPLE.md](./DO_DEPLOY_SIMPLE.md) ← **Start here!**
 **Full guide:** See [DIGITALOCEAN_DEPLOYMENT.md](./DIGITALOCEAN_DEPLOYMENT.md)
+
+**Setup:** Everything on one Droplet (PostgreSQL + Redis + all services in Docker)
+**Cost:** $24/month
 
 ---
 
@@ -15,14 +19,8 @@ Quick reference for deploying EthHook to DigitalOcean.
 
 ---
 
-## DigitalOcean Resources (20 min)
+## DigitalOcean Resources (5 min)
 
-- [ ] **PostgreSQL Database** created
-  - 1GB RAM, 10GB disk ($15/month)
-  - Note connection string
-- [ ] **Redis Database** created
-  - 1GB RAM ($15/month)
-  - Note host, port, password
 - [ ] **Droplet** created
   - Ubuntu 22.04
   - 2 vCPU, 4GB RAM ($24/month)
@@ -32,7 +30,8 @@ Quick reference for deploying EthHook to DigitalOcean.
   - HTTP (80) - All
   - HTTPS (443) - All
   - API (3000) - All
-  - Grafana (3001) - Your IP only
+
+**Note:** PostgreSQL and Redis run in Docker containers on the Droplet (not separate services)
 
 ---
 
@@ -47,12 +46,12 @@ Quick reference for deploying EthHook to DigitalOcean.
 ## Environment Configuration (5 min)
 
 - [ ] Copied `.env.digitalocean.example` → `.env.production`
-- [ ] DATABASE_URL filled in
-- [ ] REDIS_HOST filled in
-- [ ] REDIS_PORT filled in
-- [ ] REDIS_PASSWORD filled in
+- [ ] Generated passwords:
+  - [ ] POSTGRES_PASSWORD: `openssl rand -base64 32`
+  - [ ] REDIS_PASSWORD: `openssl rand -base64 32`
+  - [ ] JWT_SECRET: `openssl rand -base64 32`
+- [ ] DATABASE_URL filled in (using POSTGRES_PASSWORD)
 - [ ] ETHEREUM_RPC_URL filled in
-- [ ] JWT_SECRET generated: `openssl rand -base64 32`
 - [ ] All values double-checked
 
 ---
@@ -88,13 +87,15 @@ Quick reference for deploying EthHook to DigitalOcean.
 
 ---
 
-## Post-Deployment (Optional)
+## Post-Deployment (Important!)
 
-- [ ] Domain name configured
-- [ ] SSL/TLS set up (Caddy)
-- [ ] Database backups enabled
-- [ ] Monitoring alerts configured
-- [ ] Documentation updated with production URLs
+- [ ] **Set up automatic backups** (CRITICAL!)
+  - [ ] Test backup: `./scripts/backup.sh`
+  - [ ] Set up cron job for daily backups
+  - [ ] Verify backups in `/root/ethhook-backups/`
+- [ ] Domain name configured (optional)
+- [ ] SSL/TLS set up with Caddy (optional)
+- [ ] Monitoring alerts configured (optional)
 
 ---
 
@@ -140,9 +141,10 @@ docker exec ethhook-admin-api sh -c 'cd /app && sqlx migrate run'
 ## Costs
 
 - Droplet: $24/month
-- PostgreSQL: $15/month
-- Redis: $15/month
-- **Total: $54/month**
+- Alchemy: $0/month (free tier)
+- **Total: $24/month**
+
+**Savings:** $30/month vs managed PostgreSQL + Redis
 
 ---
 
