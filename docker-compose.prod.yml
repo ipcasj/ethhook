@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  event-ingestor:
+    build:
+      context: .
+      dockerfile: crates/event-ingestor/Dockerfile
+    container_name: ethhook-event-ingestor
+    environment:
+      - RUST_LOG=info
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - ETHEREUM_RPC_URL=${ETHEREUM_RPC_URL}
+      - HEALTH_CHECK_PORT=8080
+      - ENVIRONMENT=production
+    ports:
+      - "8080:8080"
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  message-processor:
+    build:
+      context: .
+      dockerfile: crates/message-processor/Dockerfile
+    container_name: ethhook-message-processor
+    environment:
+      - RUST_LOG=info
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - CONSUMER_GROUP=message_processors
+      - BATCH_SIZE=100
+      - BLOCK_TIME_MS=5000
+      - METRICS_PORT=9090
+      - HEALTH_CHECK_PORT=8081
+      - ENVIRONMENT=production
+    ports:
+      - "8081:8081"
+      - "9090:9090"
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  webhook-delivery:
+    build:
+      context: .
+      dockerfile: crates/webhook-delivery/Dockerfile
+    container_name: ethhook-webhook-delivery
+    environment:
+      - RUST_LOG=info
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - WORKER_COUNT=${WORKER_COUNT:-50}
+      - DELIVERY_METRICS_PORT=9091
+      - HEALTH_CHECK_PORT=8082
+      - ENVIRONMENT=production
+    ports:
+      - "8082:8082"
+      - "9091:9091"
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  admin-api:
+    build:
+      context: .
+      dockerfile: crates/admin-api/Dockerfile
+    container_name: ethhook-admin-api
+    environment:
+      - RUST_LOG=info
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
+      - ENVIRONMENT=production
+    ports:
+      - "3000:3000"
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ethhook-prometheus
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - ethhook-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+
+  # Optional: Grafana for dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ethhook-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./monitoring/grafana/dashboards:/etc/dashboards
+    networks:
+      - ethhook-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+networks:
+  ethhook-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

@@ -134,7 +134,7 @@ async fn publish_event(
         .arg("log_index")
         .arg("0")
         .arg("contract")
-        .arg("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+        .arg("0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238")
         .arg("topics")
         .arg(topics_json)
         .arg("data")
