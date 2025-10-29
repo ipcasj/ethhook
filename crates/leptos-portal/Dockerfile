@@ -24,10 +24,9 @@ RUN apt-get update && apt-get install -y \
 RUN cargo install --locked trunk
 RUN rustup target add wasm32-unknown-unknown
 
-# Copy workspace files (we need the domain crate dependency)
+# Copy workspace files (we need the domain crate dependency and full workspace)
 COPY Cargo.toml Cargo.lock ./
-COPY crates/domain ./crates/domain
-COPY crates/leptos-portal ./crates/leptos-portal
+COPY crates ./crates
 
 # Build frontend in release mode
 WORKDIR /app/crates/leptos-portal
