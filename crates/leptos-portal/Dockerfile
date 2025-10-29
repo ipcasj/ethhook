@@ -13,6 +13,9 @@ FROM rust:1.83-slim as builder
 
 WORKDIR /app
 
+# Install nightly Rust (required for edition 2024)
+RUN rustup install nightly && rustup default nightly
+
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
     pkg-config \
