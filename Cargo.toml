@@ -23,7 +23,7 @@ resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
-edition = "2024"
+edition = "2021"  # Using 2021 edition for stable Rust compatibility
 authors = ["EthHook Contributors"]
 license = "MIT"
 repository = "https://github.com/ipcasj/ethhook"
