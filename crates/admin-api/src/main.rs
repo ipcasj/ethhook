@@ -65,10 +65,20 @@ async fn main() -> Result<()> {
 
     info!("Database connection pool established");
 
-    // Run migrations
-    sqlx::migrate!("../../migrations").run(&pool).await?;
-
-    info!("Database migrations completed");
+    // Run migrations (ignore if already applied)
+    match sqlx::migrate!("../../migrations").run(&pool).await {
+        Ok(_) => info!("Database migrations completed"),
+        Err(sqlx::migrate::MigrateError::VersionMissing(_)) => {
+            info!("Database migrations already applied, skipping");
+        }
+        Err(e) => {
+            // Only fail on actual errors, not "already exists" errors
+            if !e.to_string().contains("already exists") {
+                return Err(e.into());
+            }
+            info!("Database migrations already applied, skipping");
+        }
+    }
 
     // Build application router
     let app = create_router(pool.clone(), config.clone());

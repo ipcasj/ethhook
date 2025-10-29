@@ -23,13 +23,14 @@ else
     exit 1
 fi
 
-# Run migrations using temporary Rust container
+# Run migrations using temporary Rust container with nightly
 docker run --rm \
     --network ethhook_ethhook-network \
     -v $(pwd)/migrations:/migrations \
     -e DATABASE_URL="${DATABASE_URL}" \
     rust:1.83-slim \
     bash -c "
+        rustup install nightly && rustup default nightly
         apt-get update && apt-get install -y libpq-dev > /dev/null 2>&1
         cargo install sqlx-cli --no-default-features --features postgres --quiet
         cd /migrations && sqlx migrate run
