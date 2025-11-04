@@ -1,0 +1,283 @@
+{
+  "config": {
+    "configFile": "/Users/igor/rust_projects/capstone0/ui/playwright.config.ts",
+    "rootDir": "/Users/igor/rust_projects/capstone0/ui/e2e",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 3
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report"
+        }
+      ],
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/igor/rust_projects/capstone0/ui/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 3
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/igor/rust_projects/capstone0/ui/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.1",
+    "workers": 4,
+    "webServer": {
+      "command": "npm run dev",
+      "url": "http://localhost:3000",
+      "reuseExistingServer": true,
+      "stdout": "ignore",
+      "stderr": "pipe",
+      "timeout": 120000
+    }
+  },
+  "suites": [
+    {
+      "title": "00-smoke.spec.ts",
+      "file": "00-smoke.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Critical Path Smoke Test",
+          "file": "00-smoke.spec.ts",
+          "line": 13,
+          "column": 6,
+          "specs": [
+            {
+              "title": "complete user workflow: login → create app → create endpoint → monitor events",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 8215,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Step 1: Login with demo user\n"
+                        },
+                        {
+                          "text": "✓ Login successful\n"
+                        },
+                        {
+                          "text": "Step 2: Create Application\n"
+                        },
+                        {
+                          "text": "✓ Application created\n"
+                        },
+                        {
+                          "text": "Step 3: Create Endpoint\n"
+                        },
+                        {
+                          "text": "✓ Endpoint created\n"
+                        },
+                        {
+                          "text": "Step 4: View Events\n"
+                        },
+                        {
+                          "text": "✓ Events page loaded\n"
+                        },
+                        {
+                          "text": "Step 5: Verify Data Persistence\n"
+                        },
+                        {
+                          "text": "✓ Data persists across navigation\n"
+                        },
+                        {
+                          "text": "Step 6: Logout\n"
+                        },
+                        {
+                          "text": "✓ Logout successful\n"
+                        },
+                        {
+                          "text": "\n"
+                        },
+                        {
+                          "text": "🎉 SMOKE TEST PASSED - All critical features working!\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-31T03:04:09.431Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "09c83651e459c22e1fd4-8f7fb94f7aae1cac0744",
+              "file": "00-smoke.spec.ts",
+              "line": 14,
+              "column": 7
+            },
+            {
+              "title": "should handle network errors without crashing",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 922,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Testing network error handling...\n"
+                        },
+                        {
+                          "text": "✓ Network error handled gracefully - no crash!\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-31T03:04:09.434Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "09c83651e459c22e1fd4-36ded1bd3cceb6a95d63",
+              "file": "00-smoke.spec.ts",
+              "line": 84,
+              "column": 7
+            },
+            {
+              "title": "should load all pages without errors",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 2924,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "Testing Dashboard page...\n"
+                        },
+                        {
+                          "text": "✓ Dashboard page loaded\n"
+                        },
+                        {
+                          "text": "Testing Applications page...\n"
+                        },
+                        {
+                          "text": "✓ Applications page loaded\n"
+                        },
+                        {
+                          "text": "Testing Endpoints page...\n"
+                        },
+                        {
+                          "text": "✓ Endpoints page loaded\n"
+                        },
+                        {
+                          "text": "Testing Events page...\n"
+                        },
+                        {
+                          "text": "✓ Events page loaded\n"
+                        },
+                        {
+                          "text": "\n"
+                        },
+                        {
+                          "text": "🎉 All pages load successfully!\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-10-31T03:04:09.429Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "09c83651e459c22e1fd4-0ee2bd98e5d13cc0acba",
+              "file": "00-smoke.spec.ts",
+              "line": 105,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-10-31T03:04:09.061Z",
+    "duration": 8831.092999999999,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
