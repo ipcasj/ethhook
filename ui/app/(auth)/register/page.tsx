@@ -49,9 +49,10 @@ export default function RegisterPage() {
       setAuthToken(response.token);
       toast.success('Account created successfully!');
       router.push('/dashboard');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Registration error:', error);
-      toast.error(error.message || 'Registration failed. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Registration failed. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

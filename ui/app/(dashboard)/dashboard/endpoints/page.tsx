@@ -52,21 +52,22 @@ export default function EndpointsPage() {
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: (data: any) => api.post<Endpoint>('/endpoints', data),
+    mutationFn: (data: Record<string, unknown>) => api.post<Endpoint>('/endpoints', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['endpoints'] });
       resetForm();
       setIsCreateOpen(false);
       toast.success('Endpoint created successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to create endpoint');
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create endpoint';
+      toast.error(errorMessage);
     },
   });
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
       api.put<Endpoint>(`/endpoints/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['endpoints'] });
@@ -75,8 +76,9 @@ export default function EndpointsPage() {
       setSelectedEndpoint(null);
       toast.success('Endpoint updated successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update endpoint');
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update endpoint';
+      toast.error(errorMessage);
     },
   });
 
@@ -87,8 +89,9 @@ export default function EndpointsPage() {
       queryClient.invalidateQueries({ queryKey: ['endpoints'] });
       toast.success('Endpoint deleted successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete endpoint');
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete endpoint';
+      toast.error(errorMessage);
     },
   });
 

@@ -44,8 +44,9 @@ export default function ApplicationsPage() {
       setDescription('');
       toast.success('Application created successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to create application');
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create application';
+      toast.error(errorMessage);
     },
   });
 
@@ -59,8 +60,9 @@ export default function ApplicationsPage() {
       setSelectedApp(null);
       toast.success('Application updated successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to update application');
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update application';
+      toast.error(errorMessage);
     },
   });
 
@@ -71,8 +73,9 @@ export default function ApplicationsPage() {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       toast.success('Application deleted successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error.message || 'Failed to delete application');
+    onError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete application';
+      toast.error(errorMessage);
     },
   });
 

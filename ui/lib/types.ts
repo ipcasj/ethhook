@@ -102,7 +102,7 @@ export interface Event {
   block_number: number;
   transaction_hash: string;
   log_index: number;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   status: 'pending' | 'delivered' | 'failed';
   attempts: number;
   last_attempt_at: string | null;

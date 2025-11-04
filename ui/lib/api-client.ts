@@ -6,7 +6,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public data?: any
+    public data?: unknown
   ) {
     super(message);
     this.name = 'ApiError';
@@ -26,7 +26,7 @@ export function clearAuthToken(): void {
   localStorage.removeItem('auth_token');
 }
 
-export async function apiClient<T = any>(
+export async function apiClient<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
@@ -47,9 +47,9 @@ export async function apiClient<T = any>(
     const response = await fetch(url, config);
 
     if (!response.ok) {
-      let errorData: any;
+      let errorData: { error?: string };
       try {
-        errorData = await response.json();
+        errorData = await response.json() as { error?: string };
       } catch {
         errorData = { error: response.statusText };
       }
@@ -96,19 +96,19 @@ export async function apiClient<T = any>(
 export const api = {
   get: <T>(endpoint: string) => apiClient<T>(endpoint, { method: 'GET' }),
   
-  post: <T>(endpoint: string, data?: any) =>
+  post: <T>(endpoint: string, data?: unknown) =>
     apiClient<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
     }),
   
-  put: <T>(endpoint: string, data?: any) =>
+  put: <T>(endpoint: string, data?: unknown) =>
     apiClient<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
     }),
   
-  patch: <T>(endpoint: string, data?: any) =>
+  patch: <T>(endpoint: string, data?: unknown) =>
     apiClient<T>(endpoint, {
       method: 'PATCH',
       body: data ? JSON.stringify(data) : undefined,
