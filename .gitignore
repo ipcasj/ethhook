@@ -161,7 +161,7 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+# package-lock.json (needed for production builds in ui/)
 yarn.lock
 
 # ============================================================================
