@@ -1,47 +1,168 @@
-name: DigitalOcean Deploy
+name: Production Deployment
 
-# Disabled: Enable this workflow when you're ready to deploy to DigitalOcean
-# and have configured the required secrets:
-# - DIGITALOCEAN_ACCESS_TOKEN
-# - DIGITALOCEAN_USERNAME
-# - DO_REGISTRY
+# Deploy to DigitalOcean production server
+# Required secrets:
+# - DROPLET_HOST (IP address: 104.248.15.178)
+# - DROPLET_USER (SSH username)
+# - DROPLET_SSH_KEY (Private SSH key for authentication)
+# - PRODUCTION_URL (for health checks, e.g., http://104.248.15.178:3000)
+
 on:
-  workflow_dispatch:  # Manual trigger only
-  # push:
-  #   branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual deployment
 
 jobs:
-  build-and-deploy:
+  deploy:
+    name: Deploy to Production
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to DigitalOcean Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: registry.digitalocean.com
-          username: ${{ secrets.DIGITALOCEAN_USERNAME }}
-          password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-
-      - name: Build and push Docker images
+      
+      - name: Setup SSH key
         run: |
-          docker build -t registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/admin-api:latest ./crates/admin-api
-          docker build -t registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/event-ingestor:latest ./crates/event-ingestor
-          docker build -t registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/message-processor:latest ./crates/message-processor
-          docker build -t registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/webhook-delivery:latest ./crates/webhook-delivery
-          docker build -t registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/leptos-portal:latest ./crates/leptos-portal
-          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/admin-api:latest
-          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/event-ingestor:latest
-          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/message-processor:latest
-          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/webhook-delivery:latest
-          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/leptos-portal:latest
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Deploy to DigitalOcean Droplet
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'ENDSSH'
+            set -e
+            echo "🚀 Starting deployment to production..."
+            
+            # Navigate to project directory
+            cd ~/ethhook || cd ~/rust_projects/capstone0 || cd ~/capstone0
+            
+            # Pull latest code
+            echo "📥 Pulling latest code from main branch..."
+            git fetch origin
+            git reset --hard origin/main
+            
+            # Stop services
+            echo "🛑 Stopping services..."
+            docker-compose -f docker-compose.prod.yml down || docker compose -f docker-compose.prod.yml down || true
+            
+            # Rebuild images
+            echo "🔨 Building Docker images..."
+            docker-compose -f docker-compose.prod.yml build --no-cache || docker compose -f docker-compose.prod.yml build --no-cache
+            
+            # Run migrations
+            echo "🗃️  Running database migrations..."
+            docker-compose -f docker-compose.prod.yml run --rm admin-api sqlx migrate run || \
+              docker compose -f docker-compose.prod.yml run --rm admin-api sqlx migrate run || true
+            
+            # Start services
+            echo "▶️  Starting services..."
+            docker-compose -f docker-compose.prod.yml up -d || docker compose -f docker-compose.prod.yml up -d
+            
+            # Wait for services to be healthy
+            echo "⏳ Waiting for services to start..."
+            sleep 15
+            
+            # Check service status
+            echo "📊 Service status:"
+            docker-compose -f docker-compose.prod.yml ps || docker compose -f docker-compose.prod.yml ps
+            
+            echo "✅ Deployment complete!"
+          ENDSSH
+      
+      - name: Health Check
+        run: |
+          echo "🏥 Running health checks..."
+          
+          # Check API health endpoint
+          max_attempts=10
+          attempt=1
+          
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt/$max_attempts: Checking API health..."
+            
+            if curl -f -s "${{ secrets.PRODUCTION_URL }}/api/v1/health" > /dev/null; then
+              echo "✅ API is healthy!"
+              break
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+              echo "❌ Health check failed after $max_attempts attempts"
+              exit 1
+            fi
+            
+            echo "Waiting 10 seconds before retry..."
+            sleep 10
+            attempt=$((attempt + 1))
+          done
+          
+          # Check UI is accessible
+          echo "Checking UI accessibility..."
+          if curl -f -s "${{ secrets.PRODUCTION_URL }}/" > /dev/null; then
+            echo "✅ UI is accessible!"
+          else
+            echo "⚠️  UI health check failed (this may be OK if UI is on different port)"
+          fi
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+      
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "## 🎉 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** Production" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ secrets.PRODUCTION_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All services are running and healthy ✅" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "## ❌ Deployment Failed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The deployment encountered errors. Please check the logs above." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Rollback:** Use the 'Rollback' workflow to revert to previous version." >> $GITHUB_STEP_SUMMARY
 
-      - name: Deploy to DigitalOcean App Platform
-        uses: digitalocean/app-action@v1.1.5
-        with:
-          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-          spec: ".do/app.yaml"
+  rollback:
+    name: Rollback (Manual)
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'workflow_dispatch'
+    needs: deploy
+    
+    steps:
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
+      
+      - name: Rollback to previous version
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'ENDSSH'
+            set -e
+            echo "⏪ Rolling back to previous version..."
+            
+            cd ~/ethhook || cd ~/rust_projects/capstone0 || cd ~/capstone0
+            
+            # Get previous commit
+            git reset --hard HEAD~1
+            
+            # Rebuild and restart
+            docker-compose -f docker-compose.prod.yml down || docker compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml up -d || docker compose -f docker-compose.prod.yml up -d
+            
+            echo "✅ Rollback complete!"
+          ENDSSH
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key

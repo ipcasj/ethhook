@@ -5,7 +5,7 @@ members = [
     "crates/message-processor",      # ✓ COMPLETE!
     "crates/webhook-delivery",       # ✓ COMPLETE!
     "crates/admin-api",              # ✓ COMPLETE!
-    "crates/leptos-portal",          # ✓ Frontend Portal
+    # "crates/leptos-portal",        # ✗ DEPRECATED - Using Next.js UI instead (see /ui/)
 
     # Foundation crates
     "crates/common",                 # ✓ COMPLETE!

@@ -260,10 +260,10 @@ ssh ${SSH_USER}@${DROPLET_IP} << 'EOF'
         echo "✗ admin-api: unhealthy"
     fi
 
-    if curl -f -s http://localhost:80/health > /dev/null 2>&1; then
-        echo "✓ leptos-portal: healthy (port 3002)"
+    if curl -f -s http://localhost:3002 > /dev/null 2>&1; then
+        echo "✓ ui (Next.js): healthy (port 3002)"
     else
-        echo "✗ leptos-portal: unhealthy"
+        echo "✗ ui (Next.js): unhealthy"
     fi
 EOF
 

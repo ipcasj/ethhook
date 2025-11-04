@@ -49,7 +49,7 @@ EthHook consists of 4 Rust microservices:
 
 Ethereum → Event Ingestor → Redis → Message Processor → Redis → Webhook Delivery → Your App
                                            ↓
-                                      PostgreSQL ← Admin API ← Leptos Portal
+                                      PostgreSQL ← Admin API ← Next.js UI
 
 1. **Event Ingestor**: WebSocket listener for Ethereum events
 2. **Message Processor**: Event filtering, fan-out, and queuing
@@ -634,7 +634,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) for deta
 - [ethers-rs](https://github.com/gakonst/ethers-rs) for Ethereum integration
 - [Tokio](https://tokio.rs/) for async runtime
 - [Axum](https://github.com/tokio-rs/axum) for HTTP server
-- [Leptos](https://leptos.dev/) for frontend framework
+- [Next.js](https://nextjs.org/) for frontend framework
 
 ## 📞 Support
 

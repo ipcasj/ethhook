@@ -28,8 +28,8 @@
               ╔═══════════════════════════════===============╗
               ║      ETHHOOK PLATFORM                        ║ 
               ║                                              ║
-              ║  [Leptos Portal] <-> [Admin API]             ║
-              ║   (WASM SPA)        (Axum REST)              ║
+              ║  [Next.js UI] <-> [Admin API]                ║
+              ║   (React SPA)     (Axum REST)                ║
               ║                         |                    ║
               ║        DATA LAYER       |                    ║
               ║    [PostgreSQL] [Redis]                      ║
@@ -230,19 +230,18 @@ GET    /api/v1/account/billing      - Get billing info
 - **Hash**: `ratelimit:{endpoint_id}` - Rate limit state
 - **Cache**: `endpoint:{id}` - Endpoint configuration (5min TTL)
 
-#### 6. Leptos Portal (Frontend)
+#### 6. Next.js UI (Frontend)
 
-**Technology**: Rust + Leptos + WASM + TailwindCSS
+**Technology**: Next.js 15 + React 19 + TypeScript + Tailwind CSS
 
 **Pages**:
 
 - `/login` - Authentication
 - `/dashboard` - Overview, usage stats, recent events
 - `/applications` - Manage applications
-- `/applications/{id}/endpoints` - Manage endpoints
+- `/endpoints` - Manage endpoints
 - `/events` - Event history with filtering
-- `/settings` - Account settings, API keys
-- `/billing` - Subscription management
+- `/settings` - Account settings, profile management
 
 ---
 
@@ -440,13 +439,14 @@ INSERT INTO subscription_limits VALUES
 - **Configuration**: `config` + environment variables
 - **Testing**: `tokio-test`, `mockito`, `testcontainers`
 
-### Frontend (Rust WASM)
+### Frontend (Next.js)
 
-- **Framework**: `leptos` 0.5+ (full-stack Rust)
-- **Styling**: TailwindCSS
-- **HTTP Client**: `reqwasm` or `gloo-net`
-- **State Management**: Leptos reactive system
-- **Routing**: `leptos_router`
+- **Framework**: Next.js 15 (React 19)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui components
+- **HTTP Client**: Custom API client with JWT auth
+- **State Management**: React Query (TanStack Query)
+- **Testing**: Playwright E2E tests
 
 ### Infrastructure
 
@@ -479,8 +479,8 @@ INSERT INTO subscription_limits VALUES
 ║  [Webhook Delivery]  [Admin API]          ║
 ║    (Worker)          (Web Service)        ║
 ║                                           ║
-║  [Leptos Portal]  [Managed PostgreSQL]    ║
-║    (Static)                               ║
+║  [Next.js UI]     [Managed PostgreSQL]    ║
+║    (Web Service)                          ║
 ║                                           ║
 ║                   [Managed Redis]         ║
 ║                                           ║
@@ -497,8 +497,8 @@ INSERT INTO subscription_limits VALUES
 ║                 |                         ║
 ║    ┌────────────┴────────────────┐        ║
 ║    v                             v        ║
-║  [Admin API]         [Leptos Portal]      ║
-║  (3 pods)            (Cloudflare CDN)     ║
+║  [Admin API]         [Next.js UI]         ║
+║  (3 pods)            (3 pods)             ║
 ║                                           ║
 ║  [Event Ingestor]    [Message Processor]  ║
 ║  (2 pods)            (5 pods)             ║
