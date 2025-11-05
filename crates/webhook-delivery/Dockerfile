@@ -1,10 +1,7 @@
 # Build stage
-FROM rust:1.83-slim as builder
+FROM rust:nightly-slim as builder
 
 WORKDIR /app
-
-# Install nightly for edition2024 support
-RUN rustup install nightly && rustup default nightly
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
