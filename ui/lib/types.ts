@@ -94,18 +94,22 @@ export interface UpdateEndpointRequest {
 
 export interface Event {
   id: string;
-  endpoint_id: string;
-  event_type: string;
-  chain_id: number;
-  contract_address: string;
-  event_signature: string;
   block_number: number;
+  block_hash: string;
   transaction_hash: string;
   log_index: number;
-  payload: Record<string, unknown>;
+  contract_address: string;
+  topics: string[];
+  data: string;
+  ingested_at: string;
+  processed_at: string | null;
+  delivery_count: number | null;
+  successful_deliveries: number | null;
+  event_type: string;
+  chain_id: number | null;
+  endpoint_name: string | null;
   status: 'pending' | 'delivered' | 'failed';
   attempts: number;
-  last_attempt_at: string | null;
   created_at: string;
 }
 
@@ -127,12 +131,14 @@ export interface DeliveryAttempt {
 }
 
 export interface DashboardStats {
-  total_applications: number;
-  total_endpoints: number;
-  total_events_24h: number;
-  total_events_7d: number;
-  success_rate_24h: number;
-  avg_response_time_ms: number;
+  events_today: number;
+  events_total: number;
+  success_rate: number;
+  avg_delivery_time_ms: number | null;
+  active_endpoints: number;
+  total_deliveries: number;
+  successful_deliveries: number;
+  failed_deliveries: number;
 }
 
 export interface ErrorResponse {

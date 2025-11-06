@@ -48,8 +48,15 @@ export default function EventsPage() {
     }
   };
 
-  const getEndpointName = (endpointId: string) => {
-    return endpointsData?.endpoints.find(e => e.id === endpointId)?.name || 'Unknown';
+  const getChainName = (chainId: number | null) => {
+    if (!chainId) return 'Unknown';
+    const chains: Record<number, string> = {
+      1: 'Ethereum',
+      10: 'Optimism',
+      42161: 'Arbitrum',
+      8453: 'Base',
+    };
+    return chains[chainId] || `Chain ${chainId}`;
   };
 
   return (
@@ -154,19 +161,19 @@ export default function EventsPage() {
                 {eventsData.events.map((event) => (
                   <TableRow key={event.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell className="font-medium font-mono text-xs">
-                      {truncate(event.event_type, 30)}
+                      {truncate(event.event_type || 'Unknown', 30)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {getEndpointName(event.endpoint_id)}
+                      {event.endpoint_name || 'Unknown'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{event.chain_id}</Badge>
+                      <Badge variant="outline">{getChainName(event.chain_id)}</Badge>
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {truncateAddress(event.contract_address)}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
-                      {event.block_number}
+                      {event.block_number.toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <Badge variant={getStatusColor(event.status)}>

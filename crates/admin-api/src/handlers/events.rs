@@ -25,6 +25,13 @@ pub struct EventResponse {
     // Include delivery info if available
     pub delivery_count: Option<i64>,
     pub successful_deliveries: Option<i64>,
+    // Derived fields for UI
+    pub event_type: String,          // First topic (event signature)
+    pub chain_id: Option<i32>,       // From endpoint
+    pub endpoint_name: Option<String>, // From endpoint
+    pub status: String,              // 'delivered', 'failed', 'pending'
+    pub attempts: i64,               // Total attempts
+    pub created_at: chrono::DateTime<chrono::Utc>, // Alias for ingested_at
 }
 
 /// List of events response
@@ -151,11 +158,19 @@ async fn list_events_for_endpoint(
                e.log_index, e.contract_address, e.topics, e.data,
                e.ingested_at, e.processed_at,
                COUNT(da.id) as "delivery_count!",
-               COUNT(da.id) FILTER (WHERE da.success = true) as "successful_deliveries!"
+               COUNT(da.id) FILTER (WHERE da.success = true) as "successful_deliveries!",
+               ep.name as endpoint_name,
+               (CASE WHEN CARDINALITY(ep.chain_ids) > 0 THEN ep.chain_ids[1] ELSE NULL END) as chain_id,
+               (CASE 
+                   WHEN COUNT(da.id) FILTER (WHERE da.success = true) > 0 THEN 'delivered'
+                   WHEN COUNT(da.id) > 0 THEN 'failed'
+                   ELSE 'pending'
+               END) as "status!"
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
+        JOIN endpoints ep ON da.endpoint_id = ep.id
         WHERE da.endpoint_id = $1
-        GROUP BY e.id
+        GROUP BY e.id, ep.name, ep.chain_ids
         ORDER BY e.block_number DESC, e.log_index DESC
         LIMIT $2 OFFSET $3
         "#,
@@ -176,19 +191,31 @@ async fn list_events_for_endpoint(
 
     Ok(records
         .into_iter()
-        .map(|ev| EventResponse {
-            id: ev.id,
-            block_number: ev.block_number,
-            block_hash: ev.block_hash,
-            transaction_hash: ev.transaction_hash,
-            log_index: ev.log_index,
-            contract_address: ev.contract_address,
-            topics: ev.topics,
-            data: ev.data,
-            ingested_at: ev.ingested_at.unwrap_or_else(chrono::Utc::now),
-            processed_at: ev.processed_at,
-            delivery_count: Some(ev.delivery_count),
-            successful_deliveries: Some(ev.successful_deliveries),
+        .map(|ev| {
+            let event_type = ev.topics.get(0)
+                .map(|t| t.clone())
+                .unwrap_or_else(|| "Unknown".to_string());
+            
+            EventResponse {
+                id: ev.id,
+                block_number: ev.block_number,
+                block_hash: ev.block_hash.clone(),
+                transaction_hash: ev.transaction_hash.clone(),
+                log_index: ev.log_index,
+                contract_address: ev.contract_address.clone(),
+                topics: ev.topics.clone(),
+                data: ev.data.clone(),
+                ingested_at: ev.ingested_at.unwrap_or_else(chrono::Utc::now),
+                processed_at: ev.processed_at,
+                delivery_count: Some(ev.delivery_count),
+                successful_deliveries: Some(ev.successful_deliveries),
+                event_type,
+                chain_id: ev.chain_id,
+                endpoint_name: Some(ev.endpoint_name.unwrap_or_else(|| "Unknown".to_string())),
+                status: ev.status,
+                attempts: ev.delivery_count,
+                created_at: ev.ingested_at.unwrap_or_else(chrono::Utc::now),
+            }
         })
         .collect())
 }
@@ -201,18 +228,25 @@ async fn list_events_for_user(
 ) -> Result<Vec<EventResponse>, (StatusCode, Json<ErrorResponse>)> {
     let records = sqlx::query!(
         r#"
-        SELECT DISTINCT e.id, e.block_number, e.block_hash, e.transaction_hash,
+        SELECT DISTINCT ON (e.id) 
+               e.id, e.block_number, e.block_hash, e.transaction_hash,
                e.log_index, e.contract_address, e.topics, e.data,
                e.ingested_at, e.processed_at,
-               COUNT(da.id) as "delivery_count!",
-               COUNT(da.id) FILTER (WHERE da.success = true) as "successful_deliveries!"
+               COUNT(da.id) OVER (PARTITION BY e.id) as "delivery_count!",
+               COUNT(da.id) FILTER (WHERE da.success = true) OVER (PARTITION BY e.id) as "successful_deliveries!",
+               ep.name as endpoint_name,
+               (CASE WHEN CARDINALITY(ep.chain_ids) > 0 THEN ep.chain_ids[1] ELSE NULL END) as chain_id,
+               (CASE 
+                   WHEN COUNT(da.id) FILTER (WHERE da.success = true) OVER (PARTITION BY e.id) > 0 THEN 'delivered'
+                   WHEN COUNT(da.id) OVER (PARTITION BY e.id) > 0 THEN 'failed'
+                   ELSE 'pending'
+               END) as "status!"
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
         WHERE a.user_id = $1
-        GROUP BY e.id
-        ORDER BY e.block_number DESC, e.log_index DESC
+        ORDER BY e.id, e.block_number DESC, e.log_index DESC
         LIMIT $2 OFFSET $3
         "#,
         user_id,
@@ -232,19 +266,31 @@ async fn list_events_for_user(
 
     Ok(records
         .into_iter()
-        .map(|ev| EventResponse {
-            id: ev.id,
-            block_number: ev.block_number,
-            block_hash: ev.block_hash,
-            transaction_hash: ev.transaction_hash,
-            log_index: ev.log_index,
-            contract_address: ev.contract_address,
-            topics: ev.topics,
-            data: ev.data,
-            ingested_at: ev.ingested_at.unwrap_or_else(chrono::Utc::now),
-            processed_at: ev.processed_at,
-            delivery_count: Some(ev.delivery_count),
-            successful_deliveries: Some(ev.successful_deliveries),
+        .map(|ev| {
+            let event_type = ev.topics.get(0)
+                .map(|t| t.clone())
+                .unwrap_or_else(|| "Unknown".to_string());
+            
+            EventResponse {
+                id: ev.id,
+                block_number: ev.block_number,
+                block_hash: ev.block_hash.clone(),
+                transaction_hash: ev.transaction_hash.clone(),
+                log_index: ev.log_index,
+                contract_address: ev.contract_address.clone(),
+                topics: ev.topics.clone(),
+                data: ev.data.clone(),
+                ingested_at: ev.ingested_at.unwrap_or_else(chrono::Utc::now),
+                processed_at: ev.processed_at,
+                delivery_count: Some(ev.delivery_count),
+                successful_deliveries: Some(ev.successful_deliveries),
+                event_type,
+                chain_id: ev.chain_id,
+                endpoint_name: Some(ev.endpoint_name.unwrap_or_else(|| "Unknown".to_string())),
+                status: ev.status,
+                attempts: ev.delivery_count,
+                created_at: ev.ingested_at.unwrap_or_else(chrono::Utc::now),
+            }
         })
         .collect())
 }
@@ -257,17 +303,25 @@ pub async fn get_event(
 ) -> Result<Json<EventResponse>, (StatusCode, Json<ErrorResponse>)> {
     let event = sqlx::query!(
         r#"
-        SELECT DISTINCT e.id, e.block_number, e.block_hash, e.transaction_hash,
+        SELECT DISTINCT ON (e.id)
+               e.id, e.block_number, e.block_hash, e.transaction_hash,
                e.log_index, e.contract_address, e.topics, e.data,
                e.ingested_at, e.processed_at,
-               COUNT(da.id) as "delivery_count!",
-               COUNT(da.id) FILTER (WHERE da.success = true) as "successful_deliveries!"
+               COUNT(da.id) OVER (PARTITION BY e.id) as "delivery_count!",
+               COUNT(da.id) FILTER (WHERE da.success = true) OVER (PARTITION BY e.id) as "successful_deliveries!",
+               ep.name as endpoint_name,
+               (CASE WHEN CARDINALITY(ep.chain_ids) > 0 THEN ep.chain_ids[1] ELSE NULL END) as chain_id,
+               (CASE 
+                   WHEN COUNT(da.id) FILTER (WHERE da.success = true) OVER (PARTITION BY e.id) > 0 THEN 'delivered'
+                   WHEN COUNT(da.id) OVER (PARTITION BY e.id) > 0 THEN 'failed'
+                   ELSE 'pending'
+               END) as "status!"
         FROM events e
         LEFT JOIN delivery_attempts da ON e.id = da.event_id
         LEFT JOIN endpoints ep ON da.endpoint_id = ep.id
         LEFT JOIN applications a ON ep.application_id = a.id
         WHERE e.id = $1 AND (a.user_id = $2 OR a.user_id IS NULL)
-        GROUP BY e.id
+        ORDER BY e.id
         "#,
         event_id,
         auth_user.user_id
@@ -291,19 +345,29 @@ pub async fn get_event(
         )
     })?;
 
+    let event_type = event.topics.get(0)
+        .map(|t| t.clone())
+        .unwrap_or_else(|| "Unknown".to_string());
+
     Ok(Json(EventResponse {
         id: event.id,
         block_number: event.block_number,
-        block_hash: event.block_hash,
-        transaction_hash: event.transaction_hash,
+        block_hash: event.block_hash.clone(),
+        transaction_hash: event.transaction_hash.clone(),
         log_index: event.log_index,
-        contract_address: event.contract_address,
-        topics: event.topics,
-        data: event.data,
+        contract_address: event.contract_address.clone(),
+        topics: event.topics.clone(),
+        data: event.data.clone(),
         ingested_at: event.ingested_at.unwrap_or_else(chrono::Utc::now),
         processed_at: event.processed_at,
         delivery_count: Some(event.delivery_count),
         successful_deliveries: Some(event.successful_deliveries),
+        event_type,
+        chain_id: event.chain_id,
+        endpoint_name: Some(event.endpoint_name.unwrap_or_else(|| "Unknown".to_string())),
+        status: event.status,
+        attempts: event.delivery_count,
+        created_at: event.ingested_at.unwrap_or_else(chrono::Utc::now),
     }))
 }
 

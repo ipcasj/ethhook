@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { clearAuthToken, getAuthToken } from '@/lib/api-client';
+import { clearAuthToken, getAuthToken, api } from '@/lib/api-client';
+import { User } from '@/lib/types';
 import { 
   LayoutDashboard, 
   Box, 
@@ -13,7 +15,8 @@ import {
   Settings, 
   LogOut, 
   Menu, 
-  X 
+  X,
+  User as UserIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,6 +36,13 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Fetch user profile
+  const { data: user } = useQuery<User>({
+    queryKey: ['user-profile'],
+    queryFn: () => api.get<User>('/users/me'),
+    retry: false,
+  });
 
   useEffect(() => {
     const token = getAuthToken();
@@ -104,8 +114,26 @@ export default function DashboardLayout({
             })}
           </nav>
 
-          {/* Logout button */}
-          <div className="p-4 border-t border-indigo-100">
+          {/* User info & Logout */}
+          <div className="p-4 border-t border-indigo-100 space-y-3">
+            {/* User profile section */}
+            {user && (
+              <div className="flex items-center gap-3 px-3 py-2 bg-indigo-50 rounded-lg">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-900 truncate">
+                    {user.name}
+                  </p>
+                  <p className="text-xs text-slate-600 truncate">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Logout button */}
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors"

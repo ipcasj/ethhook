@@ -13,7 +13,7 @@ import { formatDateTime } from '@/lib/utils';
 export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
-    queryFn: () => api.get<DashboardStats>('/stats'),
+    queryFn: () => api.get<DashboardStats>('/statistics/dashboard'),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
@@ -56,28 +56,15 @@ export default function DashboardPage() {
         <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-slate-600">
-              Applications
-            </CardTitle>
-            <Box className="w-4 h-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">
-              {statsLoading ? '...' : stats?.total_applications ?? 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">
-              Endpoints
+              Active Endpoints
             </CardTitle>
             <Webhook className="w-4 h-4 text-indigo-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-900">
-              {statsLoading ? '...' : stats?.total_endpoints ?? 0}
+              {statsLoading ? '...' : stats?.active_endpoints ?? 0}
             </div>
+            <p className="text-xs text-slate-500 mt-1">listening for events</p>
           </CardContent>
         </Card>
 
@@ -90,8 +77,28 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-900">
-              {statsLoading ? '...' : stats?.total_events_24h ?? 0}
+              {statsLoading ? '...' : stats?.events_today ?? 0}
             </div>
+            <p className="text-xs text-slate-500 mt-1">
+              {statsLoading ? '' : `${stats?.events_total ?? 0} total`}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-slate-600">
+              Deliveries
+            </CardTitle>
+            <Box className="w-4 h-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-slate-900">
+              {statsLoading ? '...' : stats?.total_deliveries ?? 0}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              {statsLoading ? '' : `${stats?.successful_deliveries ?? 0} successful`}
+            </p>
           </CardContent>
         </Card>
 
@@ -104,8 +111,11 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-slate-900">
-              {statsLoading ? '...' : `${stats?.success_rate_24h?.toFixed(1) ?? 0}%`}
+              {statsLoading ? '...' : `${stats?.success_rate?.toFixed(1) ?? 0}%`}
             </div>
+            <p className="text-xs text-slate-500 mt-1">
+              {statsLoading || !stats?.avg_delivery_time_ms ? '' : `${stats.avg_delivery_time_ms.toFixed(0)}ms avg`}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -128,37 +138,57 @@ export default function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {recentEvents.events.map((event) => (
                 <div
                   key={event.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-4 p-3 border rounded-lg hover:bg-slate-50 transition-colors"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                      <Badge
-                        variant={
-                          event.status === 'delivered'
-                            ? 'default'
-                            : event.status === 'failed'
-                            ? 'destructive'
-                            : 'secondary'
-                        }
-                      >
-                        {event.status}
-                      </Badge>
-                      <span className="font-mono text-sm text-muted-foreground">
-                        {event.event_type}
-                      </span>
+                  {/* Status Badge */}
+                  <Badge
+                    variant={
+                      event.status === 'delivered'
+                        ? 'default'
+                        : event.status === 'failed'
+                        ? 'destructive'
+                        : 'secondary'
+                    }
+                    className="shrink-0"
+                  >
+                    {event.status}
+                  </Badge>
+
+                  {/* Event Info */}
+                  <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {/* Column 1: Event Type & Contract */}
+                    <div className="space-y-0.5">
+                      <p className="font-mono text-xs font-medium text-slate-900 truncate">
+                        {event.event_type || 'Unknown Event'}
+                      </p>
+                      <p className="font-mono text-xs text-slate-500 truncate">
+                        {event.contract_address.slice(0, 6)}...{event.contract_address.slice(-4)}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1 truncate">
-                      Chain: {event.chain_id} • Block: {event.block_number}
-                    </p>
-                  </div>
-                  <div className="text-right ml-4">
-                    <p className="text-sm text-muted-foreground">
-                      {formatDateTime(event.created_at)}
-                    </p>
+
+                    {/* Column 2: Chain & Block */}
+                    <div className="space-y-0.5">
+                      <p className="text-xs text-slate-600">
+                        Chain {event.chain_id} • Block {event.block_number.toLocaleString()}
+                      </p>
+                      <p className="font-mono text-xs text-slate-500 truncate">
+                        Tx: {event.transaction_hash.slice(0, 8)}...{event.transaction_hash.slice(-6)}
+                      </p>
+                    </div>
+
+                    {/* Column 3: Delivery Info */}
+                    <div className="space-y-0.5 text-right md:text-left">
+                      <p className="text-xs text-slate-600">
+                        {event.attempts} {event.attempts === 1 ? 'attempt' : 'attempts'}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {formatDateTime(event.created_at)}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
