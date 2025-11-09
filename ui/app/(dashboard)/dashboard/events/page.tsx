@@ -348,7 +348,7 @@ export default function EventsPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry: { chain_name: string; percentage: number }) => `${entry.chain_name} ${entry.percentage.toFixed(1)}%`}
+                    label={(entry: any) => `${entry.chain_name} ${entry.percentage.toFixed(1)}%`}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="event_count"
@@ -360,9 +360,9 @@ export default function EventsPage() {
                   </Pie>
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                    formatter={(value: number, name: string, props: { payload: { chain_name: string; percentage: number } }) => [
-                      `${value.toLocaleString()} events (${props.payload.percentage.toFixed(1)}%)`,
-                      props.payload.chain_name
+                    formatter={(value: number, name: string, props?: any) => [
+                      `${value.toLocaleString()} events (${props?.payload?.percentage?.toFixed(1) || 0}%)`,
+                      props?.payload?.chain_name || name
                     ]}
                   />
                   <Legend />
