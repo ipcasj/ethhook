@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(DISTINCT e.id) as \"count!\"\n        FROM events e\n        JOIN delivery_attempts da ON e.id = da.event_id\n        WHERE da.endpoint_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "688b484ac5972eca0fbb82ac32d44b9273fd271320531f89954ec41cbee37d13"
+}

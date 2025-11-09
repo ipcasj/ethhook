@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        WITH time_buckets AS (\n            SELECT \n                date_trunc($1, e.ingested_at) as time_bucket,\n                COUNT(DISTINCT e.id)::bigint as event_count,\n                COUNT(da.id)::bigint as delivery_count,\n                COUNT(da.id) FILTER (WHERE da.success = true)::bigint as successful_deliveries,\n                COUNT(da.id) FILTER (WHERE da.success = false)::bigint as failed_deliveries,\n                CAST(AVG(da.duration_ms) FILTER (WHERE da.duration_ms IS NOT NULL) AS DOUBLE PRECISION) as avg_latency_ms\n            FROM events e\n            LEFT JOIN delivery_attempts da ON e.id = da.event_id\n            JOIN endpoints ep ON da.endpoint_id = ep.id\n            JOIN applications a ON ep.application_id = a.id\n            WHERE a.user_id = $2\n              AND e.ingested_at >= NOW() - ($3 || ' hours')::interval\n            GROUP BY time_bucket\n            ORDER BY time_bucket ASC\n        )\n        SELECT \n            time_bucket as \"timestamp!\",\n            event_count as \"event_count!\",\n            delivery_count as \"delivery_count!\",\n            successful_deliveries as \"successful_deliveries!\",\n            failed_deliveries as \"failed_deliveries!\",\n            avg_latency_ms as \"avg_latency_ms?\"\n        FROM time_buckets\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "timestamp!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "event_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "delivery_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "successful_deliveries!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "failed_deliveries!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "avg_latency_ms?",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "9173cbcdd054224fb3ee250da995d8237756bbdeab36fd82c99fb1a199e45983"
+}
