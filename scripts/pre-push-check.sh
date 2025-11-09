@@ -197,16 +197,16 @@ print_section "Summary"
 if [ $FAILED -eq 0 ]; then
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║      ✓ ALL CHECKS PASSED                  ║${NC}"
-    echo -e "${GREEN}║      Ready to push!                       ║${NC}"
+    echo -e "${GREEN}║      ✓ ALL CHECKS PASSED                   ║${NC}"
+    echo -e "${GREEN}║      Ready to push!                        ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
     echo ""
     exit 0
 else
     echo ""
     echo -e "${RED}╔════════════════════════════════════════════╗${NC}"
-    echo -e "${RED}║      ✗ SOME CHECKS FAILED                 ║${NC}"
-    echo -e "${RED}║      Please fix issues before pushing     ║${NC}"
+    echo -e "${RED}║      ✗ SOME CHECKS FAILED                  ║${NC}"
+    echo -e "${RED}║      Please fix issues before pushing      ║${NC}"
     echo -e "${RED}╚════════════════════════════════════════════╝${NC}"
     echo ""
     exit 1

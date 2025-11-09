@@ -424,21 +424,20 @@ async fn worker_loop(
                     error!(
                         "[Worker {}] ❌ Job failed permanently: endpoint={} attempts={}",
                         worker_id, job.endpoint_id, attempt
-                    );
-                    break;
-                }
+                );
+                break;
             }
-        }
-
-        if jobs_processed % 100 == 0 {
-            info!("[Worker {}] Processed {} jobs", worker_id, jobs_processed);
         }
     }
 
-    Ok(())
+    #[allow(unknown_lints, clippy::manual_is_multiple_of)]
+    if jobs_processed % 100 == 0 {
+        info!("[Worker {}] Processed {} jobs", worker_id, jobs_processed);
+    }
 }
 
-/// Metrics endpoint handler
+Ok(())
+}/// Metrics endpoint handler
 async fn metrics_handler() -> Result<String, (StatusCode, String)> {
     metrics::render_metrics().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
 }

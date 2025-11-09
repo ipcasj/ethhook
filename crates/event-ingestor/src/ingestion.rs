@@ -387,20 +387,19 @@ impl ChainIngestionManager {
                             events_processed += 1;
                             health.record_success();
 
-                            // Record event received metric
-                            metrics::EVENTS_RECEIVED
-                                .with_label_values(&[&chain_config.name])
-                                .inc();
+                        // Record event received metric
+                        metrics::EVENTS_RECEIVED
+                            .with_label_values(&[&chain_config.name])
+                            .inc();
 
-                            // Log every 100 events to avoid spam
-                            if events_processed % 100 == 0 {
-                                info!(
-                                    "[{}] Processed {} events from {} blocks",
-                                    chain_config.name, events_processed, blocks_processed
-                                );
-                            }
-
-                            debug!(
+                        // Log every 100 events to avoid spam
+                        #[allow(unknown_lints, clippy::manual_is_multiple_of)]
+                        if events_processed % 100 == 0 {
+                            info!(
+                                "[{}] Processed {} events from {} blocks",
+                                chain_config.name, events_processed, blocks_processed
+                            );
+                        }                            debug!(
                                 "[{}] Event: block={} tx={} contract={} topics={}",
                                 chain_config.name,
                                 event.block_number,
