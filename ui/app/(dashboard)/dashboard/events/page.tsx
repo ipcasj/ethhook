@@ -11,8 +11,9 @@ import { InfoBanner } from '@/components/ui/info-banner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { api } from '@/lib/api-client';
 import { Event, EventListResponse, EndpointListResponse } from '@/lib/types';
-import { Activity, RefreshCw, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Activity, RefreshCw, ExternalLink, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { formatDateTime, truncateAddress } from '@/lib/utils';
+import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -66,6 +67,43 @@ export default function EventsPage() {
   const { data: endpointsData } = useQuery<EndpointListResponse>({
     queryKey: ['endpoints'],
     queryFn: () => api.get<EndpointListResponse>('/endpoints'),
+  });
+
+  // Fetch analytics data for charts
+  interface TimeseriesResponse {
+    data_points: Array<{
+      timestamp: string;
+      event_count: number;
+      delivery_count: number;
+      successful_deliveries: number;
+      failed_deliveries: number;
+      success_rate: number;
+      avg_latency_ms: number | null;
+    }>;
+    time_range: string;
+    granularity: string;
+  }
+
+  interface ChainDistributionResponse {
+    distributions: Array<{
+      chain_id: number;
+      chain_name: string;
+      event_count: number;
+      percentage: number;
+    }>;
+    total_events: number;
+  }
+
+  const { data: timeseriesData, isLoading: timeseriesLoading } = useQuery<TimeseriesResponse>({
+    queryKey: ['timeseries-stats-7d'],
+    queryFn: () => api.get<TimeseriesResponse>('/statistics/timeseries?time_range=7d&granularity=day'),
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  const { data: chainData, isLoading: chainLoading } = useQuery<ChainDistributionResponse>({
+    queryKey: ['chain-distribution'],
+    queryFn: () => api.get<ChainDistributionResponse>('/statistics/chain-distribution'),
+    refetchInterval: 60000, // Refresh every minute
   });
 
   const getChainName = (chainId: number | null | undefined, contractAddress?: string) => {
@@ -227,6 +265,119 @@ export default function EventsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Analytics Charts */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Timeseries Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-600" />
+              Events Over Time (7 Days)
+            </CardTitle>
+            <CardDescription>Daily event volume for the last week</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {timeseriesLoading ? (
+              <div className="h-[300px] flex items-center justify-center text-slate-400">
+                Loading chart...
+              </div>
+            ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={timeseriesData.data_points}>
+                  <defs>
+                    <linearGradient id="colorEventsPage" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    stroke="#64748b"
+                    fontSize={12}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }}
+                  />
+                  <YAxis stroke="#64748b" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    formatter={(value: number) => [value.toLocaleString(), 'Events']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="event_count" 
+                    stroke="#6366f1" 
+                    fillOpacity={1} 
+                    fill="url(#colorEventsPage)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex flex-col items-center justify-center text-slate-400">
+                <BarChart3 className="w-12 h-12 mb-2 opacity-50" />
+                <p>No event data available</p>
+                <p className="text-sm mt-1">Start capturing events to see analytics</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Chain Distribution Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-purple-600" />
+              Events by Blockchain
+            </CardTitle>
+            <CardDescription>Distribution across different networks</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {chainLoading ? (
+              <div className="h-[300px] flex items-center justify-center text-slate-400">
+                Loading chart...
+              </div>
+            ) : chainData && chainData.distributions.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chainData.distributions}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ chain_name, percentage }) => `${chain_name} ${percentage.toFixed(1)}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="event_count"
+                  >
+                    {chainData.distributions.map((entry, index) => {
+                      const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                    })}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                    formatter={(value: number, name: string, props: any) => [
+                      `${value.toLocaleString()} events (${props.payload.percentage.toFixed(1)}%)`,
+                      props.payload.chain_name
+                    ]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex flex-col items-center justify-center text-slate-400">
+                <Activity className="w-12 h-12 mb-2 opacity-50" />
+                <p>No chain data available</p>
+                <p className="text-sm mt-1">Configure endpoints to monitor chains</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Events Table */}
       <Card>

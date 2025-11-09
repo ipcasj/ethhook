@@ -13,6 +13,7 @@ import { DashboardStats, Event } from '@/lib/types';
 import { Activity, Box, Webhook, CheckCircle, Plus, TrendingUp, Zap, Clock, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface TimeseriesResponse {
   data_points: Array<{
@@ -317,6 +318,115 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Analytics Charts - Side by Side */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Timeseries Chart */}
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-slate-900">Events Over Time</CardTitle>
+            <CardDescription className="text-slate-600">Event volume for the selected time range</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {timeseriesLoading ? (
+              <div className="h-[300px] flex items-center justify-center text-slate-400">
+                Loading chart...
+              </div>
+            ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={timeseriesData.data_points}>
+                  <defs>
+                    <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    stroke="#64748b"
+                    fontSize={12}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return timeRange === '24h' 
+                        ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+                        : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }}
+                  />
+                  <YAxis stroke="#64748b" fontSize={12} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                    labelFormatter={(value) => new Date(value).toLocaleString()}
+                    formatter={(value: number) => [value.toLocaleString(), 'Events']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="event_count" 
+                    stroke="#6366f1" 
+                    fillOpacity={1} 
+                    fill="url(#colorEvents)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex flex-col items-center justify-center text-slate-400">
+                <BarChart3 className="w-12 h-12 mb-2 opacity-50" />
+                <p>No event data available for this time range</p>
+                <p className="text-sm mt-1">Start capturing events to see analytics</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Chain Distribution Pie Chart */}
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-slate-900">Events by Chain</CardTitle>
+            <CardDescription className="text-slate-600">Distribution across blockchain networks</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {chainLoading ? (
+              <div className="h-[300px] flex items-center justify-center text-slate-400">
+                Loading chart...
+              </div>
+            ) : chainData && chainData.distributions.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chainData.distributions}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ chain_name, percentage }) => `${chain_name} ${percentage.toFixed(1)}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="event_count"
+                  >
+                    {chainData.distributions.map((entry, index) => {
+                      const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                    })}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                    formatter={(value: number, name: string, props: any) => [
+                      `${value.toLocaleString()} events (${props.payload.percentage.toFixed(1)}%)`,
+                      props.payload.chain_name
+                    ]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex flex-col items-center justify-center text-slate-400">
+                <Activity className="w-12 h-12 mb-2 opacity-50" />
+                <p>No chain distribution data available</p>
+                <p className="text-sm mt-1">Configure endpoints to monitor chains</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Events & Insights - 2 Column Layout */}
       <div className="grid gap-4 lg:grid-cols-5">
