@@ -7,9 +7,7 @@
 'use client';
 
 import { StatusBadge } from './status-badge';
-import { formatDateTime, truncateAddress } from '@/lib/utils';
 import { Event } from '@/lib/types';
-import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CompactEventTableProps {
@@ -26,7 +24,9 @@ export function CompactEventTable({
   className,
 }: CompactEventTableProps) {
   const calculateEventStatus = (event: Event): 'delivered' | 'failed' | 'pending' => {
-    if (event.status) return event.status as any;
+    if (event.status && ['delivered', 'failed', 'pending'].includes(event.status)) {
+      return event.status as 'delivered' | 'failed' | 'pending';
+    }
     if ((event.successful_deliveries ?? 0) > 0) return 'delivered';
     if ((event.delivery_count ?? 0) > 0) return 'failed';
     return 'pending';

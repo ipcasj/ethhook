@@ -62,7 +62,7 @@ export function ChainDistributionChart({
   height = 300,
   loading = false,
 }: ChainDistributionChartProps) {
-    const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }: {
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }: {
     cx: number;
     cy: number;
     midAngle: number;
@@ -70,8 +70,6 @@ export function ChainDistributionChart({
     outerRadius: number;
     percentage: number;
   }) => {
-
-  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }: any) => {
     if (percentage < 5) return null; // Don't show label for small slices
     
     const RADIAN = Math.PI / 180;

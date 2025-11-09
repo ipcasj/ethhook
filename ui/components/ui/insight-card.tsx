@@ -6,7 +6,7 @@
 
 'use client';
 
-import { LucideIcon, TrendingUp, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { TrendingUp, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface InsightCardProps {
