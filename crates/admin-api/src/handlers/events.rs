@@ -197,8 +197,8 @@ async fn list_events_for_endpoint(
         .map(|ev| {
             let event_type = ev
                 .topics
-                .get(0)
-                .map(|t| t.clone())
+                .first()
+                .cloned()
                 .unwrap_or_else(|| "Unknown".to_string());
 
             EventResponse {
@@ -274,8 +274,8 @@ async fn list_events_for_user(
         .map(|ev| {
             let event_type = ev
                 .topics
-                .get(0)
-                .map(|t| t.clone())
+                .first()
+                .cloned()
                 .unwrap_or_else(|| "Unknown".to_string());
 
             EventResponse {
@@ -410,8 +410,8 @@ pub async fn get_event(
 
     let event_type = event
         .topics
-        .get(0)
-        .map(|t| t.clone())
+        .first()
+        .cloned()
         .unwrap_or_else(|| "Unknown".to_string());
 
     Ok(Json(EventResponse {

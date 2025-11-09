@@ -312,7 +312,7 @@ pub async fn get_chain_distribution(
             42161 => "Arbitrum".to_string(),
             10 => "Optimism".to_string(),
             8453 => "Base".to_string(),
-            _ => format!("Chain {}", chain_id),
+            _ => format!("Chain {chain_id}"),
         }
     };
 
