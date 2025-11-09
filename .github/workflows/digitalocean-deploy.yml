@@ -30,7 +30,7 @@ jobs:
       
       - name: Deploy to DigitalOcean Droplet
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'ENDSSH'
+          ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -i ~/.ssh/deploy_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'ENDSSH'
             set -e
             echo "🚀 Starting deployment to production..."
             
@@ -42,13 +42,17 @@ jobs:
             git fetch origin
             git reset --hard origin/main
             
+            # Clean up old Docker resources to save space
+            echo "🧹 Cleaning up old Docker images..."
+            docker image prune -f || true
+            
             # Stop services
             echo "🛑 Stopping services..."
             docker compose -f docker-compose.prod.yml down || true
             
-            # Rebuild images
+            # Rebuild images (use cache to speed up builds)
             echo "🔨 Building Docker images..."
-            docker compose -f docker-compose.prod.yml build --no-cache
+            docker compose -f docker-compose.prod.yml build
             
             # Run migrations
             echo "🗃️  Running database migrations..."
