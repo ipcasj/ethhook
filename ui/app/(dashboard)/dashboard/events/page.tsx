@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useQuery } from '@tantml/react-query';
+import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,8 +19,19 @@ export default function EventsPage() {
   const [filterEndpoint, setFilterEndpoint] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [page, setPage] = useState(1);
-  const prevFiltersRef = useRef({ endpoint: '', status: '' });
   const perPage = 50;
+
+  // Handler to update endpoint filter and reset pagination
+  const handleFilterEndpointChange = useCallback((value: string) => {
+    setFilterEndpoint(value);
+    setPage(1);
+  }, []);
+
+  // Handler to update status filter and reset pagination
+  const handleFilterStatusChange = useCallback((value: string) => {
+    setFilterStatus(value);
+    setPage(1);
+  }, []);
 
   // Fetch events with real-time updates (every 3 seconds)
   const { data: eventsData, isLoading: eventsLoading, refetch } = useQuery<EventListResponse>({
@@ -50,14 +61,6 @@ export default function EventsPage() {
     if (!filterStatus) return true;
     return calculateEventStatus(event) === filterStatus;
   }) ?? [];
-
-  // Reset to page 1 when filters change
-  if (prevFiltersRef.current.endpoint !== filterEndpoint || prevFiltersRef.current.status !== filterStatus) {
-    prevFiltersRef.current = { endpoint: filterEndpoint, status: filterStatus };
-    if (page !== 1) {
-      setPage(1);
-    }
-  }
 
   // Fetch endpoints for filter
   const { data: endpointsData } = useQuery<EndpointListResponse>({
@@ -190,7 +193,7 @@ export default function EventsPage() {
               <select
                 className="w-full h-10 px-3 rounded-md border border-input bg-background"
                 value={filterEndpoint}
-                onChange={(e) => setFilterEndpoint(e.target.value)}
+                onChange={(e) => handleFilterEndpointChange(e.target.value)}
               >
                 <option value="">All Endpoints</option>
                 {endpointsData?.endpoints.map(endpoint => (
@@ -202,7 +205,7 @@ export default function EventsPage() {
               <select
                 className="w-full h-10 px-3 rounded-md border border-input bg-background"
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => handleFilterStatusChange(e.target.value)}
               >
                 <option value="">All Status</option>
                 <option value="delivered">Delivered</option>
@@ -214,9 +217,8 @@ export default function EventsPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setFilterEndpoint('');
-                  setFilterStatus('');
-                  setPage(1);
+                  handleFilterEndpointChange('');
+                  handleFilterStatusChange('');
                 }}
               >
                 Clear Filters
@@ -265,7 +267,7 @@ export default function EventsPage() {
                 variant="outline" 
                 size="sm" 
                 className="mt-4"
-                onClick={() => setFilterStatus('')}
+                onClick={() => handleFilterStatusChange('')}
               >
                 Clear Filters
               </Button>
