@@ -51,9 +51,6 @@ const CustomChainTooltip = ({ active, payload }: { active?: boolean; payload?: A
   return null;
 };
 
-export function ChainDistributionChart({
-};
-
 /**
  * Pie chart component for displaying chain distribution
  * Shows event distribution across different blockchain networks

@@ -60,11 +60,6 @@ export default function EventsPage() {
     queryKey: ['endpoints'],
     queryFn: () => api.get<EndpointListResponse>('/endpoints'),
   });
-        return 'secondary';
-      default:
-        return 'secondary';
-    }
-  };
 
   const getChainName = (chainId: number | null | undefined, contractAddress?: string) => {
     if (chainId) {
