@@ -135,6 +135,7 @@ export function ChainDistributionChart({
                 cx="50%"
                 cy="40%"
                 labelLine={false}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 label={renderCustomLabel as any}
                 outerRadius={80}
                 fill="#8884d8"
@@ -149,6 +150,7 @@ export function ChainDistributionChart({
                 ))}
               </Pie>
               <Tooltip content={<CustomChainTooltip />} />
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               <Legend content={renderLegend as any} />
             </PieChart>
           </ResponsiveContainer>
