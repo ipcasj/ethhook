@@ -59,10 +59,10 @@
  */
 
 use anyhow::{Context, Result};
-use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
-use serde_json::{Value, json};
-use std::sync::Arc;
+use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
+use serde_json::{json, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tokio::signal;
 use tracing::{info, warn};
 

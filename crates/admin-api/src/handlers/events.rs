@@ -26,11 +26,11 @@ pub struct EventResponse {
     pub delivery_count: Option<i64>,
     pub successful_deliveries: Option<i64>,
     // Derived fields for UI
-    pub event_type: String,          // First topic (event signature)
-    pub chain_id: Option<i32>,       // From endpoint
+    pub event_type: String,            // First topic (event signature)
+    pub chain_id: Option<i32>,         // From endpoint
     pub endpoint_name: Option<String>, // From endpoint
-    pub status: String,              // 'delivered', 'failed', 'pending'
-    pub attempts: i64,               // Total attempts
+    pub status: String,                // 'delivered', 'failed', 'pending'
+    pub attempts: i64,                 // Total attempts
     pub created_at: chrono::DateTime<chrono::Utc>, // Alias for ingested_at
 }
 
@@ -195,10 +195,12 @@ async fn list_events_for_endpoint(
     Ok(records
         .into_iter()
         .map(|ev| {
-            let event_type = ev.topics.get(0)
+            let event_type = ev
+                .topics
+                .get(0)
                 .map(|t| t.clone())
                 .unwrap_or_else(|| "Unknown".to_string());
-            
+
             EventResponse {
                 id: ev.id,
                 block_number: ev.block_number,
@@ -270,10 +272,12 @@ async fn list_events_for_user(
     Ok(records
         .into_iter()
         .map(|ev| {
-            let event_type = ev.topics.get(0)
+            let event_type = ev
+                .topics
+                .get(0)
                 .map(|t| t.clone())
                 .unwrap_or_else(|| "Unknown".to_string());
-            
+
             EventResponse {
                 id: ev.id,
                 block_number: ev.block_number,
@@ -404,7 +408,9 @@ pub async fn get_event(
         )
     })?;
 
-    let event_type = event.topics.get(0)
+    let event_type = event
+        .topics
+        .get(0)
         .map(|t| t.clone())
         .unwrap_or_else(|| "Unknown".to_string());
 

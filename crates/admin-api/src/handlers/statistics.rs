@@ -1,7 +1,11 @@
-use axum::{Json, extract::{State, Query}, http::StatusCode};
-use serde::{Serialize, Deserialize};
-use sqlx::PgPool;
+use axum::{
+    Json,
+    extract::{Query, State},
+    http::StatusCode,
+};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 
 use crate::auth::AuthUser;
 

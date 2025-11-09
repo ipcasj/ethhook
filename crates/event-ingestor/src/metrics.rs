@@ -20,8 +20,8 @@
 
 use anyhow::{Context, Result};
 use prometheus::{
-    Encoder, IntCounterVec, IntGaugeVec, TextEncoder, register_int_counter_vec,
-    register_int_gauge_vec,
+    register_int_counter_vec, register_int_gauge_vec, Encoder, IntCounterVec, IntGaugeVec,
+    TextEncoder,
 };
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
