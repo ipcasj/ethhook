@@ -15,8 +15,7 @@ import {
   Settings, 
   LogOut, 
   Menu, 
-  X,
-  User as UserIcon
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 

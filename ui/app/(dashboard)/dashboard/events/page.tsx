@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { api } from '@/lib/api-client';
 import { Event, EventListResponse, EndpointListResponse } from '@/lib/types';
 import { Activity, RefreshCw, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatDateTime, truncate, truncateAddress } from '@/lib/utils';
+import { formatDateTime, truncateAddress } from '@/lib/utils';
 
 export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -53,21 +53,13 @@ export default function EventsPage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [filterEndpoint, filterStatus]);
+  }, [filterEndpoint, filterStatus, setPage]);
 
   // Fetch endpoints for filter
   const { data: endpointsData } = useQuery<EndpointListResponse>({
     queryKey: ['endpoints'],
     queryFn: () => api.get<EndpointListResponse>('/endpoints'),
   });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'delivered':
-        return 'default';
-      case 'failed':
-        return 'destructive';
-      case 'pending':
         return 'secondary';
       default:
         return 'secondary';

@@ -28,7 +28,30 @@ const CHAIN_COLORS: Record<string, string> = {
   'zkSync Era': '#8C8DFC',
   'Avalanche': '#E84142',
   'BNB Chain': '#F3BA2F',
-  'Other': '#94A3B8',
+    'Other': '#6b7280',
+};
+
+const CustomChainTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChainDistribution }> }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-xl p-3">
+        <p className="text-sm font-semibold text-slate-900 mb-2">{data.chain_name}</p>
+        <div className="space-y-1">
+          <p className="text-xs text-slate-600">
+            Events: <span className="font-semibold text-slate-900">{data.event_count.toLocaleString()}</span>
+          </p>
+          <p className="text-xs text-slate-600">
+            Percentage: <span className="font-semibold text-slate-900">{data.percentage.toFixed(1)}%</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+export function ChainDistributionChart({
 };
 
 /**
@@ -42,27 +65,14 @@ export function ChainDistributionChart({
   height = 300,
   loading = false,
 }: ChainDistributionChartProps) {
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-slate-200">
-          <p className="text-sm font-semibold text-slate-900 mb-1">{data.chain_name}</p>
-          <div className="space-y-1 text-xs">
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-600">Events:</span>
-              <span className="font-semibold text-slate-900">{data.event_count.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-600">Percentage:</span>
-              <span className="font-semibold text-slate-900">{data.percentage.toFixed(1)}%</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
+    const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }: {
+    cx: number;
+    cy: number;
+    midAngle: number;
+    innerRadius: number;
+    outerRadius: number;
+    percentage: number;
+  }) => {
 
   const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }: any) => {
     if (percentage < 5) return null; // Don't show label for small slices
@@ -86,7 +96,7 @@ export function ChainDistributionChart({
     );
   };
 
-  const renderLegend = (props: any) => {
+  const renderLegend = (props: { payload?: Array<{ value: string; payload: ChainDistribution }> }) => {
     const { payload } = props;
     return (
       <ul className="flex flex-wrap justify-center gap-4 mt-4">
@@ -142,7 +152,7 @@ export function ChainDistributionChart({
                   />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomChainTooltip />} />
               <Legend content={renderLegend} />
             </PieChart>
           </ResponsiveContainer>

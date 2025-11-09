@@ -1,7 +1,50 @@
 'use client';
 
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface TooltipPayload {
+  color: string;
+  name: string;
+  value: number;
+}
+
+const CustomTimeSeriesTooltip = ({ 
+  active, 
+  payload, 
+  label, 
+  formatTooltip 
+}: { 
+  active?: boolean; 
+  payload?: TooltipPayload[]; 
+  label?: string;
+  formatTooltip?: (value: number) => string;
+}) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-slate-200">
+        <p className="text-xs text-slate-500 mb-2">
+          {label ? new Date(label).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          }) : ''}
+        </p>
+        {payload.map((entry, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span className="text-sm text-slate-700 font-medium">{entry.name}:</span>
+            <span className="text-sm text-slate-900 font-semibold">
+              {formatTooltip ? formatTooltip(entry.value) : entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 export interface TimeSeriesDataPoint {
   timestamp: string;
@@ -36,7 +79,6 @@ export function TimeSeriesChart({
   data,
   lines,
   yAxisLabel,
-  xAxisLabel,
   height = 300,
   formatYAxis,
   formatTooltip,
@@ -58,33 +100,6 @@ export function TimeSeriesChart({
       // Show date for older data
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white/95 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-slate-200">
-          <p className="text-xs text-slate-500 mb-2">
-            {new Date(label).toLocaleString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-          </p>
-          {payload.map((entry: any, index: number) => (
-            <div key={index} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.color }} />
-              <span className="text-sm text-slate-700 font-medium">{entry.name}:</span>
-              <span className="text-sm text-slate-900 font-semibold">
-                {formatTooltip ? formatTooltip(entry.value) : entry.value}
-              </span>
-            </div>
-          ))}
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
@@ -120,7 +135,7 @@ export function TimeSeriesChart({
                 tickLine={{ stroke: '#cbd5e1' }}
                 axisLine={{ stroke: '#cbd5e1' }}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTimeSeriesTooltip formatTooltip={formatTooltip} />} />
               <Legend
                 wrapperStyle={{ paddingTop: '20px' }}
                 iconType="line"
