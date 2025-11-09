@@ -19,6 +19,7 @@ export default function EventsPage() {
   const [filterEndpoint, setFilterEndpoint] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [prevFilters, setPrevFilters] = useState({ endpoint: '', status: '' });
   const perPage = 50;
 
   // Fetch events with real-time updates (every 3 seconds)
@@ -52,8 +53,11 @@ export default function EventsPage() {
 
   // Reset to page 1 when filters change
   useEffect(() => {
-    setPage(1);
-  }, [filterEndpoint, filterStatus]);
+    if (prevFilters.endpoint !== filterEndpoint || prevFilters.status !== filterStatus) {
+      setPage(1);
+      setPrevFilters({ endpoint: filterEndpoint, status: filterStatus });
+    }
+  }, [filterEndpoint, filterStatus, prevFilters]);
 
   // Fetch endpoints for filter
   const { data: endpointsData } = useQuery<EndpointListResponse>({

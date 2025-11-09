@@ -8,7 +8,7 @@
 
 import { StatusBadge } from './status-badge';
 import { Event } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, truncateAddress } from '@/lib/utils';
 
 interface CompactEventTableProps {
   events: Event[];

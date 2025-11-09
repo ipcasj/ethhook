@@ -91,11 +91,12 @@ export function ChainDistributionChart({
     );
   };
 
-  const renderLegend = (props: { payload?: Array<{ value: string; payload: ChainDistribution }> }) => {
+  const renderLegend = (props: { payload?: Array<{ value: string; payload: ChainDistribution; color?: string }> }) => {
     const { payload } = props;
+    if (!payload) return null;
     return (
       <ul className="flex flex-wrap justify-center gap-4 mt-4">
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry, index: number) => (
           <li key={`legend-${index}`} className="flex items-center gap-2">
             <div
               className="w-3 h-3 rounded-full"
@@ -134,7 +135,7 @@ export function ChainDistributionChart({
                 cx="50%"
                 cy="40%"
                 labelLine={false}
-                label={renderCustomLabel}
+                label={renderCustomLabel as any}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="event_count"
@@ -148,7 +149,7 @@ export function ChainDistributionChart({
                 ))}
               </Pie>
               <Tooltip content={<CustomChainTooltip />} />
-              <Legend content={renderLegend} />
+              <Legend content={renderLegend as any} />
             </PieChart>
           </ResponsiveContainer>
         )}
