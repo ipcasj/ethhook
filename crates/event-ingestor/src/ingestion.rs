@@ -393,7 +393,7 @@ impl ChainIngestionManager {
                                 .inc();
 
                             // Log every 100 events to avoid spam
-                            if events_processed.is_multiple_of(100) {
+                            if events_processed % 100 == 0 {
                                 info!(
                                     "[{}] Processed {} events from {} blocks",
                                     chain_config.name, events_processed, blocks_processed

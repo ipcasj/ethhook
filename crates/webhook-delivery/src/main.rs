@@ -430,7 +430,7 @@ async fn worker_loop(
             }
         }
 
-        if jobs_processed.is_multiple_of(100) {
+        if jobs_processed % 100 == 0 {
             info!("[Worker {}] Processed {} jobs", worker_id, jobs_processed);
         }
     }
