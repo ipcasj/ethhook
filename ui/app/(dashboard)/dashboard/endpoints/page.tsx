@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { InfoBanner } from '@/components/ui/info-banner';
 import { api } from '@/lib/api-client';
 import { Endpoint, EndpointListResponse, ApplicationListResponse } from '@/lib/types';
 import { Webhook, Plus, Edit, Trash2, Copy } from 'lucide-react';
@@ -189,6 +191,18 @@ export default function EndpointsPage() {
         </Button>
       </div>
 
+      <InfoBanner
+        title="Manage Your Webhook Endpoints"
+        description="Endpoints receive notifications when specific blockchain events occur. Configure chains, contracts, and event signatures to filter the events you want to monitor."
+        tips={[
+          'Test endpoints with the "Test" button to verify connectivity and authentication',
+          'Use multiple chain IDs to monitor the same events across different blockchain networks',
+          'Specify contract addresses to filter events from specific smart contracts',
+          'Event signatures (topics[0]) allow you to narrow down to specific event types like Transfer or Approval'
+        ]}
+        defaultCollapsed={true}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Your Endpoints</CardTitle>
@@ -242,10 +256,18 @@ export default function EndpointsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            copyToClipboard(endpoint.webhook_url);
-                            toast.success('URL copied to clipboard!');
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Copying URL:', endpoint.webhook_url);
+                            const success = await copyToClipboard(endpoint.webhook_url);
+                            if (success) {
+                              toast.success('URL copied to clipboard!');
+                            } else {
+                              toast.error('Failed to copy URL');
+                            }
                           }}
+                          title={endpoint.webhook_url}
                         >
                           <Copy className="w-3 h-3" />
                         </Button>
@@ -266,9 +288,7 @@ export default function EndpointsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={endpoint.is_active ? 'default' : 'secondary'}>
-                        {endpoint.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
+                      <StatusBadge status={endpoint.is_active ? 'active' : 'inactive'} size="sm" showIcon={true} />
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {formatDateTime(endpoint.created_at)}

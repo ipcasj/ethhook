@@ -105,12 +105,13 @@ export interface Event {
   processed_at: string | null;
   delivery_count: number | null;
   successful_deliveries: number | null;
-  event_type: string;
-  chain_id: number | null;
-  endpoint_name: string | null;
-  status: 'pending' | 'delivered' | 'failed';
-  attempts: number;
-  created_at: string;
+  // Optional fields that may not be in all API responses
+  event_type?: string;
+  chain_id?: number | null;
+  endpoint_name?: string | null;
+  status?: 'pending' | 'delivered' | 'failed';
+  attempts?: number;
+  created_at?: string;
 }
 
 export interface EventListResponse {

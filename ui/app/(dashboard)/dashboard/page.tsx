@@ -1,16 +1,52 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { CompactMetricCard } from '@/components/ui/compact-metric-card';
+import { CompactEventTable } from '@/components/ui/compact-event-table';
+import { InfoBanner } from '@/components/ui/info-banner';
+import { InsightCard } from '@/components/ui/insight-card';
+import { TimeSeriesChart } from '@/components/ui/timeseries-chart';
+import { ChainDistributionChart } from '@/components/ui/chain-distribution-chart';
+import { UsageWidget } from '@/components/ui/usage-widget';
 import { api } from '@/lib/api-client';
 import { DashboardStats, Event } from '@/lib/types';
-import { Activity, Box, Webhook, CheckCircle, Plus } from 'lucide-react';
+import { Activity, Box, Webhook, CheckCircle, Plus, TrendingUp, Zap, Clock, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
-import { formatDateTime } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+
+interface TimeseriesResponse {
+  data_points: Array<{
+    timestamp: string;
+    event_count: number;
+    delivery_count: number;
+    successful_deliveries: number;
+    failed_deliveries: number;
+    success_rate: number;
+    avg_latency_ms: number | null;
+  }>;
+  time_range: string;
+  granularity: string;
+}
+
+interface ChainDistributionResponse {
+  distributions: Array<{
+    chain_id: number;
+    chain_name: string;
+    event_count: number;
+    percentage: number;
+  }>;
+  total_events: number;
+}
+
+type TimeRange = '24h' | '7d' | '30d';
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const [timeRange, setTimeRange] = useState<TimeRange>('24h');
+
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboard-stats'],
     queryFn: () => api.get<DashboardStats>('/statistics/dashboard'),
@@ -19,21 +55,53 @@ export default function DashboardPage() {
 
   const { data: recentEvents, isLoading: eventsLoading } = useQuery<{ events: Event[] }>({
     queryKey: ['recent-events'],
-    queryFn: () => api.get<{ events: Event[] }>('/events?limit=10'),
+    queryFn: () => api.get<{ events: Event[] }>('/events?limit=15'),
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
+  // Fetch timeseries data
+  const granularity = timeRange === '24h' ? 'hour' : 'day';
+  const { data: timeseriesData, isLoading: timeseriesLoading } = useQuery<TimeseriesResponse>({
+    queryKey: ['timeseries-stats', timeRange],
+    queryFn: () => api.get<TimeseriesResponse>(`/statistics/timeseries?time_range=${timeRange}&granularity=${granularity}`),
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Fetch chain distribution
+  const { data: chainData, isLoading: chainLoading } = useQuery<ChainDistributionResponse>({
+    queryKey: ['chain-distribution'],
+    queryFn: () => api.get<ChainDistributionResponse>('/statistics/chain-distribution'),
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Calculate insights
+  const successRate = stats?.success_rate ?? 0;
+  const avgDeliveryTime = stats?.avg_delivery_time_ms ?? 0;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Page header */}
       <div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
           Dashboard
         </h1>
         <p className="text-slate-600 mt-1">
-          Overview of your webhook infrastructure
+          Real-time overview of your webhook infrastructure
         </p>
       </div>
+
+      {/* Info Banner */}
+      <InfoBanner
+        title="Welcome to Your Webhook Dashboard"
+        description="Monitor blockchain events, track webhook deliveries, and manage your endpoints from this central hub. All metrics update in real-time."
+        tips={[
+          'Create applications to organize your endpoints by project or environment',
+          'Configure endpoints to receive specific events from smart contracts',
+          'Monitor delivery success rates and identify issues quickly',
+          'Use filters on the Events page to find specific transactions'
+        ]}
+        defaultCollapsed={false}
+      />
 
       {/* Quick actions */}
       <div className="flex gap-3">
@@ -51,158 +119,313 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Metrics cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">
-              Active Endpoints
-            </CardTitle>
-            <Webhook className="w-4 h-4 text-indigo-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">
-              {statsLoading ? '...' : stats?.active_endpoints ?? 0}
-            </div>
-            <p className="text-xs text-slate-500 mt-1">listening for events</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">
-              Events (24h)
-            </CardTitle>
-            <Activity className="w-4 h-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">
-              {statsLoading ? '...' : stats?.events_today ?? 0}
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {statsLoading ? '' : `${stats?.events_total ?? 0} total`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">
-              Deliveries
-            </CardTitle>
-            <Box className="w-4 h-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">
-              {statsLoading ? '...' : stats?.total_deliveries ?? 0}
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {statsLoading ? '' : `${stats?.successful_deliveries ?? 0} successful`}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600">
-              Success Rate
-            </CardTitle>
-            <CheckCircle className="w-4 h-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">
-              {statsLoading ? '...' : `${stats?.success_rate?.toFixed(1) ?? 0}%`}
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {statsLoading || !stats?.avg_delivery_time_ms ? '' : `${stats.avg_delivery_time_ms.toFixed(0)}ms avg`}
-            </p>
-          </CardContent>
-        </Card>
+      {/* Compact Metrics - 2 rows layout */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <CompactMetricCard
+          label="Active Endpoints"
+          value={stats?.active_endpoints ?? 0}
+          icon={Webhook}
+          iconColor="text-indigo-500"
+          subtext="listening for events"
+          loading={statsLoading}
+          onClick={() => router.push('/dashboard/endpoints')}
+        />
+        <CompactMetricCard
+          label="Events (24h)"
+          value={stats?.events_today ?? 0}
+          icon={Activity}
+          iconColor="text-purple-500"
+          subtext={`${stats?.events_total ?? 0} total events`}
+          loading={statsLoading}
+          onClick={() => router.push('/dashboard/events')}
+        />
+        <CompactMetricCard
+          label="Total Deliveries"
+          value={stats?.total_deliveries ?? 0}
+          icon={Box}
+          iconColor="text-blue-500"
+          subtext={`${stats?.successful_deliveries ?? 0} successful`}
+          loading={statsLoading}
+        />
+        <CompactMetricCard
+          label="Success Rate"
+          value={`${stats?.success_rate?.toFixed(1) ?? 0}%`}
+          icon={CheckCircle}
+          iconColor="text-emerald-500"
+          subtext={avgDeliveryTime ? `${avgDeliveryTime.toFixed(0)}ms avg` : 'No data'}
+          loading={statsLoading}
+        />
       </div>
 
-      {/* Recent events */}
+      {/* Second row of metrics */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <CompactMetricCard
+          label="Avg Response Time"
+          value={avgDeliveryTime ? `${avgDeliveryTime.toFixed(0)}ms` : '—'}
+          icon={Zap}
+          iconColor="text-amber-500"
+          subtext="webhook delivery"
+          loading={statsLoading}
+        />
+        <CompactMetricCard
+          label="Failed Deliveries"
+          value={(stats?.total_deliveries ?? 0) - (stats?.successful_deliveries ?? 0)}
+          icon={Activity}
+          iconColor="text-rose-500"
+          subtext="requires attention"
+          loading={statsLoading}
+        />
+        <CompactMetricCard
+          label="Processing"
+          value="Live"
+          icon={Clock}
+          iconColor="text-green-500"
+          subtext="real-time updates"
+          loading={false}
+        />
+        <CompactMetricCard
+          label="System Health"
+          value={successRate >= 95 ? '✓' : '⚠'}
+          icon={BarChart3}
+          iconColor={successRate >= 95 ? 'text-green-500' : 'text-amber-500'}
+          subtext={successRate >= 95 ? 'All systems operational' : 'Degraded performance'}
+          loading={statsLoading}
+        />
+      </div>
+
+      {/* Analytics Section - Compact Horizontal Bar */}
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-slate-900">Recent Events</CardTitle>
-          <CardDescription className="text-slate-600">Latest webhook events from your endpoints</CardDescription>
+        <CardHeader className="pb-2 pt-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-indigo-600" />
+              Analytics
+            </CardTitle>
+            <div className="flex gap-1">
+              <Button
+                size="sm"
+                variant={timeRange === '24h' ? 'default' : 'outline'}
+                onClick={() => setTimeRange('24h')}
+                className={timeRange === '24h' ? 'bg-indigo-600 hover:bg-indigo-700 h-6 px-2 text-xs' : 'h-6 px-2 text-xs'}
+              >
+                24h
+              </Button>
+              <Button
+                size="sm"
+                variant={timeRange === '7d' ? 'default' : 'outline'}
+                onClick={() => setTimeRange('7d')}
+                className={timeRange === '7d' ? 'bg-indigo-600 hover:bg-indigo-700 h-6 px-2 text-xs' : 'h-6 px-2 text-xs'}
+              >
+                7d
+              </Button>
+              <Button
+                size="sm"
+                variant={timeRange === '30d' ? 'default' : 'outline'}
+                onClick={() => setTimeRange('30d')}
+                className={timeRange === '30d' ? 'bg-indigo-600 hover:bg-indigo-700 h-6 px-2 text-xs' : 'h-6 px-2 text-xs'}
+              >
+                30d
+              </Button>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          {eventsLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading events...</div>
-          ) : !recentEvents?.events || recentEvents.events.length === 0 ? (
-            <div className="text-center py-8">
-              <Activity className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No events yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Events will appear here once your endpoints start receiving blockchain events
-              </p>
+        <CardContent className="pt-2 pb-3">
+          {/* Horizontal Trend Analytics - Shows trends, not absolute numbers */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+            {/* Peak Events Hour/Day */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-2 border border-blue-100">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">Peak Activity</span>
+                <TrendingUp className="w-3 h-3 text-blue-600" />
+              </div>
+              <div className="text-lg font-bold text-slate-900">
+                {timeseriesLoading ? '...' : 
+                  timeseriesData?.data_points.length 
+                    ? Math.max(...timeseriesData.data_points.map(p => p.event_count)).toLocaleString()
+                    : '0'
+                }
+              </div>
+              <div className="text-xs text-slate-600">max {granularity}</div>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {recentEvents.events.map((event) => (
-                <div
-                  key={event.id}
-                  className="flex items-center gap-4 p-3 border rounded-lg hover:bg-slate-50 transition-colors"
-                >
-                  {/* Status Badge */}
-                  <Badge
-                    variant={
-                      event.status === 'delivered'
-                        ? 'default'
-                        : event.status === 'failed'
-                        ? 'destructive'
-                        : 'secondary'
-                    }
-                    className="shrink-0"
-                  >
-                    {event.status}
-                  </Badge>
 
-                  {/* Event Info */}
-                  <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-2">
-                    {/* Column 1: Event Type & Contract */}
-                    <div className="space-y-0.5">
-                      <p className="font-mono text-xs font-medium text-slate-900 truncate">
-                        {event.event_type || 'Unknown Event'}
-                      </p>
-                      <p className="font-mono text-xs text-slate-500 truncate">
-                        {event.contract_address.slice(0, 6)}...{event.contract_address.slice(-4)}
-                      </p>
-                    </div>
-
-                    {/* Column 2: Chain & Block */}
-                    <div className="space-y-0.5">
-                      <p className="text-xs text-slate-600">
-                        Chain {event.chain_id} • Block {event.block_number.toLocaleString()}
-                      </p>
-                      <p className="font-mono text-xs text-slate-500 truncate">
-                        Tx: {event.transaction_hash.slice(0, 8)}...{event.transaction_hash.slice(-6)}
-                      </p>
-                    </div>
-
-                    {/* Column 3: Delivery Info */}
-                    <div className="space-y-0.5 text-right md:text-left">
-                      <p className="text-xs text-slate-600">
-                        {event.attempts} {event.attempts === 1 ? 'attempt' : 'attempts'}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {formatDateTime(event.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            {/* Delivery Rate */}
+            <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg p-2 border border-purple-100">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">Delivery Rate</span>
+                <Box className="w-3 h-3 text-purple-600" />
+              </div>
+              <div className="text-lg font-bold text-slate-900">
+                {timeseriesLoading ? '...' : 
+                  timeseriesData?.data_points.length 
+                    ? `${((timeseriesData.data_points.reduce((sum, p) => sum + p.delivery_count, 0) / timeseriesData.data_points.reduce((sum, p) => sum + p.event_count, 0)) * 100 || 0).toFixed(0)}%`
+                    : '0%'
+                }
+              </div>
+              <div className="text-xs text-slate-600">events→webhooks</div>
             </div>
-          )}
-          {recentEvents?.events && recentEvents.events.length > 0 && (
-            <div className="mt-4 text-center">
-              <Link href="/dashboard/events">
-                <Button variant="outline">View All Events</Button>
-              </Link>
+
+            {/* Best Success Rate */}
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-2 border border-emerald-100">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">Best Period</span>
+                <CheckCircle className="w-3 h-3 text-emerald-600" />
+              </div>
+              <div className="text-lg font-bold text-slate-900">
+                {timeseriesLoading ? '...' : 
+                  timeseriesData?.data_points.length 
+                    ? `${Math.max(...timeseriesData.data_points.map(p => p.success_rate)).toFixed(1)}%`
+                    : '0%'
+                }
+              </div>
+              <div className="text-xs text-slate-600">top success</div>
             </div>
-          )}
+
+            {/* Fastest Response */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg p-2 border border-amber-100">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">Fastest</span>
+                <Zap className="w-3 h-3 text-amber-600" />
+              </div>
+              <div className="text-lg font-bold text-slate-900">
+                {timeseriesLoading ? '...' : 
+                  timeseriesData?.data_points.filter(p => p.avg_latency_ms !== null).length
+                    ? `${Math.min(...timeseriesData.data_points.filter(p => p.avg_latency_ms !== null).map(p => p.avg_latency_ms as number)).toFixed(0)}ms`
+                    : '—'
+                }
+              </div>
+              <div className="text-xs text-slate-600">best time</div>
+            </div>
+
+            {/* Top Chain */}
+            <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-lg p-2 border border-slate-200">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-slate-700">Top Chain</span>
+                <Activity className="w-3 h-3 text-slate-600" />
+              </div>
+              <div className="text-sm font-bold text-slate-900 truncate">
+                {chainLoading ? '...' : 
+                  chainData?.distributions.length
+                    ? chainData.distributions.reduce((max, d) => d.event_count > max.event_count ? d : max).chain_name
+                    : '—'
+                }
+              </div>
+              <div className="text-xs text-slate-600">
+                {chainLoading ? '' : 
+                  chainData?.distributions.length
+                    ? `${chainData.distributions.reduce((max, d) => d.event_count > max.event_count ? d : max).percentage.toFixed(0)}%`
+                    : 'no data'
+                }
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Events & Insights - 2 Column Layout */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        {/* Left Column (40%): Recent Events Table */}
+        <div className="lg:col-span-2">
+          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-slate-900">Recent Events</CardTitle>
+              <CardDescription className="text-slate-600">Latest 15 webhook events</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {eventsLoading ? (
+                <div className="text-center py-8 text-muted-foreground">Loading events...</div>
+              ) : !recentEvents?.events || recentEvents.events.length === 0 ? (
+                <div className="text-center py-8">
+                  <Activity className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">No events yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Events will appear here once your endpoints start receiving blockchain events
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <CompactEventTable
+                    events={recentEvents.events}
+                    maxHeight="400px"
+                    onEventClick={(event) => router.push(`/dashboard/events?id=${event.id}`)}
+                  />
+                  <div className="mt-4 text-center">
+                    <Link href="/dashboard/events">
+                      <Button variant="outline" size="sm">View All {stats?.events_total ?? 0} Events</Button>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column (60%): Insights & Analytics */}
+        <div className="lg:col-span-3 space-y-4">
+          {/* Performance Insight */}
+          <InsightCard
+            type={successRate >= 95 ? 'success' : successRate >= 80 ? 'warning' : 'info'}
+            title={successRate >= 95 ? 'Excellent Performance' : 'Performance Alert'}
+            description={
+              successRate >= 95
+                ? `Your webhook delivery success rate is ${successRate.toFixed(1)}%. All systems are operating optimally with an average delivery time of ${avgDeliveryTime.toFixed(0)}ms.`
+                : `Your success rate is ${successRate.toFixed(1)}%. Consider reviewing failed deliveries to identify potential issues with endpoint configurations or network connectivity.`
+            }
+            stats={[
+              { label: 'Success Rate', value: `${successRate.toFixed(1)}%` },
+              { label: 'Avg Response', value: `${avgDeliveryTime.toFixed(0)}ms` },
+              { label: 'Failed Today', value: (stats?.total_deliveries ?? 0) - (stats?.successful_deliveries ?? 0) }
+            ]}
+            action={
+              successRate < 95
+                ? {
+                    label: 'View Failed Deliveries',
+                    onClick: () => router.push('/dashboard/events?status=failed')
+                  }
+                : undefined
+            }
+          />
+
+          {/* Activity Recommendation */}
+          <InsightCard
+            type="recommendation"
+            title="Event Activity Overview"
+            description={
+              (stats?.events_today ?? 0) > 0
+                ? `You've captured ${stats?.events_today ?? 0} events today out of ${stats?.events_total ?? 0} total events. ${
+                    (stats?.active_endpoints ?? 0) > 0
+                      ? `Your ${stats?.active_endpoints} active endpoints are processing events in real-time.`
+                      : 'Configure more endpoints to capture additional blockchain events.'
+                  }`
+                : 'No events captured today. Make sure your endpoints are properly configured and active to start receiving blockchain events.'
+            }
+            stats={[
+              { label: 'Today', value: stats?.events_today ?? 0 },
+              { label: 'Total', value: stats?.events_total ?? 0 },
+              { label: 'Active Endpoints', value: stats?.active_endpoints ?? 0 }
+            ]}
+            action={{
+              label: 'Configure Endpoints',
+              onClick: () => router.push('/dashboard/endpoints')
+            }}
+          />
+
+          {/* Quick Actions Insight */}
+          <InsightCard
+            type="info"
+            title="Getting Started"
+            description="Follow these steps to set up webhook monitoring: 1) Create an Application to organize your project, 2) Add Endpoints with webhook URLs to receive events, 3) Configure which blockchain networks and smart contracts to monitor, 4) Test your webhooks and monitor delivery status in real-time."
+            stats={[
+              { label: 'Step 1', value: 'Create App' },
+              { label: 'Step 2', value: 'Add Endpoint' },
+              { label: 'Step 3', value: 'Monitor Events' }
+            ]}
+            action={{
+              label: 'Create Application',
+              onClick: () => router.push('/dashboard/applications')
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

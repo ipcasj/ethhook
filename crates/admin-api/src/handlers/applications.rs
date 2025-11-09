@@ -41,6 +41,7 @@ pub struct ApplicationResponse {
     pub name: String,
     pub description: Option<String>,
     pub api_key: String,
+    pub webhook_secret: String,
     pub is_active: bool,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
@@ -78,7 +79,7 @@ pub async fn create_application(
         r#"
         INSERT INTO applications (user_id, name, description, api_key, webhook_secret)
         VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, user_id, name, description, api_key, is_active, created_at, updated_at
+        RETURNING id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         "#,
         auth_user.user_id,
         payload.name,
@@ -105,6 +106,7 @@ pub async fn create_application(
             name: app.name,
             description: app.description,
             api_key: app.api_key.unwrap_or_default(),
+            webhook_secret: app.webhook_secret,
             is_active: app.is_active.unwrap_or(true),
             created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
             updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
@@ -120,7 +122,7 @@ pub async fn list_applications(
     // Get applications
     let apps = sqlx::query!(
         r#"
-        SELECT id, user_id, name, description, api_key, is_active, created_at, updated_at
+        SELECT id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         FROM applications
         WHERE user_id = $1
         ORDER BY created_at DESC
@@ -147,6 +149,7 @@ pub async fn list_applications(
             name: app.name,
             description: app.description,
             api_key: app.api_key.unwrap_or_default(),
+            webhook_secret: app.webhook_secret,
             is_active: app.is_active.unwrap_or(true),
             created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
             updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
@@ -167,7 +170,7 @@ pub async fn get_application(
 ) -> Result<Json<ApplicationResponse>, (StatusCode, Json<ErrorResponse>)> {
     let app = sqlx::query!(
         r#"
-        SELECT id, user_id, name, description, api_key, is_active, created_at, updated_at
+        SELECT id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         FROM applications
         WHERE id = $1 AND user_id = $2
         "#,
@@ -199,6 +202,7 @@ pub async fn get_application(
         name: app.name,
         description: app.description,
         api_key: app.api_key.unwrap_or_default(),
+        webhook_secret: app.webhook_secret,
         is_active: app.is_active.unwrap_or(true),
         created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
         updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
@@ -270,7 +274,7 @@ pub async fn update_application(
     }
 
     query.push_str(&format!(
-        " WHERE id = '{app_id}' RETURNING id, user_id, name, description, api_key, is_active, created_at, updated_at"
+        " WHERE id = '{app_id}' RETURNING id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at"
     ));
 
     let app = sqlx::query_as::<
@@ -280,6 +284,7 @@ pub async fn update_application(
             Uuid,
             String,
             Option<String>,
+            String,
             String,
             bool,
             chrono::DateTime<chrono::Utc>,
@@ -303,9 +308,10 @@ pub async fn update_application(
         name: app.2,
         description: app.3,
         api_key: app.4,
-        is_active: app.5,
-        created_at: app.6,
-        updated_at: app.7,
+        webhook_secret: app.5,
+        is_active: app.6,
+        created_at: app.7,
+        updated_at: app.8,
     }))
 }
 
@@ -357,7 +363,7 @@ pub async fn regenerate_api_key(
         UPDATE applications
         SET api_key = $1, updated_at = NOW()
         WHERE id = $2 AND user_id = $3
-        RETURNING id, user_id, name, description, api_key, is_active, created_at, updated_at
+        RETURNING id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         "#,
         new_api_key,
         app_id,
@@ -388,6 +394,7 @@ pub async fn regenerate_api_key(
         name: app.name,
         description: app.description,
         api_key: app.api_key.unwrap_or_default(),
+        webhook_secret: app.webhook_secret,
         is_active: app.is_active.unwrap_or(true),
         created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
         updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),

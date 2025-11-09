@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { api } from '@/lib/api-client';
 import { Application, ApplicationListResponse } from '@/lib/types';
 import { Box, Plus, Copy, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
@@ -224,9 +225,7 @@ export default function ApplicationsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={app.is_active ? 'default' : 'secondary'}>
-                        {app.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
+                      <StatusBadge status={app.is_active ? 'active' : 'inactive'} size="sm" showIcon={true} />
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {formatDateTime(app.created_at)}

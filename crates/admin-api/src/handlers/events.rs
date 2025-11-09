@@ -100,7 +100,7 @@ pub async fn list_events(
     let offset = params.offset.unwrap_or(0);
 
     // Get events that have been delivered to user's endpoints
-    let events = match params.endpoint_id {
+    let (events, total) = match params.endpoint_id {
         Some(endpoint_id) => {
             // Verify endpoint belongs to user first
             let endpoint_check = sqlx::query!(
@@ -134,15 +134,18 @@ pub async fn list_events(
             }
 
             // Get events for this specific endpoint
-            list_events_for_endpoint(&pool, endpoint_id, limit, offset).await?
+            let events = list_events_for_endpoint(&pool, endpoint_id, limit, offset).await?;
+            let total = count_events_for_endpoint(&pool, endpoint_id).await?;
+            (events, total)
         }
         None => {
             // Get all events for all user's endpoints
-            list_events_for_user(&pool, auth_user.user_id, limit, offset).await?
+            let events = list_events_for_user(&pool, auth_user.user_id, limit, offset).await?;
+            let total = count_events_for_user(&pool, auth_user.user_id).await?;
+            (events, total)
         }
     };
 
-    let total = events.len() as i64;
     Ok(Json(EventListResponse { events, total }))
 }
 
@@ -211,7 +214,7 @@ async fn list_events_for_endpoint(
                 successful_deliveries: Some(ev.successful_deliveries),
                 event_type,
                 chain_id: ev.chain_id,
-                endpoint_name: Some(ev.endpoint_name.unwrap_or_else(|| "Unknown".to_string())),
+                endpoint_name: Some(ev.endpoint_name),
                 status: ev.status,
                 attempts: ev.delivery_count,
                 created_at: ev.ingested_at.unwrap_or_else(chrono::Utc::now),
@@ -286,13 +289,69 @@ async fn list_events_for_user(
                 successful_deliveries: Some(ev.successful_deliveries),
                 event_type,
                 chain_id: ev.chain_id,
-                endpoint_name: Some(ev.endpoint_name.unwrap_or_else(|| "Unknown".to_string())),
+                endpoint_name: Some(ev.endpoint_name),
                 status: ev.status,
                 attempts: ev.delivery_count,
                 created_at: ev.ingested_at.unwrap_or_else(chrono::Utc::now),
             }
         })
         .collect())
+}
+
+async fn count_events_for_endpoint(
+    pool: &PgPool,
+    endpoint_id: Uuid,
+) -> Result<i64, (StatusCode, Json<ErrorResponse>)> {
+    let result = sqlx::query!(
+        r#"
+        SELECT COUNT(DISTINCT e.id) as "count!"
+        FROM events e
+        JOIN delivery_attempts da ON e.id = da.event_id
+        WHERE da.endpoint_id = $1
+        "#,
+        endpoint_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Failed to count events: {e}"),
+            }),
+        )
+    })?;
+
+    Ok(result.count)
+}
+
+async fn count_events_for_user(
+    pool: &PgPool,
+    user_id: Uuid,
+) -> Result<i64, (StatusCode, Json<ErrorResponse>)> {
+    let result = sqlx::query!(
+        r#"
+        SELECT COUNT(DISTINCT e.id) as "count!"
+        FROM events e
+        JOIN delivery_attempts da ON e.id = da.event_id
+        JOIN endpoints ep ON da.endpoint_id = ep.id
+        JOIN applications a ON ep.application_id = a.id
+        WHERE a.user_id = $1
+        "#,
+        user_id
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: format!("Failed to count events: {e}"),
+            }),
+        )
+    })?;
+
+    Ok(result.count)
 }
 
 /// Get a specific event by ID
@@ -364,7 +423,7 @@ pub async fn get_event(
         successful_deliveries: Some(event.successful_deliveries),
         event_type,
         chain_id: event.chain_id,
-        endpoint_name: Some(event.endpoint_name.unwrap_or_else(|| "Unknown".to_string())),
+        endpoint_name: Some(event.endpoint_name),
         status: event.status,
         attempts: event.delivery_count,
         created_at: event.ingested_at.unwrap_or_else(chrono::Utc::now),

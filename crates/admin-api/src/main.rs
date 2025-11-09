@@ -210,6 +210,14 @@ fn create_router(pool: sqlx::PgPool, config: Config) -> Router {
             "/statistics/dashboard",
             get(handlers::statistics::get_dashboard_statistics),
         )
+        .route(
+            "/statistics/timeseries",
+            get(handlers::statistics::get_timeseries_statistics),
+        )
+        .route(
+            "/statistics/chain-distribution",
+            get(handlers::statistics::get_chain_distribution),
+        )
         .layer(axum::middleware::from_fn(auth::inject_jwt_secret));
 
     // Combine routes
