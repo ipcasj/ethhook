@@ -806,12 +806,8 @@ async fn test_full_pipeline_with_mock_ethereum() {
             "RUST_LOG",
             "debug,event_ingestor=trace,ethhook_message_processor=trace,ethhook_webhook_delivery=debug",
         ), // Trace level for all services
-        ("ETHEREUM_WS_URL", mock_rpc_url.as_str()), // Point to mock RPC for Ethereum
-        ("ENVIRONMENT", "production"),           // Use production config to watch chain ID 1
-        // Set dummy URLs for other chains (Event Ingestor requires all 4)
-        ("ARBITRUM_WS_URL", "ws://dummy:9999"),
-        ("OPTIMISM_WS_URL", "ws://dummy:9999"),
-        ("BASE_WS_URL", "ws://dummy:9999"),
+        ("ETHEREUM_WS_URL", mock_rpc_url.as_str()), // Point to mock RPC for Sepolia testnet
+        ("ENVIRONMENT", "development"),          // Use development config (Sepolia only, no multi-chain)
         ("DELIVERY_METRICS_PORT", "9094"), // Unique metrics port for webhook-delivery
     ];
 

@@ -267,11 +267,8 @@ async fn test_complete_system_flow() {
         ("REDIS_HOST", "localhost"),
         ("REDIS_PORT", "6379"),
         ("RUST_LOG", "info,event_ingestor=debug,ethhook=debug"),
-        ("ENVIRONMENT", "production"),
+        ("ENVIRONMENT", "development"),
         ("ETHEREUM_WS_URL", mock_rpc_url.as_str()),
-        ("ARBITRUM_WS_URL", "ws://dummy:9999"),
-        ("OPTIMISM_WS_URL", "ws://dummy:9999"),
-        ("BASE_WS_URL", "ws://dummy:9999"),
         ("DELIVERY_METRICS_PORT", "9099"),
     ];
 
