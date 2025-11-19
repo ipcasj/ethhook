@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT id, email, name, created_at\n        FROM users\n        WHERE id = $1\n        ",
+  "query": "\n        SELECT id, email, name, is_admin, created_at\n        FROM users\n        WHERE id = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -20,6 +20,11 @@
       },
       {
         "ordinal": 3,
+        "name": "is_admin",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamptz"
       }
@@ -33,8 +38,9 @@
       false,
       false,
       true,
+      true,
       true
     ]
   },
-  "hash": "b2039d34d3901789b5a5a66219a9ea34c3cbac8b01cfc5a93b369822131d47cb"
+  "hash": "e29c3960e4f60b8a1bd99194216be3c3999a236d9034b1213f45d51dcc247f58"
 }

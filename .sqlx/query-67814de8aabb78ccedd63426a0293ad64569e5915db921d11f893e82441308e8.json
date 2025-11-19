@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            MIN(e.ingested_at) as first_event,\n            MAX(e.ingested_at) as last_event\n        FROM events e\n        JOIN delivery_attempts da ON e.id = da.event_id\n        WHERE da.endpoint_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "first_event",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "last_event",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "67814de8aabb78ccedd63426a0293ad64569e5915db921d11f893e82441308e8"
+}

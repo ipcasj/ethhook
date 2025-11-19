@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            COUNT(DISTINCT e.id) as \"total!\",\n            COUNT(DISTINCT e.id) FILTER (WHERE e.ingested_at >= NOW() - INTERVAL '24 hours') as \"events_24h!\"\n        FROM events e\n        JOIN delivery_attempts da ON e.id = da.event_id\n        JOIN endpoints ep ON da.endpoint_id = ep.id\n        WHERE ep.application_id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "total!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "events_24h!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "ad69602c6ba2163659a9e88a9d342d6ba78054b2c13d0057beb175a0a43e930d"
+}

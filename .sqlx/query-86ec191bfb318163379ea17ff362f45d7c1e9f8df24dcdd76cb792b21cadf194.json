@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            ep.id,\n            ep.name,\n            ep.webhook_url,\n            COUNT(DISTINCT e.id)::bigint as \"events_count!\",\n            COUNT(da.id)::bigint as \"total_deliveries!\",\n            COUNT(da.id) FILTER (WHERE da.success = true)::bigint as \"successful!\",\n            AVG(da.duration_ms)::float8 as \"avg_latency\",\n            MAX(e.ingested_at) as \"last_event\"\n        FROM endpoints ep\n        LEFT JOIN delivery_attempts da ON ep.id = da.endpoint_id\n        LEFT JOIN events e ON da.event_id = e.id\n        WHERE ep.application_id = $1\n        GROUP BY ep.id, ep.name, ep.webhook_url\n        ORDER BY COUNT(DISTINCT e.id) DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "webhook_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "events_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "total_deliveries!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "successful!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "avg_latency",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 7,
+        "name": "last_event",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "86ec191bfb318163379ea17ff362f45d7c1e9f8df24dcdd76cb792b21cadf194"
+}
