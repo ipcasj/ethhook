@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
@@ -35,16 +35,21 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [hasToken, setHasToken] = useState<boolean | null>(null);
+  const hasCheckedAuth = useRef(false);
+  const [isReady, setIsReady] = useState(false);
 
   // Check auth token on mount
   useEffect(() => {
+    if (hasCheckedAuth.current) return;
+    
     const token = getAuthToken();
     if (!token) {
       router.replace('/login');
-    } else {
-      setHasToken(true);
+      return;
     }
+    
+    hasCheckedAuth.current = true;
+    setIsReady(true);
   }, [router]);
 
   // Fetch user profile
@@ -52,7 +57,7 @@ export default function DashboardLayout({
     queryKey: ['user-profile'],
     queryFn: () => api.get<User>('/users/me'),
     retry: false,
-    enabled: hasToken === true, // Only fetch if token check is complete and token exists
+    enabled: isReady, // Only fetch after auth check is complete
   });
 
   // Redirect to login if user fetch fails (invalid token)
@@ -64,7 +69,7 @@ export default function DashboardLayout({
   }, [userError, router]);
 
   // Show loading state while checking auth or fetching user
-  if (hasToken === null || (hasToken && isLoadingUser)) {
+  if (!isReady || isLoadingUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
