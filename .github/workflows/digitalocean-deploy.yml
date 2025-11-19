@@ -20,14 +20,41 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
+      - name: Validate Required Secrets
+        run: |
+          echo "🔍 Validating GitHub secrets configuration..."
+          
+          if [ -z "${{ secrets.DROPLET_HOST }}" ]; then
+            echo "❌ ERROR: DROPLET_HOST secret is not set!"
+            echo "Please configure at: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.DROPLET_USER }}" ]; then
+            echo "❌ ERROR: DROPLET_USER secret is not set!"
+            echo "Please configure at: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.DROPLET_SSH_KEY }}" ]; then
+            echo "❌ ERROR: DROPLET_SSH_KEY secret is not set!"
+            echo "Please configure at: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured"
+          echo "   - DROPLET_HOST: ${{ secrets.DROPLET_HOST }}"
+          echo "   - DROPLET_USER: ${{ secrets.DROPLET_USER }}"
+          echo "   - SSH Key: $(echo '${{ secrets.DROPLET_SSH_KEY }}' | wc -l) lines"
+
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
-      
+
       - name: Deploy to DigitalOcean Droplet
         run: |
           ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -i ~/.ssh/deploy_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'ENDSSH'
