@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -99,7 +99,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}
 
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features postgres
@@ -176,7 +176,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}
 
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features postgres
@@ -240,7 +240,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}
 
       - name: Build workspace
         run: cargo build --workspace --release --target ${{ matrix.target }}
