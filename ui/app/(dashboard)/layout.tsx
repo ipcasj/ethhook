@@ -35,29 +35,24 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const hasCheckedAuth = useRef(false);
-  const [isReady, setIsReady] = useState(false);
 
-  // Check auth token on mount
-  useEffect(() => {
-    if (hasCheckedAuth.current) return;
-    
+  // Check auth token and redirect if missing - using useState initializer to avoid effect
+  const [hasValidToken] = useState(() => {
     const token = getAuthToken();
     if (!token) {
-      router.replace('/login');
-      return;
+      // Schedule redirect after render
+      setTimeout(() => router.replace('/login'), 0);
+      return false;
     }
-    
-    hasCheckedAuth.current = true;
-    setIsReady(true);
-  }, [router]);
+    return true;
+  });
 
   // Fetch user profile
   const { data: user, error: userError, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ['user-profile'],
     queryFn: () => api.get<User>('/users/me'),
     retry: false,
-    enabled: isReady, // Only fetch after auth check is complete
+    enabled: hasValidToken, // Only fetch if initial token check passed
   });
 
   // Redirect to login if user fetch fails (invalid token)
@@ -68,8 +63,8 @@ export default function DashboardLayout({
     }
   }, [userError, router]);
 
-  // Show loading state while checking auth or fetching user
-  if (!isReady || isLoadingUser) {
+  // Show loading state while fetching user (or if no valid token)
+  if (!hasValidToken || isLoadingUser) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
