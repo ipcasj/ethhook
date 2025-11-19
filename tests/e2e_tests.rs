@@ -428,10 +428,10 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Mock webhook configured to accept requests");
 
-    // Pre-create consumer groups for development chains to avoid race condition
-    // With ENVIRONMENT=development, Message Processor watches: events:11155111 (Sepolia)
-    println!("\n🔧 Pre-creating Redis consumer groups for development chains...");
-    for stream in ["events:11155111"] {
+    // Pre-create consumer groups for production chains to avoid race condition
+    // With ENVIRONMENT=production, Message Processor watches: events:1, events:42161, events:10, events:8453
+    println!("\n🔧 Pre-creating Redis consumer groups for production chains...");
+    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
         let _: Result<String, _> = redis::cmd("XGROUP")
             .arg("CREATE")
             .arg(stream)
@@ -441,7 +441,7 @@ async fn test_real_e2e_full_pipeline() {
             .query_async(&mut redis)
             .await;
     }
-    println!("✓ Consumer groups ready for development chains");
+    println!("✓ Consumer groups ready for production chains");
 
     // Start services (skip Event Ingestor - requires real Ethereum connection)
     let start_time = Instant::now();
@@ -1023,6 +1023,20 @@ async fn test_consumer_group_acknowledgment() {
 
     println!("✓ Created test user, app, and endpoint");
 
+    // Pre-create consumer groups for production chains to avoid race condition
+    println!("\n🔧 Pre-creating Redis consumer groups for production chains...");
+    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
+        let _: Result<String, _> = redis::cmd("XGROUP")
+            .arg("CREATE")
+            .arg(stream)
+            .arg("message_processors")
+            .arg("$")
+            .arg("MKSTREAM")
+            .query_async(&mut redis)
+            .await;
+    }
+    println!("✓ Consumer groups ready for production chains");
+
     // Start Message Processor FIRST
     println!("\n📦 Starting Message Processor...");
     let env_vars = vec![
@@ -1222,6 +1236,20 @@ async fn test_service_recovery_with_consumer_groups() {
     .await;
 
     println!("✓ Created test user, app, and endpoint");
+
+    // Pre-create consumer groups for production chains to avoid race condition
+    println!("\n🔧 Pre-creating Redis consumer groups for production chains...");
+    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
+        let _: Result<String, _> = redis::cmd("XGROUP")
+            .arg("CREATE")
+            .arg(stream)
+            .arg("message_processors")
+            .arg("$")
+            .arg("MKSTREAM")
+            .query_async(&mut redis)
+            .await;
+    }
+    println!("✓ Consumer groups ready for production chains");
 
     // Start Message Processor (first instance)
     println!("\n📦 Starting Message Processor (instance 1)...");
