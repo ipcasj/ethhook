@@ -59,16 +59,17 @@
  */
 
 use anyhow::{Context, Result};
-use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use serde_json::{json, Value};
-use std::sync::atomic::{AtomicBool, Ordering};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
+use serde_json::{Value, json};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::signal;
 use tracing::{info, warn};
 
 mod client;
 mod config;
 mod deduplicator;
+mod filter;
 mod ingestion;
 mod metrics;
 mod publisher;

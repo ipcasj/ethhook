@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { InfoBanner } from '@/components/ui/info-banner';
 import { api } from '@/lib/api-client';
 import { Endpoint, EndpointListResponse, ApplicationListResponse } from '@/lib/types';
-import { Webhook, Plus, Edit, Trash2, Copy } from 'lucide-react';
+import { Webhook, Plus, Edit, Trash2, Copy, BarChart3 } from 'lucide-react';
 import { formatDateTime, copyToClipboard, truncate } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -27,6 +28,7 @@ const CHAIN_OPTIONS = [
 ];
 
 export default function EndpointsPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -295,6 +297,14 @@ export default function EndpointsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/endpoints/${endpoint.id}`)}
+                          title="View Analytics"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

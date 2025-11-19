@@ -192,7 +192,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex justify-between py-2 border-b">
               <span className="text-slate-600">Last Updated</span>
-              <span className="text-slate-900">{user ? formatDateTime(user.updated_at) : '-'}</span>
+              <span className="text-slate-900">{user?.updated_at ? formatDateTime(user.updated_at) : '-'}</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-slate-600">Account Status</span>

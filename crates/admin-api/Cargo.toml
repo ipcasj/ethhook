@@ -29,9 +29,16 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 validator = { workspace = true }
 
+# Redis for WebSocket pubsub
+redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+futures = "0.3"
+
 # Logging
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+# Environment variables
+dotenvy = { workspace = true }
 
 # Metrics
 prometheus = "0.13"
@@ -41,6 +48,10 @@ lazy_static = "1.4"
 ethhook-common = { path = "../common" }
 ethhook-config = { path = "../config" }
 ethhook-domain = { path = "../domain" }
+
+[[bin]]
+name = "set-admin"
+path = "src/bin/set_admin.rs"
 
 [dev-dependencies]
 http-body-util = "0.1"

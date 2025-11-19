@@ -60,3 +60,10 @@ export function truncateAddress(address: string): string {
   if (!address || address.length < 10) return address
   return `${address.substring(0, 6)}...${address.substring(address.length - 4)}`
 }
+
+export function formatNumber(num: number | null | undefined): string {
+  if (num === null || num === undefined) return '0'
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+  return num.toString()
+}

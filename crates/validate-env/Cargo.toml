@@ -1,5 +1,5 @@
 [package]
-name = "validate-env"
+name = "ethhook-validate-env"
 version = "0.1.0"
 edition = "2024"
 

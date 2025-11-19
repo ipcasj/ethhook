@@ -76,6 +76,9 @@ pub struct Log {
     /// Block number where this log was emitted
     pub block_number: String,
 
+    /// Block hash where this log was emitted
+    pub block_hash: String,
+
     /// Transaction hash that produced this log
     pub transaction_hash: String,
 

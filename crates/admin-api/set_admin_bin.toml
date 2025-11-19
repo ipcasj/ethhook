@@ -1,0 +1,3 @@
+[[bin]]
+name = "set-admin"
+path = "src/bin/set_admin.rs"

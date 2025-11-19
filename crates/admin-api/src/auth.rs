@@ -17,19 +17,21 @@ pub struct Claims {
     pub sub: Uuid, // user_id
     #[allow(dead_code)]
     pub email: String,
+    pub is_admin: bool,
     pub exp: i64, // expiration timestamp
     pub iat: i64, // issued at timestamp
 }
 
 impl Claims {
     /// Create new claims for a user
-    pub fn new(user_id: Uuid, email: String, expiration_hours: i64) -> Self {
+    pub fn new(user_id: Uuid, email: String, is_admin: bool, expiration_hours: i64) -> Self {
         let now = Utc::now();
         let exp = (now + Duration::hours(expiration_hours)).timestamp();
 
         Claims {
             sub: user_id,
             email,
+            is_admin,
             exp,
             iat: now.timestamp(),
         }
@@ -40,10 +42,11 @@ impl Claims {
 pub fn generate_token(
     user_id: Uuid,
     email: String,
+    is_admin: bool,
     secret: &str,
     expiration_hours: i64,
 ) -> Result<String> {
-    let claims = Claims::new(user_id, email, expiration_hours);
+    let claims = Claims::new(user_id, email, is_admin, expiration_hours);
     let token = encode(
         &Header::default(),
         &claims,
@@ -81,6 +84,7 @@ pub struct AuthUser {
     pub user_id: Uuid,
     #[allow(dead_code)]
     pub email: String,
+    pub is_admin: bool,
 }
 
 impl<S> FromRequestParts<S> for AuthUser
@@ -114,6 +118,7 @@ where
         Ok(AuthUser {
             user_id: claims.sub,
             email: claims.email,
+            is_admin: claims.is_admin,
         })
     }
 }
@@ -177,11 +182,12 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token = generate_token(user_id, email.clone(), secret, 24).unwrap();
+        let token = generate_token(user_id, email.clone(), false, secret, 24).unwrap();
         let claims = validate_token(&token, secret).unwrap();
 
         assert_eq!(claims.sub, user_id);
         assert_eq!(claims.email, email);
+        assert!(!claims.is_admin);
     }
 
     #[test]
@@ -190,7 +196,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let email = "test@example.com".to_string();
 
-        let token = generate_token(user_id, email, secret, 24).unwrap();
+        let token = generate_token(user_id, email, false, secret, 24).unwrap();
         let result = validate_token(&token, "wrong-secret");
 
         assert!(result.is_err());

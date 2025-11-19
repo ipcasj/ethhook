@@ -15,6 +15,9 @@ pub struct IngestorConfig {
     /// List of chains to ingest from
     pub chains: Vec<ChainConfig>,
 
+    /// PostgreSQL database URL
+    pub database_url: String,
+
     /// Redis connection settings
     pub redis_host: String,
     pub redis_port: u16,
@@ -63,6 +66,9 @@ impl IngestorConfig {
 
         // Environment detection (development, staging, production)
         let environment = env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
+
+        // Database configuration
+        let database_url = env::var("DATABASE_URL").context("DATABASE_URL not set")?;
 
         // Redis configuration
         let redis_host = env::var("REDIS_HOST").context("REDIS_HOST not set")?;
@@ -132,6 +138,7 @@ impl IngestorConfig {
 
         Ok(IngestorConfig {
             chains,
+            database_url,
             redis_host,
             redis_port,
             redis_password,
@@ -160,6 +167,7 @@ mod tests {
     fn test_redis_url_without_password() {
         let config = IngestorConfig {
             chains: vec![],
+            database_url: "postgresql://localhost/test".to_string(),
             redis_host: "localhost".to_string(),
             redis_port: 6379,
             redis_password: None,
@@ -174,6 +182,7 @@ mod tests {
     fn test_redis_url_with_password() {
         let config = IngestorConfig {
             chains: vec![],
+            database_url: "postgresql://localhost/test".to_string(),
             redis_host: "localhost".to_string(),
             redis_port: 6379,
             redis_password: Some("secret123".to_string()),

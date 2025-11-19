@@ -706,14 +706,17 @@ dependencies = [
  "axum",
  "bcrypt",
  "chrono",
+ "dotenvy",
  "ethhook-common",
  "ethhook-config",
  "ethhook-domain",
+ "futures",
  "http-body-util",
  "jsonwebtoken",
  "lazy_static",
  "prometheus",
  "rand 0.8.5",
+ "redis 0.24.0",
  "serde",
  "serde_json",
  "sqlx",
@@ -791,6 +794,7 @@ dependencies = [
  "redis 0.27.6",
  "serde",
  "serde_json",
+ "sqlx",
  "thiserror 2.0.17",
  "tokio",
  "tokio-tungstenite 0.24.0",
@@ -841,6 +845,14 @@ dependencies = [
  "tracing",
  "uuid",
  "wiremock",
+]
+
+[[package]]
+name = "ethhook-validate-env"
+version = "0.1.0"
+dependencies = [
+ "dotenvy",
+ "tokio",
 ]
 
 [[package]]
@@ -3668,14 +3680,6 @@ dependencies = [
  "js-sys",
  "serde",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "validate-env"
-version = "0.1.0"
-dependencies = [
- "dotenvy",
- "tokio",
 ]
 
 [[package]]

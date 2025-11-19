@@ -8,6 +8,7 @@
 pub mod client;
 pub mod config;
 pub mod deduplicator;
+pub mod filter;
 pub mod ingestion;
 pub mod metrics;
 pub mod publisher;

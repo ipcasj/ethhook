@@ -20,17 +20,18 @@
  * ```
  */
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use rand::Rng;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::{Mutex, broadcast};
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, warn};
 
 use crate::client::WebSocketClient;
 use crate::config::{ChainConfig, IngestorConfig};
 use crate::deduplicator::Deduplicator;
+use crate::filter::FilterManager;
 use crate::metrics;
 use crate::publisher::StreamPublisher;
 
@@ -140,12 +141,38 @@ pub struct ChainIngestionManager {
     shutdown_tx: broadcast::Sender<()>,
     deduplicator: Arc<Mutex<Deduplicator>>,
     publisher: Arc<Mutex<StreamPublisher>>,
+    filter_manager: Arc<FilterManager>,
 }
 
 impl ChainIngestionManager {
     /// Create new chain ingestion manager
     pub async fn new(config: IngestorConfig) -> Result<Self> {
         let (shutdown_tx, _) = broadcast::channel(1);
+
+        // Initialize PostgreSQL connection pool
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(5)
+            .acquire_timeout(std::time::Duration::from_secs(5))
+            .connect(&config.database_url)
+            .await
+            .context("Failed to connect to PostgreSQL")?;
+
+        info!("PostgreSQL connection pool established");
+
+        // Initialize FilterManager with 5-minute refresh interval
+        let filter_manager = Arc::new(
+            FilterManager::new(pool, 300)
+                .await
+                .context("Failed to initialize FilterManager")?,
+        );
+
+        // Start background task to refresh filters every 5 minutes
+        let filter_manager_clone = Arc::clone(&filter_manager);
+        tokio::spawn(async move {
+            filter_manager_clone.start_refresh_loop().await;
+        });
+
+        info!("FilterManager initialized with 5-minute refresh loop");
 
         // Initialize Redis deduplicator
         let deduplicator = Deduplicator::new(&config.redis_url(), config.dedup_ttl_seconds)
@@ -162,6 +189,7 @@ impl ChainIngestionManager {
             shutdown_tx,
             deduplicator: Arc::new(Mutex::new(deduplicator)),
             publisher: Arc::new(Mutex::new(publisher)),
+            filter_manager,
         })
     }
 
@@ -177,6 +205,7 @@ impl ChainIngestionManager {
             let shutdown_rx = self.shutdown_tx.subscribe();
             let deduplicator = Arc::clone(&self.deduplicator);
             let publisher = Arc::clone(&self.publisher);
+            let filter_manager = Arc::clone(&self.filter_manager);
 
             // Spawn independent task for this chain
             join_set.spawn(async move {
@@ -190,6 +219,7 @@ impl ChainIngestionManager {
                     &chain_config,
                     &deduplicator,
                     &publisher,
+                    &filter_manager,
                     &mut health,
                     shutdown_rx,
                     base_delay,
@@ -227,10 +257,12 @@ impl ChainIngestionManager {
     /// - Circuit breaker state machine
     /// - Health tracking
     /// - Structured concurrency
+    #[allow(clippy::too_many_arguments)]
     async fn ingest_chain_with_circuit_breaker(
         chain_config: &ChainConfig,
         deduplicator: &Arc<Mutex<Deduplicator>>,
         publisher: &Arc<Mutex<StreamPublisher>>,
+        filter_manager: &Arc<FilterManager>,
         health: &mut ChainHealth,
         mut shutdown_rx: broadcast::Receiver<()>,
         base_delay: u64,
@@ -306,6 +338,7 @@ impl ChainIngestionManager {
                 &mut client,
                 deduplicator,
                 publisher,
+                filter_manager,
                 health,
                 &mut shutdown_rx,
                 health_check_interval,
@@ -344,11 +377,13 @@ impl ChainIngestionManager {
     }
 
     /// Process events from WebSocket with tokio::select! for event-driven patterns
+    #[allow(clippy::too_many_arguments)]
     async fn process_events_loop(
         chain_config: &ChainConfig,
         client: &mut WebSocketClient,
         deduplicator: &Arc<Mutex<Deduplicator>>,
         publisher: &Arc<Mutex<StreamPublisher>>,
+        filter_manager: &Arc<FilterManager>,
         health: &mut ChainHealth,
         shutdown_rx: &mut broadcast::Receiver<()>,
         health_check_interval: Duration,
@@ -380,93 +415,111 @@ impl ChainIngestionManager {
                     }
                 }
 
-                // Process next event from WebSocket
-                result = client.next_event() => {
+                // Process next block with filters from FilterManager (OPTIMIZED)
+                result = (async {
+                    // Get current filters from FilterManager
+                    let filter = filter_manager.get_filter().await;
+                    let addresses = filter.addresses_for_chain(chain_config.chain_id);
+                    let topics = filter.topics();
+
+                    // Fetch next block with filtered logs
+                    client.next_block_filtered(&addresses, &topics).await
+                }) => {
                     match result {
-                        Ok(Some(event)) => {
-                            events_processed += 1;
+                        Ok(Some(events)) => {
+                            // Process all events from this block
+                            blocks_processed += 1;
                             health.record_success();
 
-                        // Record event received metric
-                        metrics::EVENTS_RECEIVED
-                            .with_label_values(&[&chain_config.name])
-                            .inc();
-
-                        // Log every 100 events to avoid spam
-                        #[allow(unknown_lints, clippy::manual_is_multiple_of)]
-                        if events_processed % 100 == 0 {
                             info!(
-                                "[{}] Processed {} events from {} blocks",
-                                chain_config.name, events_processed, blocks_processed
-                            );
-                        }                            debug!(
-                                "[{}] Event: block={} tx={} contract={} topics={}",
-                                chain_config.name,
-                                event.block_number,
-                                &event.transaction_hash[..10],
-                                &event.contract_address[..10],
-                                event.topics.len()
+                                "[{}] Received {} filtered events from block (total blocks: {})",
+                                chain_config.name, events.len(), blocks_processed
                             );
 
-                            // Phase 4: Check deduplication
-                            let event_id = event.event_id();
-                            let mut dedup = deduplicator.lock().await;
+                            for event in events {
+                                events_processed += 1;
 
-                            let should_process = match dedup.is_duplicate(&event_id).await {
-                                Ok(true) => {
-                                    debug!("[{}] Skipping duplicate: {}", chain_config.name, event_id);
-                                    // Record deduplication metric
-                                    metrics::EVENTS_DEDUPLICATED
-                                        .with_label_values(&[&chain_config.name])
-                                        .inc();
-                                    false
-                                }
-                                Ok(false) => {
-                                    debug!("[{}] New event: {}", chain_config.name, event_id);
-                                    true
-                                }
-                                Err(e) => {
-                                    error!("[{}] Deduplication error: {}. Processing anyway.", chain_config.name, e);
-                                    metrics::PROCESSING_ERRORS
-                                        .with_label_values(&[&chain_config.name, "deduplication_error"])
-                                        .inc();
-                                    true
-                                }
-                            };
-                            drop(dedup);
+                                // Record event received metric
+                                metrics::EVENTS_RECEIVED
+                                    .with_label_values(&[&chain_config.name])
+                                    .inc();
 
-                            if !should_process {
-                                continue;
-                            }
-
-                            // Phase 5: Publish to Redis Stream
-                            let mut pub_client = publisher.lock().await;
-                            match pub_client.publish(&event).await {
-                                Ok(stream_id) => {
-                                    debug!(
-                                        "[{}] Published to stream: {} (stream_id: {})",
-                                        chain_config.name,
-                                        event.stream_name(),
-                                        stream_id
+                                // Log every 100 events to avoid spam
+                                #[allow(unknown_lints, clippy::manual_is_multiple_of)]
+                                if events_processed % 100 == 0 {
+                                    info!(
+                                        "[{}] Processed {} events from {} blocks",
+                                        chain_config.name, events_processed, blocks_processed
                                     );
-                                    // Record successful publish metric
-                                    metrics::EVENTS_PUBLISHED
-                                        .with_label_values(&[&chain_config.name])
-                                        .inc();
                                 }
-                                Err(e) => {
-                                    error!(
-                                        "[{}] Failed to publish: {}",
-                                        chain_config.name, e
-                                    );
-                                    metrics::PROCESSING_ERRORS
-                                        .with_label_values(&[&chain_config.name, "publish_failed"])
-                                        .inc();
-                                }
-                            }
-                            drop(pub_client);
 
-                            blocks_processed += 1;
+                                debug!(
+                                    "[{}] Event: block={} tx={} contract={} topics={}",
+                                    chain_config.name,
+                                    event.block_number,
+                                    &event.transaction_hash[..10],
+                                    &event.contract_address[..10],
+                                    event.topics.len()
+                                );
+
+                                // Phase 4: Check deduplication
+                                let event_id = event.event_id();
+                                let mut dedup = deduplicator.lock().await;
+
+                                let should_process = match dedup.is_duplicate(&event_id).await {
+                                    Ok(true) => {
+                                        debug!("[{}] Skipping duplicate: {}", chain_config.name, event_id);
+                                        // Record deduplication metric
+                                        metrics::EVENTS_DEDUPLICATED
+                                            .with_label_values(&[&chain_config.name])
+                                            .inc();
+                                        false
+                                    }
+                                    Ok(false) => {
+                                        debug!("[{}] New event: {}", chain_config.name, event_id);
+                                        true
+                                    }
+                                    Err(e) => {
+                                        error!("[{}] Deduplication error: {}. Processing anyway.", chain_config.name, e);
+                                        metrics::PROCESSING_ERRORS
+                                            .with_label_values(&[&chain_config.name, "deduplication_error"])
+                                            .inc();
+                                        true
+                                    }
+                                };
+                                drop(dedup);
+
+                                if !should_process {
+                                    continue;
+                                }
+
+                                // Phase 5: Publish to Redis Stream
+                                let mut pub_client = publisher.lock().await;
+                                match pub_client.publish(&event).await {
+                                    Ok(stream_id) => {
+                                        debug!(
+                                            "[{}] Published to stream: {} (stream_id: {})",
+                                            chain_config.name,
+                                            event.stream_name(),
+                                            stream_id
+                                        );
+                                        // Record successful publish metric
+                                        metrics::EVENTS_PUBLISHED
+                                            .with_label_values(&[&chain_config.name])
+                                            .inc();
+                                    }
+                                    Err(e) => {
+                                        error!(
+                                            "[{}] Failed to publish: {}",
+                                            chain_config.name, e
+                                        );
+                                        metrics::PROCESSING_ERRORS
+                                            .with_label_values(&[&chain_config.name, "publish_failed"])
+                                            .inc();
+                                    }
+                                }
+                                drop(pub_client);
+                            }
                         }
                         Ok(None) => {
                             info!(
@@ -511,10 +564,11 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore] // Requires Redis - run with: cargo test -- --ignored
+    #[ignore] // Requires Redis and PostgreSQL - run with: cargo test -- --ignored
     async fn test_manager_creation() {
         let config = IngestorConfig {
             chains: vec![],
+            database_url: "postgresql://localhost/test".to_string(),
             redis_host: "localhost".to_string(),
             redis_port: 6379,
             redis_password: None,

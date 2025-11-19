@@ -79,10 +79,12 @@ pub mod api_key;
 pub mod auth;
 pub mod config;
 pub mod handlers;
+pub mod state;
 
 // Re-export for testing
 pub use auth::{hash_password, verify_password};
 pub use config::Config;
+pub use state::AppState;
 
 use axum::Router;
 use sqlx::PgPool;
@@ -102,6 +104,7 @@ pub fn create_test_router(pool: PgPool) -> Router {
     let config = Config {
         database_url: String::new(), // Not used in tests
         database_max_connections: 5,
+        redis_url: "redis://localhost:6379".to_string(),
         jwt_secret: std::env::var("JWT_SECRET")
             .unwrap_or_else(|_| "test-secret-key-for-testing-only".to_string()),
         jwt_expiration_hours: 24,
@@ -111,24 +114,6 @@ pub fn create_test_router(pool: PgPool) -> Router {
         rate_limit_per_minute: 60,
         cors_allowed_origins: vec!["*".to_string()],
     };
-
-    #[derive(Clone)]
-    struct AppState {
-        pool: PgPool,
-        config: Config,
-    }
-
-    impl axum::extract::FromRef<AppState> for PgPool {
-        fn from_ref(state: &AppState) -> Self {
-            state.pool.clone()
-        }
-    }
-
-    impl axum::extract::FromRef<AppState> for Config {
-        fn from_ref(state: &AppState) -> Self {
-            state.config.clone()
-        }
-    }
 
     let state = AppState { pool, config };
 

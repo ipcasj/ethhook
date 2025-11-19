@@ -12,6 +12,9 @@ pub struct Config {
     pub database_url: String,
     pub database_max_connections: u32,
 
+    /// Redis connection (for WebSocket pubsub)
+    pub redis_url: String,
+
     /// JWT configuration
     pub jwt_secret: String,
     pub jwt_expiration_hours: i64,
@@ -44,6 +47,9 @@ impl Config {
                 .unwrap_or_else(|_| "20".to_string())
                 .parse()
                 .context("Failed to parse DATABASE_MAX_CONNECTIONS")?,
+
+            redis_url: env::var("REDIS_URL")
+                .unwrap_or_else(|_| "redis://localhost:6379".to_string()),
 
             jwt_secret: env::var("JWT_SECRET").context("JWT_SECRET must be set")?,
             jwt_expiration_hours: env::var("JWT_EXPIRATION_HOURS")

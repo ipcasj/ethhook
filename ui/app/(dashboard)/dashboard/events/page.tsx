@@ -11,7 +11,7 @@ import { InfoBanner } from '@/components/ui/info-banner';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { api } from '@/lib/api-client';
 import { Event, EventListResponse, EndpointListResponse } from '@/lib/types';
-import { Activity, RefreshCw, ExternalLink, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { Activity, RefreshCw, ExternalLink, ChevronLeft, ChevronRight, BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDateTime, truncateAddress } from '@/lib/utils';
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -20,6 +20,7 @@ export default function EventsPage() {
   const [filterEndpoint, setFilterEndpoint] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [page, setPage] = useState(1);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const perPage = 50;
 
   // Handler to update endpoint filter and reset pagination
@@ -222,163 +223,234 @@ export default function EventsPage() {
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <select
-                className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                value={filterEndpoint}
-                onChange={(e) => handleFilterEndpointChange(e.target.value)}
-              >
-                <option value="">All Endpoints</option>
-                {endpointsData?.endpoints.map(endpoint => (
-                  <option key={endpoint.id} value={endpoint.id}>{endpoint.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex-1">
-              <select
-                className="w-full h-10 px-3 rounded-md border border-input bg-background"
-                value={filterStatus}
-                onChange={(e) => handleFilterStatusChange(e.target.value)}
-              >
-                <option value="">All Status</option>
-                <option value="delivered">Delivered</option>
-                <option value="pending">Pending</option>
-                <option value="failed">Failed</option>
-              </select>
-            </div>
-            {(filterEndpoint || filterStatus) && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  handleFilterEndpointChange('');
-                  handleFilterStatusChange('');
-                }}
-              >
-                Clear Filters
-              </Button>
+        <CardHeader 
+          className="py-2 px-4 cursor-pointer hover:bg-slate-50 transition-colors"
+          onClick={() => setFiltersCollapsed(!filtersCollapsed)}
+        >
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">Filters</CardTitle>
+            {filtersCollapsed ? (
+              <ChevronDown className="h-4 w-4 text-slate-500" />
+            ) : (
+              <ChevronUp className="h-4 w-4 text-slate-500" />
             )}
           </div>
-        </CardContent>
+        </CardHeader>
+        {!filtersCollapsed && (
+          <CardContent className="px-4 pb-3 pt-0">
+            <div className="flex gap-2 items-center flex-wrap">
+              <div className="flex-1 min-w-[200px]">
+                <select
+                  className="w-full h-8 px-2 text-sm rounded-md border border-input bg-background"
+                  value={filterEndpoint}
+                  onChange={(e) => handleFilterEndpointChange(e.target.value)}
+                >
+                  <option value="">All Endpoints</option>
+                  {endpointsData?.endpoints.map(endpoint => (
+                    <option key={endpoint.id} value={endpoint.id}>{endpoint.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <select
+                  className="w-full h-8 px-2 text-sm rounded-md border border-input bg-background"
+                  value={filterStatus}
+                  onChange={(e) => handleFilterStatusChange(e.target.value)}
+                >
+                  <option value="">All Status</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                </select>
+              </div>
+              {(filterEndpoint || filterStatus) && (
+                <Button
+                  variant="outline"
+                  className="h-8 px-3 text-sm whitespace-nowrap"
+                  onClick={() => {
+                    handleFilterEndpointChange('');
+                    handleFilterStatusChange('');
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        )}
       </Card>
 
-      {/* Analytics Charts */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Timeseries Chart */}
+      {/* Event Analytics - Unique to Events Page */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Success Rate Trend */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-indigo-600" />
-              Events Over Time (7 Days)
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-emerald-600" />
+              Success Rate Trend
             </CardTitle>
-            <CardDescription>Daily event volume for the last week</CardDescription>
+            <CardDescription className="text-xs">Webhook delivery success over time</CardDescription>
           </CardHeader>
           <CardContent>
             {timeseriesLoading ? (
-              <div className="h-[300px] flex items-center justify-center text-slate-400">
-                Loading chart...
+              <div className="h-[120px] flex items-center justify-center text-slate-400 text-xs">
+                Loading...
               </div>
             ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={timeseriesData.data_points}>
+              <ResponsiveContainer width="100%" height={120}>
+                <AreaChart data={timeseriesData.data_points} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                   <defs>
-                    <linearGradient id="colorEventsPage" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    <linearGradient id="colorSuccess" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis 
                     dataKey="timestamp" 
                     stroke="#64748b"
-                    fontSize={12}
+                    fontSize={10}
                     tickFormatter={(value) => {
                       const date = new Date(value);
                       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     }}
                   />
-                  <YAxis stroke="#64748b" fontSize={12} />
+                  <YAxis stroke="#64748b" fontSize={10} domain={[0, 100]} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '11px' }}
                     labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                    formatter={(value: number) => [value.toLocaleString(), 'Events']}
+                    formatter={(value: number) => [`${value.toFixed(1)}%`, 'Success Rate']}
                   />
                   <Area 
                     type="monotone" 
-                    dataKey="event_count" 
-                    stroke="#6366f1" 
+                    dataKey="success_rate" 
+                    stroke="#10b981" 
+                    strokeWidth={2}
                     fillOpacity={1} 
-                    fill="url(#colorEventsPage)" 
+                    fill="url(#colorSuccess)" 
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex flex-col items-center justify-center text-slate-400">
-                <BarChart3 className="w-12 h-12 mb-2 opacity-50" />
-                <p>No event data available</p>
-                <p className="text-sm mt-1">Start capturing events to see analytics</p>
+              <div className="h-[120px] flex flex-col items-center justify-center text-slate-400">
+                <BarChart3 className="w-8 h-8 mb-1 opacity-50" />
+                <p className="text-xs">No data</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Chain Distribution Pie Chart */}
+        {/* Delivery Performance */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-purple-600" />
-              Events by Blockchain
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="w-4 h-4 text-blue-600" />
+              Delivery Performance
             </CardTitle>
-            <CardDescription>Distribution across different networks</CardDescription>
+            <CardDescription className="text-xs">Average latency per day</CardDescription>
           </CardHeader>
           <CardContent>
-            {chainLoading ? (
-              <div className="h-[300px] flex items-center justify-center text-slate-400">
-                Loading chart...
+            {timeseriesLoading ? (
+              <div className="h-[120px] flex items-center justify-center text-slate-400 text-xs">
+                Loading...
               </div>
-            ) : chainData && chainData.distributions.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={chainData.distributions}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry: unknown) => {
-                      const data = entry as { chain_name: string; percentage: number };
-                      return `${data.chain_name} ${data.percentage.toFixed(1)}%`;
-                    }}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="event_count"
-                  >
-                    {chainData.distributions.map((entry, index) => {
-                      const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
-                      return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                    })}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
-                    formatter={(value: number, name: string, props?: unknown) => {
-                      const payload = (props as { payload?: { chain_name: string; percentage: number } })?.payload;
-                      return [
-                        `${value.toLocaleString()} events (${payload?.percentage?.toFixed(1) || 0}%)`,
-                        payload?.chain_name || name
-                      ];
+            ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
+              <ResponsiveContainer width="100%" height={120}>
+                <AreaChart data={timeseriesData.data_points} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    stroke="#64748b"
+                    fontSize={10}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     }}
                   />
-                  <Legend />
-                </PieChart>
+                  <YAxis stroke="#64748b" fontSize={10} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '11px' }}
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    formatter={(value) => [typeof value === 'number' ? `${value.toFixed(0)}ms` : 'N/A', 'Avg Latency']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="avg_latency_ms" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2}
+                    fillOpacity={1} 
+                    fill="url(#colorLatency)" 
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-[300px] flex flex-col items-center justify-center text-slate-400">
-                <Activity className="w-12 h-12 mb-2 opacity-50" />
-                <p>No chain data available</p>
-                <p className="text-sm mt-1">Configure endpoints to monitor chains</p>
+              <div className="h-[120px] flex flex-col items-center justify-center text-slate-400">
+                <Activity className="w-8 h-8 mb-1 opacity-50" />
+                <p className="text-xs">No data</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Failure Analysis */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ExternalLink className="w-4 h-4 text-red-600" />
+              Failure Analysis
+            </CardTitle>
+            <CardDescription className="text-xs">Failed deliveries over time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {timeseriesLoading ? (
+              <div className="h-[120px] flex items-center justify-center text-slate-400 text-xs">
+                Loading...
+              </div>
+            ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
+              <ResponsiveContainer width="100%" height={120}>
+                <AreaChart data={timeseriesData.data_points} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorFailed" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="timestamp" 
+                    stroke="#64748b"
+                    fontSize={10}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    }}
+                  />
+                  <YAxis stroke="#64748b" fontSize={10} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '11px' }}
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    formatter={(value: number) => [value.toLocaleString(), 'Failed']}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="failed_deliveries" 
+                    stroke="#ef4444" 
+                    strokeWidth={2}
+                    fillOpacity={1} 
+                    fill="url(#colorFailed)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[120px] flex flex-col items-center justify-center text-slate-400">
+                <ExternalLink className="w-8 h-8 mb-1 opacity-50" />
+                <p className="text-xs">No data</p>
               </div>
             )}
           </CardContent>

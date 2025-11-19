@@ -420,3 +420,43 @@ You've built an impressive, production-ready Ethereum webhook service. The found
 **Ready to deploy?** → [DEPLOYMENT_QUICKSTART.md](DEPLOYMENT_QUICKSTART.md)
 
 **Good luck!** 🍀
+
+---
+
+## 🔮 Future Enhancements
+
+### Solana Integration 🌐
+
+**Goal**: Add support for Solana blockchain events to expand European market reach.
+
+**Estimated Effort**: 2-3 days basic implementation, 1 week production-ready
+
+**Implementation Plan**:
+1. Create new `crates/solana-ingestor/` module (~500-800 lines)
+   - Integrate Solana WebSocket API or Geyser plugin
+   - Listen to program logs and transactions
+   - Transform to unified event format
+
+2. Add configuration support
+   ```env
+   SOLANA_RPC_URL=https://api.mainnet-beta.solana.com
+   SOLANA_WS_URL=wss://api.mainnet-beta.solana.com
+   ```
+
+3. Event mapping strategy
+   - Transaction signatures → `tx_hash`
+   - Program addresses → `contract_address`
+   - Slot numbers → `block_number`
+
+**Benefits**:
+- Expand to European market (Solana more popular than Ethereum)
+- Leverage existing webhook delivery infrastructure (no changes needed)
+- Support multi-chain architecture already in place
+
+**No Changes Required**:
+- `message-processor` - already chain-agnostic
+- `webhook-delivery` - works with any event source
+- Database schema - `chain_name` field already supports multiple chains
+- Frontend - displays events regardless of blockchain
+
+```

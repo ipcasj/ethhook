@@ -41,6 +41,7 @@ pub struct UserResponse {
     pub id: Uuid,
     pub email: String,
     pub name: String,
+    pub is_admin: bool,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -93,7 +94,7 @@ pub async fn register(
         r#"
         INSERT INTO users (email, password_hash, name)
         VALUES ($1, $2, $3)
-        RETURNING id, email, name, created_at
+        RETURNING id, email, name, is_admin, created_at
         "#,
         payload.email,
         password_hash,
@@ -123,6 +124,7 @@ pub async fn register(
     let token = generate_token(
         user.id,
         user.email.clone(),
+        user.is_admin.unwrap_or(false),
         &config.jwt_secret,
         config.jwt_expiration_hours,
     )
@@ -140,8 +142,9 @@ pub async fn register(
     Ok(Json(AuthResponse {
         user: UserResponse {
             id: user.id,
-            email: user.email,
+            email: user.email.clone(),
             name: user.name.unwrap_or_default(),
+            is_admin: user.is_admin.unwrap_or(false),
             created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
         },
         token,
@@ -167,7 +170,7 @@ pub async fn login(
     // Find user by email
     let user = sqlx::query!(
         r#"
-        SELECT id, email, name, password_hash, created_at
+        SELECT id, email, name, password_hash, is_admin, created_at
         FROM users
         WHERE email = $1
         "#,
@@ -213,6 +216,7 @@ pub async fn login(
     let token = generate_token(
         user.id,
         user.email.clone(),
+        user.is_admin.unwrap_or(false),
         &config.jwt_secret,
         config.jwt_expiration_hours,
     )
@@ -232,6 +236,7 @@ pub async fn login(
             id: user.id,
             email: user.email,
             name: user.name.unwrap_or_default(),
+            is_admin: user.is_admin.unwrap_or(false),
             created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
         },
         token,
@@ -245,7 +250,7 @@ pub async fn get_profile(
 ) -> Result<Json<UserResponse>, (StatusCode, Json<ErrorResponse>)> {
     let user = sqlx::query!(
         r#"
-        SELECT id, email, name, created_at
+        SELECT id, email, name, is_admin, created_at
         FROM users
         WHERE id = $1
         "#,
@@ -266,6 +271,7 @@ pub async fn get_profile(
         id: user.id,
         email: user.email,
         name: user.name.unwrap_or_default(),
+        is_admin: user.is_admin.unwrap_or(false),
         created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
     }))
 }
@@ -308,7 +314,7 @@ pub async fn update_profile(
         UPDATE users
         SET name = $1, updated_at = NOW()
         WHERE id = $2
-        RETURNING id, email, name, created_at
+        RETURNING id, email, name, is_admin, created_at
         "#,
         name,
         auth_user.user_id
@@ -328,6 +334,7 @@ pub async fn update_profile(
         id: user.id,
         email: user.email,
         name: user.name.unwrap_or_default(),
+        is_admin: user.is_admin.unwrap_or(false),
         created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
     }))
 }

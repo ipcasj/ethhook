@@ -20,8 +20,8 @@
 
 use anyhow::{Context, Result};
 use prometheus::{
-    register_int_counter_vec, register_int_gauge_vec, Encoder, IntCounterVec, IntGaugeVec,
-    TextEncoder,
+    Encoder, IntCounterVec, IntGaugeVec, TextEncoder, register_int_counter_vec,
+    register_int_gauge_vec,
 };
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
@@ -83,6 +83,30 @@ lazy_static::lazy_static! {
         &["chain"]
     )
     .expect("Failed to register consecutive_failures metric");
+
+    /// Alchemy API Compute Units consumed by operation type
+    pub static ref ALCHEMY_CU_CONSUMED: IntCounterVec = register_int_counter_vec!(
+        "alchemy_cu_consumed_total",
+        "Total Alchemy Compute Units consumed by operation",
+        &["chain", "operation"]
+    )
+    .expect("Failed to register alchemy_cu_consumed_total metric");
+
+    /// Alchemy API calls count by operation type
+    pub static ref ALCHEMY_API_CALLS: IntCounterVec = register_int_counter_vec!(
+        "alchemy_api_calls_total",
+        "Total number of Alchemy API calls by operation",
+        &["chain", "operation"]
+    )
+    .expect("Failed to register alchemy_api_calls_total metric");
+
+    /// Logs filtered vs total logs ratio (cost savings indicator)
+    pub static ref LOGS_FILTERED_RATIO: IntGaugeVec = register_int_gauge_vec!(
+        "logs_filtered_ratio_percent",
+        "Percentage of logs filtered by endpoint configuration (100 = all filtered, 0 = no filtering)",
+        &["chain"]
+    )
+    .expect("Failed to register logs_filtered_ratio_percent metric");
 }
 
 /// Start Prometheus metrics HTTP server with production-grade patterns

@@ -1,7 +1,7 @@
 [package]
 name = "ethhook-event-ingestor"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # Async runtime (like Java's ExecutorService but way better)
@@ -55,6 +55,9 @@ hex = "0.4"
 
 # Time utilities
 chrono = { workspace = true }
+
+# Database (PostgreSQL)
+sqlx = { workspace = true }
 
 [lib]
 name = "ethhook_event_ingestor"

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,11 +12,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { StatusBadge } from '@/components/ui/status-badge';
 import { api } from '@/lib/api-client';
 import { Application, ApplicationListResponse } from '@/lib/types';
-import { Box, Plus, Copy, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Box, Plus, Copy, Edit, Trash2, Eye, EyeOff, BarChart3 } from 'lucide-react';
 import { formatDateTime, copyToClipboard } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function ApplicationsPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -231,6 +233,14 @@ export default function ApplicationsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/dashboard/applications/${app.id}`)}
+                          title="View Analytics"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

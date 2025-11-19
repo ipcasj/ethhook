@@ -59,20 +59,23 @@ export function CompactEventTable({
 
   return (
     <div className={cn('border rounded-lg overflow-hidden bg-white', className)}>
-      {/* Header */}
-      <div className="bg-slate-50 border-b px-4 py-2">
-        <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-600 uppercase tracking-wide">
-          <div className="col-span-2">Status</div>
-          <div className="col-span-3">Event / Contract</div>
-          <div className="col-span-2">Chain</div>
-          <div className="col-span-2">Block</div>
-          <div className="col-span-2">Deliveries</div>
-          <div className="col-span-1">Time</div>
-        </div>
-      </div>
+      {/* Horizontal scroll wrapper */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[600px]">
+          {/* Header - Fixed width columns */}
+          <div className="bg-slate-50 border-b px-4 py-2">
+            <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-600 uppercase tracking-wide">
+              <div className="col-span-2">Status</div>
+              <div className="col-span-3">Event</div>
+              <div className="col-span-2">Chain</div>
+              <div className="col-span-2">Block</div>
+              <div className="col-span-2">Deliveries</div>
+              <div className="col-span-1">Time</div>
+            </div>
+          </div>
 
-      {/* Body */}
-      <div style={{ maxHeight, overflowY: 'auto' }} className="divide-y">
+          {/* Body - Fixed width columns */}
+          <div style={{ maxHeight, overflowY: 'auto' }} className="divide-y">
         {events.length === 0 ? (
           <div className="px-4 py-8 text-center text-sm text-slate-500">
             No events to display
@@ -94,7 +97,7 @@ export function CompactEventTable({
 
               {/* Event Type & Contract */}
               <div className="col-span-3 flex flex-col justify-center min-w-0">
-                <span className="font-medium text-slate-900 truncate">
+                <span className="font-medium text-slate-900 truncate text-sm">
                   {getEventType(event.topics)}
                 </span>
                 <span className="font-mono text-xs text-slate-500 truncate">
@@ -104,24 +107,24 @@ export function CompactEventTable({
 
               {/* Chain */}
               <div className="col-span-2 flex items-center">
-                <span className="text-slate-700 text-xs">
+                <span className="text-slate-700 text-xs truncate">
                   {getChainName(event.chain_id)}
                 </span>
               </div>
 
               {/* Block Number */}
               <div className="col-span-2 flex items-center">
-                <span className="font-mono text-xs text-slate-700">
+                <span className="font-mono text-xs text-slate-700 truncate">
                   {event.block_number.toLocaleString()}
                 </span>
               </div>
 
               {/* Deliveries */}
-              <div className="col-span-2 flex flex-col justify-center">
-                <span className="text-slate-700 text-xs">
+              <div className="col-span-2 flex flex-col justify-center min-w-0">
+                <span className="text-slate-700 text-xs truncate">
                   {event.successful_deliveries ?? 0}/{event.delivery_count ?? 0}
                 </span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 truncate">
                   {event.endpoint_name || 'No endpoint'}
                 </span>
               </div>
@@ -138,6 +141,8 @@ export function CompactEventTable({
             </div>
           ))
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

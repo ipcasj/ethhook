@@ -16,31 +16,16 @@ mod config;
 mod handlers;
 mod metrics;
 mod metrics_middleware;
+mod state;
 
 use config::Config;
-
-/// Application state shared across handlers
-#[derive(Clone)]
-struct AppState {
-    pool: sqlx::PgPool,
-    config: Config,
-}
-
-// Implement FromRef to allow extracting individual pieces from AppState
-impl axum::extract::FromRef<AppState> for sqlx::PgPool {
-    fn from_ref(state: &AppState) -> Self {
-        state.pool.clone()
-    }
-}
-
-impl axum::extract::FromRef<AppState> for Config {
-    fn from_ref(state: &AppState) -> Self {
-        state.config.clone()
-    }
-}
+use state::AppState;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load .env file
+    dotenvy::dotenv().ok();
+
     // Initialize logging
     tracing_subscriber::fmt()
         .with_target(false)
@@ -218,12 +203,49 @@ fn create_router(pool: sqlx::PgPool, config: Config) -> Router {
             "/statistics/chain-distribution",
             get(handlers::statistics::get_chain_distribution),
         )
+        .route(
+            "/statistics/alchemy-usage",
+            get(handlers::statistics::get_alchemy_cu_stats),
+        )
+        // Application-specific statistics routes (Phase 2)
+        .route(
+            "/applications/{id}/statistics",
+            get(handlers::statistics::get_application_statistics),
+        )
+        .route(
+            "/applications/{id}/timeseries",
+            get(handlers::statistics::get_application_timeseries),
+        )
+        .route(
+            "/applications/{id}/endpoints/performance",
+            get(handlers::statistics::get_application_endpoints_performance),
+        )
+        // Endpoint-specific statistics routes (Phase 2)
+        .route(
+            "/endpoints/{id}/statistics",
+            get(handlers::statistics::get_endpoint_statistics),
+        )
+        .route(
+            "/endpoints/{id}/timeseries",
+            get(handlers::statistics::get_endpoint_timeseries),
+        )
+        .route(
+            "/endpoints/{id}/deliveries",
+            get(handlers::statistics::get_endpoint_deliveries),
+        )
         .layer(axum::middleware::from_fn(auth::inject_jwt_secret));
+
+    // WebSocket routes (authentication via query param)
+    let websocket_routes = Router::new()
+        .route("/ws/events", get(handlers::websocket::ws_events_handler))
+        .route("/ws/stats", get(handlers::websocket::ws_stats_handler))
+        .with_state(state.clone());
 
     // Combine routes
     let api_routes = Router::new()
         .merge(public_routes)
         .merge(protected_routes)
+        .merge(websocket_routes)
         .with_state(state);
 
     // Build application with middleware
