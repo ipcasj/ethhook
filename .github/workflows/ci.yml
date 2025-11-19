@@ -203,7 +203,6 @@ jobs:
           REDIS_URL: redis://localhost:6379
           REDIS_HOST: localhost
           REDIS_PORT: 6379
-          ENVIRONMENT: development
           JWT_SECRET: test-secret-for-e2e-tests
         timeout-minutes: 10
 
