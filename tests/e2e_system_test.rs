@@ -236,8 +236,9 @@ async fn test_complete_system_flow() {
     let mock_rpc_url = mock_rpc.url();
     println!("✓ Mock Ethereum RPC: {mock_rpc_url}");
 
-    // Pre-create consumer groups
-    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
+    // Pre-create consumer groups for development chains
+    // With ENVIRONMENT=development, Message Processor watches: events:11155111 (Sepolia)
+    for stream in ["events:11155111"] {
         let _: Result<String, _> = redis::cmd("XGROUP")
             .arg("CREATE")
             .arg(stream)

@@ -428,10 +428,10 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Mock webhook configured to accept requests");
 
-    // Pre-create consumer groups for all production chains to avoid race condition
-    // With ENVIRONMENT=production, Message Processor watches: events:1, events:42161, events:10, events:8453
-    println!("\n🔧 Pre-creating Redis consumer groups for all production chains...");
-    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
+    // Pre-create consumer groups for development chains to avoid race condition
+    // With ENVIRONMENT=development, Message Processor watches: events:11155111 (Sepolia)
+    println!("\n🔧 Pre-creating Redis consumer groups for development chains...");
+    for stream in ["events:11155111"] {
         let _: Result<String, _> = redis::cmd("XGROUP")
             .arg("CREATE")
             .arg(stream)
@@ -441,7 +441,7 @@ async fn test_real_e2e_full_pipeline() {
             .query_async(&mut redis)
             .await;
     }
-    println!("✓ Consumer groups ready for all production chains");
+    println!("✓ Consumer groups ready for development chains");
 
     // Start services (skip Event Ingestor - requires real Ethereum connection)
     let start_time = Instant::now();
@@ -773,10 +773,10 @@ async fn test_full_pipeline_with_mock_ethereum() {
 
     println!("✓ Mock webhook configured to accept requests");
 
-    // Pre-create consumer groups for all production chains to avoid race condition
-    // With ENVIRONMENT=production, Message Processor watches: events:1, events:42161, events:10, events:8453
-    println!("\n🔧 Pre-creating Redis consumer groups for all production chains...");
-    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
+    // Pre-create consumer groups for development chains to avoid race condition
+    // With ENVIRONMENT=development, Message Processor watches: events:11155111 (Sepolia)
+    println!("\n🔧 Pre-creating Redis consumer groups for development chains...");
+    for stream in ["events:11155111"] {
         let _: Result<String, _> = redis::cmd("XGROUP")
             .arg("CREATE")
             .arg(stream)
@@ -786,7 +786,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
             .query_async(&mut redis)
             .await;
     }
-    println!("✓ Consumer groups ready for all production chains");
+    println!("✓ Consumer groups ready for development chains");
 
     // Start services with mock RPC URL
     let start_time = Instant::now();
