@@ -35,21 +35,24 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Check auth token on mount
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
       router.replace('/login');
+    } else {
+      setIsCheckingAuth(false);
     }
   }, [router]);
 
   // Fetch user profile
-  const { data: user, error: userError } = useQuery<User>({
+  const { data: user, error: userError, isLoading: isLoadingUser } = useQuery<User>({
     queryKey: ['user-profile'],
     queryFn: () => api.get<User>('/users/me'),
     retry: false,
-    enabled: !!getAuthToken(), // Only fetch if token exists
+    enabled: !!getAuthToken() && !isCheckingAuth, // Only fetch if token exists and auth check is done
   });
 
   // Redirect to login if user fetch fails (invalid token)
@@ -59,6 +62,18 @@ export default function DashboardLayout({
       router.replace('/login');
     }
   }, [userError, router]);
+
+  // Show loading state while checking auth or fetching user
+  if (isCheckingAuth || isLoadingUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <p className="mt-4 text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogout = () => {
     clearAuthToken();
