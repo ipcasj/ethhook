@@ -272,14 +272,15 @@ async fn create_test_endpoint(
     contract: Option<&str>,
     topics: Option<Vec<String>>,
     test_name: &str,
+    chain_id: i32,
 ) -> Uuid {
     let endpoint_id = Uuid::new_v4();
 
     // Convert contract to array (schema uses contract_addresses TEXT[])
     let contract_addresses: Option<Vec<String>> = contract.map(|c| vec![c.to_string()]);
 
-    // Set chain_ids to Ethereum mainnet (chain_id = 1)
-    let chain_ids = vec![1i32];
+    // Use provided chain_id
+    let chain_ids = vec![chain_id];
 
     sqlx::query(
         "INSERT INTO endpoints 
@@ -397,6 +398,14 @@ async fn test_real_e2e_full_pipeline() {
     // Without this, the first webhook delivery attempts may fail with connection refused
     ci_sleep(1).await;
 
+    // Determine which chain to use based on environment
+    let environment = std::env::var("ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
+    let (chain_id_str, chain_id_int) = if environment == "production" {
+        ("1", 1i32) // Ethereum mainnet
+    } else {
+        ("11155111", 11155111i32) // Sepolia testnet
+    };
+
     // Create test data
     let user_id = create_test_user(&pool, "realpipeline").await;
     let app_id = create_test_application(&pool, user_id, "RealPipeline").await;
@@ -411,6 +420,7 @@ async fn test_real_e2e_full_pipeline() {
         Some(usdc_address),
         Some(vec![transfer_topic.to_string()]),
         "RealPipeline",
+        chain_id_int,
     )
     .await;
 
@@ -428,10 +438,17 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Mock webhook configured to accept requests");
 
-    // Pre-create consumer groups for production chains to avoid race condition
-    // With ENVIRONMENT=production, Message Processor watches: events:1, events:42161, events:10, events:8453
-    println!("\n🔧 Pre-creating Redis consumer groups for production chains...");
-    for stream in ["events:1", "events:42161", "events:10", "events:8453"] {
+    // Pre-create consumer groups to avoid race condition
+    // Default ENVIRONMENT=development, so Message Processor watches: events:11155111 (Sepolia)
+    // To test production chains, set ENVIRONMENT=production and update streams below
+    println!("\n🔧 Pre-creating Redis consumer groups...");
+    let streams = if environment == "production" {
+        vec!["events:1", "events:42161", "events:10", "events:8453"]
+    } else {
+        vec!["events:11155111"] // Sepolia testnet
+    };
+    
+    for stream in streams {
         let _: Result<String, _> = redis::cmd("XGROUP")
             .arg("CREATE")
             .arg(stream)
@@ -441,11 +458,12 @@ async fn test_real_e2e_full_pipeline() {
             .query_async(&mut redis)
             .await;
     }
-    println!("✓ Consumer groups ready for production chains");
+    println!("✓ Consumer groups ready");
 
     // Start services (skip Event Ingestor - requires real Ethereum connection)
     let start_time = Instant::now();
 
+    let env_str = if environment == "production" { "production" } else { "development" };
     let env_vars = vec![
         (
             "DATABASE_URL",
@@ -458,7 +476,7 @@ async fn test_real_e2e_full_pipeline() {
             "RUST_LOG",
             "info,ethhook=debug,ethhook_webhook_delivery=debug",
         ),
-        ("ENVIRONMENT", "production"), // Use production config to watch chain ID 1
+        ("ENVIRONMENT", env_str),
         ("DELIVERY_METRICS_PORT", "9093"), // Unique metrics port for webhook-delivery
     ];
 
@@ -494,17 +512,18 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Message Processor and Webhook Delivery ready");
 
-    println!("\n📥 STEP 1: Publishing event to events:1 stream...");
+    let stream_name = format!("events:{}", chain_id_str);
+    
+    println!("\n📥 STEP 1: Publishing event to {stream_name} stream...");
     println!("   (Skipping Event Ingestor - publishing directly to chain stream)");
 
-    // Publish event to events:1 stream (simulating Event Ingestor output)
+    // Publish event to chain stream (simulating Event Ingestor output)
     // We skip the Event Ingestor since it requires real Ethereum connection
-    // Using chain ID 1 (Ethereum mainnet) which works with ENVIRONMENT=production
     let event_id: String = redis::cmd("XADD")
-        .arg("events:1")
+        .arg(&stream_name)
         .arg("*")
         .arg("chain_id")
-        .arg("1") // Ethereum mainnet - matches production config
+        .arg(chain_id_str)
         .arg("block_number")
         .arg("18000000")
         .arg("block_hash")
@@ -756,6 +775,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
         Some(usdc_address),
         Some(vec![transfer_topic.to_string()]),
         "FullPipeline",
+        11155111i32, // Sepolia
     )
     .await;
 
@@ -1018,6 +1038,7 @@ async fn test_consumer_group_acknowledgment() {
         Some(usdc_address),
         Some(vec![transfer_topic.to_string()]),
         "ConsumerGroup",
+        11155111i32, // Sepolia
     )
     .await;
 
@@ -1232,6 +1253,7 @@ async fn test_service_recovery_with_consumer_groups() {
         Some(usdc_address),
         Some(vec![transfer_topic.to_string()]),
         "ServiceRecovery",
+        11155111i32, // Sepolia
     )
     .await;
 
