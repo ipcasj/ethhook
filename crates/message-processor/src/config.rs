@@ -124,23 +124,13 @@ impl ProcessorConfig {
                 },
             ]
         } else {
-            // Development/Staging: Sepolia testnet + Mainnet L2s
+            // Development/Staging: Sepolia testnet only
+            // Note: For testing/development, we only monitor Sepolia to keep tests simple
+            // In a real staging environment, you might want to add testnet versions of L2s
             vec![
                 ChainToProcess {
                     chain_id: 11155111, // Sepolia Testnet
                     stream_name: "events:11155111".to_string(),
-                },
-                ChainToProcess {
-                    chain_id: 42161, // Arbitrum (mainnet - no testnet configured)
-                    stream_name: "events:42161".to_string(),
-                },
-                ChainToProcess {
-                    chain_id: 10, // Optimism (mainnet - no testnet configured)
-                    stream_name: "events:10".to_string(),
-                },
-                ChainToProcess {
-                    chain_id: 8453, // Base (mainnet - no testnet configured)
-                    stream_name: "events:8453".to_string(),
                 },
             ]
         };

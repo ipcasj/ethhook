@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch: # Allow manual triggering from GitHub UI
 
 env:
@@ -18,40 +18,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo index
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo build
         uses: actions/cache@v4
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Check formatting
         run: cargo fmt --all -- --check
-      
+
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
     name: Test Suite
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -66,7 +66,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       redis:
         image: redis:7-alpine
         ports:
@@ -76,48 +76,48 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo index
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo build
         uses: actions/cache@v4
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features postgres
-      
+
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
         run: |
           sqlx database create
           sqlx migrate run
-      
+
       - name: Run tests (without database-dependent tests)
         run: cargo test --workspace --lib --bins
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-for-ci
-      
+
       - name: Run Admin API integration tests
         run: cargo test -p ethhook-admin-api --test integration_test -- --ignored --test-threads=1
         env:
@@ -128,7 +128,7 @@ jobs:
   e2e-tests:
     name: End-to-End Tests
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -143,7 +143,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       redis:
         image: redis:7-alpine
         ports:
@@ -153,41 +153,41 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo index
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo build
         uses: actions/cache@v4
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features postgres
-      
+
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
         run: |
           sqlx database create
           sqlx migrate run
-      
+
       - name: Build service binaries for E2E tests
         run: |
           cargo build -p ethhook-message-processor
@@ -195,7 +195,7 @@ jobs:
           cargo build -p ethhook-event-ingestor
         env:
           SQLX_OFFLINE: true
-      
+
       - name: Run E2E tests
         run: cargo test --test e2e_tests -- --ignored --test-threads=1
         env:
@@ -203,6 +203,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          ENVIRONMENT: development
           JWT_SECRET: test-secret-for-e2e-tests
         timeout-minutes: 10
 
@@ -214,36 +215,36 @@ jobs:
         target:
           - x86_64-unknown-linux-gnu
           # TODO: Add x86_64-unknown-linux-musl when we have proper OpenSSL setup
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo index
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo build
         uses: actions/cache@v4
         with:
           path: target
           key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Build workspace
         run: cargo build --workspace --release --target ${{ matrix.target }}
-      
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -257,25 +258,25 @@ jobs:
   sqlx-check:
     name: Verify SQLx Offline Mode
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Cache cargo index
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-      
+
       - name: Verify .sqlx directory exists
         run: |
           if [ ! -d ".sqlx" ]; then
@@ -284,7 +285,7 @@ jobs:
           fi
           echo "✓ .sqlx directory found"
           echo "Query cache files: $(ls -1 .sqlx/*.json | wc -l)"
-      
+
       - name: Check offline mode is enabled
         run: |
           if [ ! -f ".cargo/config.toml" ]; then
@@ -297,7 +298,7 @@ jobs:
             echo "Error: SQLX_OFFLINE not found in .cargo/config.toml"
             exit 1
           fi
-      
+
       - name: Build with offline mode (no database)
         run: cargo build --workspace
         env:
@@ -308,13 +309,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Install cargo-audit
         run: cargo install cargo-audit
-      
+
       - name: Run security audit
         run: |
           # Allow specific vulnerabilities we can't fix yet:
@@ -333,7 +334,7 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:15
@@ -348,7 +349,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       redis:
         image: redis:7-alpine
         ports:
@@ -358,35 +359,35 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
-      
+
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features postgres
-      
+
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
         run: |
           sqlx database create
           sqlx migrate run
-      
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-      
+
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-for-ci
-      
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -397,35 +398,35 @@ jobs:
   ui-tests:
     name: UI Tests (Next.js)
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: ui/package-lock.json
-      
+
       - name: Install dependencies
         working-directory: ui
         run: npm ci
-      
+
       - name: Run TypeScript type check
         working-directory: ui
         run: npx tsc --noEmit
-      
+
       - name: Run ESLint
         working-directory: ui
         run: npm run lint
-      
+
       - name: Build Next.js app
         working-directory: ui
         run: npm run build
         env:
           NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
-      
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -437,7 +438,7 @@ jobs:
     name: Playwright E2E Tests
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
-    
+
     services:
       postgres:
         image: postgres:15
@@ -452,7 +453,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       redis:
         image: redis:7-alpine
         ports:
@@ -462,23 +463,23 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
       - name: Install sqlx-cli
         run: cargo install sqlx-cli --no-default-features --features postgres
-      
+
       - name: Run database migrations
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
         run: |
           sqlx database create
           sqlx migrate run
-      
+
       - name: Build and start backend services
         run: |
           cargo build -p ethhook-admin-api
@@ -487,22 +488,22 @@ jobs:
           cargo build -p ethhook-event-ingestor
         env:
           SQLX_OFFLINE: true
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: ui/package-lock.json
-      
+
       - name: Install UI dependencies
         working-directory: ui
         run: npm ci
-      
+
       - name: Install Playwright browsers
         working-directory: ui
         run: npx playwright install --with-deps chromium
-      
+
       - name: Run Playwright tests
         working-directory: ui
         run: npm run test:e2e
@@ -511,7 +512,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-for-e2e
           NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1
-      
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: always()
@@ -523,13 +524,13 @@ jobs:
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Check if Dockerfiles exist
         run: |
           echo "Checking for Dockerfiles..."
@@ -538,7 +539,7 @@ jobs:
           else
             echo "⚠ No Dockerfile or docker-compose.yml found (this is OK for now)"
           fi
-      
+
       - name: Validate docker-compose
         if: hashFiles('docker-compose.yml') != ''
         run: |
@@ -551,7 +552,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, test, e2e-tests, ui-tests, build, sqlx-check, security-audit]
     if: always()
-    
+
     steps:
       - name: Check job results
         run: |
@@ -566,7 +567,7 @@ jobs:
           echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| SQLx Check | ${{ needs.sqlx-check.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Security Audit | ${{ needs.security-audit.result }} |" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.test.result }}" != "success" ] || \
              [ "${{ needs.e2e-tests.result }}" != "success" ] || \
