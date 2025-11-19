@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 FAILED=0
 
 echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   EthHook Pre-Push Validation Checks      ║${NC}"
+echo -e "${BLUE}║   EthHook Pre-Push Validation Checks       ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
 echo ""
 

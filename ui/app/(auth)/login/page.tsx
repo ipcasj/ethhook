@@ -35,7 +35,10 @@ export default function LoginPage() {
       
       setAuthToken(response.token);
       toast.success('Login successful!');
-      router.push('/dashboard');
+      
+      // Use window.location to ensure a full page navigation
+      // This prevents issues with client-side routing and auth state
+      window.location.href = '/dashboard';
     } catch (error) {
       console.error('Login error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Invalid email or password';

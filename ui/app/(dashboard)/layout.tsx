@@ -36,19 +36,29 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Fetch user profile
-  const { data: user } = useQuery<User>({
-    queryKey: ['user-profile'],
-    queryFn: () => api.get<User>('/users/me'),
-    retry: false,
-  });
-
+  // Check auth token on mount
   useEffect(() => {
     const token = getAuthToken();
     if (!token) {
-      router.push('/login');
+      router.replace('/login');
     }
   }, [router]);
+
+  // Fetch user profile
+  const { data: user, error: userError } = useQuery<User>({
+    queryKey: ['user-profile'],
+    queryFn: () => api.get<User>('/users/me'),
+    retry: false,
+    enabled: !!getAuthToken(), // Only fetch if token exists
+  });
+
+  // Redirect to login if user fetch fails (invalid token)
+  useEffect(() => {
+    if (userError) {
+      clearAuthToken();
+      router.replace('/login');
+    }
+  }, [userError, router]);
 
   const handleLogout = () => {
     clearAuthToken();
