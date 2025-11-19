@@ -73,9 +73,13 @@ jobs:
             echo "🧹 Cleaning up old Docker images..."
             docker image prune -f || true
             
-            # Stop services
+            # Stop services and remove containers
             echo "🛑 Stopping services..."
             docker compose -f docker-compose.prod.yml down || true
+            
+            # Forcefully remove any lingering containers with the same names
+            echo "🧹 Removing any lingering containers..."
+            docker rm -f ethhook-postgres ethhook-redis ethhook-admin-api ethhook-message-processor ethhook-webhook-delivery ethhook-event-ingestor ethhook-ui ethhook-demo-receiver ethhook-prometheus ethhook-grafana 2>/dev/null || true
             
             # Rebuild images (use cache to speed up builds)
             echo "🔨 Building Docker images..."
