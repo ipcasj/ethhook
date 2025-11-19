@@ -35,7 +35,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [hasToken, setHasToken] = useState<boolean | null>(null);
 
   // Check auth token on mount
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function DashboardLayout({
     if (!token) {
       router.replace('/login');
     } else {
-      setIsCheckingAuth(false);
+      setHasToken(true);
     }
   }, [router]);
 
@@ -52,7 +52,7 @@ export default function DashboardLayout({
     queryKey: ['user-profile'],
     queryFn: () => api.get<User>('/users/me'),
     retry: false,
-    enabled: !!getAuthToken() && !isCheckingAuth, // Only fetch if token exists and auth check is done
+    enabled: hasToken === true, // Only fetch if token check is complete and token exists
   });
 
   // Redirect to login if user fetch fails (invalid token)
@@ -64,7 +64,7 @@ export default function DashboardLayout({
   }, [userError, router]);
 
   // Show loading state while checking auth or fetching user
-  if (isCheckingAuth || isLoadingUser) {
+  if (hasToken === null || (hasToken && isLoadingUser)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
