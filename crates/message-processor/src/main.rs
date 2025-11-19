@@ -182,7 +182,7 @@ async fn main() -> Result<()> {
 
         // Create separate consumer for each stream to avoid mutex contention
         // Each stream needs its own consumer so XREADGROUP BLOCK doesn't block other streams
-        let stream_consumer = StreamConsumer::new(
+        let mut stream_consumer = StreamConsumer::new(
             &config.redis_url(),
             &config.consumer_group,
             &config.consumer_name,
@@ -192,6 +192,16 @@ async fn main() -> Result<()> {
             "Failed to create consumer for stream {}",
             chain_config.stream_name
         ))?;
+        
+        // Ensure consumer group exists for this stream on this consumer instance
+        stream_consumer
+            .ensure_consumer_group(&chain_config.stream_name)
+            .await
+            .context(format!(
+                "Failed to ensure consumer group for stream {}",
+                chain_config.stream_name
+            ))?;
+        
         let consumer = Arc::new(Mutex::new(stream_consumer));
 
         let matcher = Arc::clone(&matcher);
