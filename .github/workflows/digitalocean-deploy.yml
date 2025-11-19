@@ -63,7 +63,14 @@ jobs:
 
       - name: Deploy to DigitalOcean Droplet
         run: |
-          ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=10 -i ~/.ssh/deploy_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'ENDSSH'
+          # Retry SSH connection up to 3 times with exponential backoff
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "🔗 SSH connection attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+            
+            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -i ~/.ssh/deploy_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'ENDSSH'
             set -e
             echo "🚀 Starting deployment to production..."
             
@@ -112,6 +119,21 @@ jobs:
             
             echo "✅ Deployment complete!"
           ENDSSH
+            then
+              echo "✅ SSH connection successful, deployment completed"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                WAIT_TIME=$((2 ** RETRY_COUNT))
+                echo "⚠️  SSH connection failed, waiting ${WAIT_TIME}s before retry..."
+                sleep $WAIT_TIME
+              else
+                echo "❌ SSH connection failed after $MAX_RETRIES attempts"
+                exit 1
+              fi
+            fi
+          done
       
       - name: Health Check
         run: |
