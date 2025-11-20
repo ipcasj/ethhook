@@ -101,9 +101,13 @@ jobs:
             echo "🧹 Removing any lingering containers..."
             docker rm -f ethhook-postgres ethhook-redis ethhook-admin-api ethhook-message-processor ethhook-webhook-delivery ethhook-event-ingestor ethhook-ui ethhook-demo-receiver ethhook-prometheus ethhook-grafana 2>/dev/null || true
             
-            # Pull latest images from registry (much faster than building!)
-            echo "📥 Pulling latest Docker images from registry..."
-            docker compose -f docker-compose.prod.yml pull
+            # Try to pull images, but don't fail if they don't exist yet
+            echo "📥 Attempting to pull Docker images from registry..."
+            docker compose -f docker-compose.prod.yml pull || echo "⚠️  Some images not in registry, will build locally"
+            
+            # Build any images that weren't available in registry (with pull_policy: missing, this is safe)
+            echo "🔨 Building any missing images..."
+            docker compose -f docker-compose.prod.yml build
             
             # Start services (migrations run automatically in admin-api startup)
             echo "▶️  Starting services..."

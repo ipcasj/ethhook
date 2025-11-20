@@ -52,6 +52,10 @@ services:
   # =============================================================================
   event-ingestor:
     image: ghcr.io/ipcasj/ethhook-event-ingestor:latest
+    pull_policy: missing
+    build:
+      context: .
+      dockerfile: crates/event-ingestor/Dockerfile
     container_name: ethhook-event-ingestor
     environment:
       - RUST_LOG=info
@@ -86,6 +90,10 @@ services:
 
   message-processor:
     image: ghcr.io/ipcasj/ethhook-message-processor:latest
+    pull_policy: missing
+    build:
+      context: .
+      dockerfile: crates/message-processor/Dockerfile
     container_name: ethhook-message-processor
     environment:
       - RUST_LOG=info
@@ -119,6 +127,10 @@ services:
 
   webhook-delivery:
     image: ghcr.io/ipcasj/ethhook-webhook-delivery:latest
+    pull_policy: missing
+    build:
+      context: .
+      dockerfile: crates/webhook-delivery/Dockerfile
     container_name: ethhook-webhook-delivery
     environment:
       - RUST_LOG=info
@@ -150,6 +162,10 @@ services:
 
   admin-api:
     image: ghcr.io/ipcasj/ethhook-admin-api:latest
+    pull_policy: missing
+    build:
+      context: .
+      dockerfile: crates/admin-api/Dockerfile
     container_name: ethhook-admin-api
     environment:
       - RUST_LOG=info
@@ -184,6 +200,10 @@ services:
   # =============================================================================
   ui:
     image: ghcr.io/ipcasj/ethhook-ui:latest
+    pull_policy: missing
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
     container_name: ethhook-ui
     ports:
       - "3002:3000"
@@ -215,6 +235,10 @@ services:
   # =============================================================================
   demo-webhook-receiver:
     image: ghcr.io/ipcasj/ethhook-demo-receiver:latest
+    pull_policy: missing
+    build:
+      context: ./demo-webhook-receiver
+      dockerfile: Dockerfile
     container_name: ethhook-demo-receiver
     environment:
       - PORT=8000
