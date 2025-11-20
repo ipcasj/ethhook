@@ -101,6 +101,11 @@ impl StreamConsumer {
     ///
     /// * `stream_name` - Stream name (e.g., "events:1")
     pub async fn ensure_consumer_group(&mut self, stream_name: &str) -> Result<()> {
+        info!(
+            "🔧 Ensuring consumer group '{}' exists for stream '{}'...",
+            self.group_name, stream_name
+        );
+        
         // XGROUP CREATE stream_name group_name $ MKSTREAM
         // $ = start reading from new messages only
         // MKSTREAM = create stream if it doesn't exist
@@ -119,17 +124,38 @@ impl StreamConsumer {
                     "✅ Created consumer group '{}' for stream '{}'",
                     self.group_name, stream_name
                 );
+                
+                // Verify the group was actually created by checking it exists
+                let verify_result: Result<redis::Value, RedisError> = redis::cmd("XINFO")
+                    .arg("GROUPS")
+                    .arg(stream_name)
+                    .query_async(&mut self.client)
+                    .await;
+                
+                match verify_result {
+                    Ok(_) => {
+                        info!("✅ Verified consumer group '{}' exists for stream '{}'", self.group_name, stream_name);
+                    }
+                    Err(e) => {
+                        warn!("⚠️  Could not verify consumer group: {}", e);
+                    }
+                }
+                
                 Ok(())
             }
             Err(e) => {
                 // BUSYGROUP error means group already exists - this is OK!
                 if e.to_string().contains("BUSYGROUP") {
-                    debug!(
-                        "Consumer group '{}' already exists for stream '{}'",
+                    info!(
+                        "✅ Consumer group '{}' already exists for stream '{}'",
                         self.group_name, stream_name
                     );
                     Ok(())
                 } else {
+                    error!(
+                        "❌ Failed to create consumer group '{}' for stream '{}': {}",
+                        self.group_name, stream_name, e
+                    );
                     Err(anyhow::anyhow!("Failed to create consumer group: {e}"))
                 }
             }

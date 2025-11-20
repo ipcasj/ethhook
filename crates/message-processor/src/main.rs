@@ -202,6 +202,9 @@ async fn main() -> Result<()> {
                 chain_config.stream_name
             ))?;
         
+        // Small delay to ensure Redis has fully processed the XGROUP CREATE command
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        
         let consumer = Arc::new(Mutex::new(stream_consumer));
 
         let matcher = Arc::clone(&matcher);
