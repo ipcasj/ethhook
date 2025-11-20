@@ -162,6 +162,7 @@ services:
     environment:
       - RUST_LOG=info
       - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_MAX_CONNECTIONS=50
       - REDIS_HOST=${REDIS_HOST}
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
