@@ -51,9 +51,7 @@ services:
   # APPLICATION SERVICES
   # =============================================================================
   event-ingestor:
-    build:
-      context: .
-      dockerfile: crates/event-ingestor/Dockerfile
+    image: ghcr.io/ipcasj/ethhook-event-ingestor:latest
     container_name: ethhook-event-ingestor
     environment:
       - RUST_LOG=info
@@ -87,9 +85,7 @@ services:
       start_period: 40s
 
   message-processor:
-    build:
-      context: .
-      dockerfile: crates/message-processor/Dockerfile
+    image: ghcr.io/ipcasj/ethhook-message-processor:latest
     container_name: ethhook-message-processor
     environment:
       - RUST_LOG=info
@@ -122,9 +118,7 @@ services:
       start_period: 40s
 
   webhook-delivery:
-    build:
-      context: .
-      dockerfile: crates/webhook-delivery/Dockerfile
+    image: ghcr.io/ipcasj/ethhook-webhook-delivery:latest
     container_name: ethhook-webhook-delivery
     environment:
       - RUST_LOG=info
@@ -155,9 +149,7 @@ services:
       start_period: 40s
 
   admin-api:
-    build:
-      context: .
-      dockerfile: crates/admin-api/Dockerfile
+    image: ghcr.io/ipcasj/ethhook-admin-api:latest
     container_name: ethhook-admin-api
     environment:
       - RUST_LOG=info
@@ -191,9 +183,7 @@ services:
   # FRONTEND UI (Next.js)
   # =============================================================================
   ui:
-    build:
-      context: ./ui
-      dockerfile: Dockerfile
+    image: ghcr.io/ipcasj/ethhook-ui:latest
     container_name: ethhook-ui
     ports:
       - "3002:3000"
@@ -224,9 +214,7 @@ services:
   # DEMO WEBHOOK RECEIVER
   # =============================================================================
   demo-webhook-receiver:
-    build:
-      context: ./demo-webhook-receiver
-      dockerfile: Dockerfile
+    image: ghcr.io/ipcasj/ethhook-demo-receiver:latest
     container_name: ethhook-demo-receiver
     environment:
       - PORT=8000

@@ -16,6 +16,9 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     
     steps:
       - name: Checkout code
@@ -82,6 +85,10 @@ jobs:
             git fetch origin
             git reset --hard origin/main
             
+            # Log in to GitHub Container Registry
+            echo "🔐 Logging in to GitHub Container Registry..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
             # Clean up old Docker resources to save space
             echo "🧹 Cleaning up old Docker images..."
             docker image prune -f || true
@@ -94,9 +101,9 @@ jobs:
             echo "🧹 Removing any lingering containers..."
             docker rm -f ethhook-postgres ethhook-redis ethhook-admin-api ethhook-message-processor ethhook-webhook-delivery ethhook-event-ingestor ethhook-ui ethhook-demo-receiver ethhook-prometheus ethhook-grafana 2>/dev/null || true
             
-            # Rebuild images (use cache to speed up builds)
-            echo "🔨 Building Docker images..."
-            docker compose -f docker-compose.prod.yml build
+            # Pull latest images from registry (much faster than building!)
+            echo "📥 Pulling latest Docker images from registry..."
+            docker compose -f docker-compose.prod.yml pull
             
             # Start services (migrations run automatically in admin-api startup)
             echo "▶️  Starting services..."

@@ -546,6 +546,106 @@ jobs:
           cp .env.example .env
           docker compose config
 
+  docker-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint, test, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "date=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
+
+      - name: Build and push admin-api
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: crates/admin-api/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ethhook-admin-api:latest
+            ghcr.io/${{ github.repository_owner }}/ethhook-admin-api:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push event-ingestor
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: crates/event-ingestor/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ethhook-event-ingestor:latest
+            ghcr.io/${{ github.repository_owner }}/ethhook-event-ingestor:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push message-processor
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: crates/message-processor/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ethhook-message-processor:latest
+            ghcr.io/${{ github.repository_owner }}/ethhook-message-processor:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push webhook-delivery
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: crates/webhook-delivery/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ethhook-webhook-delivery:latest
+            ghcr.io/${{ github.repository_owner }}/ethhook-webhook-delivery:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push UI
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ui
+          file: ui/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ethhook-ui:latest
+            ghcr.io/${{ github.repository_owner }}/ethhook-ui:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push demo receiver
+        uses: docker/build-push-action@v5
+        with:
+          context: ./demo-webhook-receiver
+          file: demo-webhook-receiver/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ethhook-demo-receiver:latest
+            ghcr.io/${{ github.repository_owner }}/ethhook-demo-receiver:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
