@@ -191,7 +191,7 @@ impl StreamConsumer {
         );
 
         // Use redis::Value for flexible parsing (matches integration test approach)
-        let response: redis::Value = redis::cmd("XREADGROUP")
+        let response: redis::Value = match redis::cmd("XREADGROUP")
             .arg("GROUP")
             .arg(&self.group_name)
             .arg(&self.consumer_name)
@@ -204,13 +204,55 @@ impl StreamConsumer {
             .arg(">") // Read new messages only
             .query_async(&mut self.client)
             .await
-            .map_err(|e| {
-                error!(
-                    "XREADGROUP failed for stream '{}': {} (group: {}, consumer: {}, block: {}ms, count: {})",
-                    stream_name, e, self.group_name, self.consumer_name, block_ms, count
-                );
-                anyhow::anyhow!("Failed to read from stream '{stream_name}': {e}")
-            })?;
+        {
+            Ok(response) => response,
+            Err(e) => {
+                // If NOGROUP error, try to create the consumer group and retry once
+                if e.to_string().contains("NOGROUP") {
+                    warn!(
+                        "[{}] NOGROUP error detected, attempting to create consumer group and retry...",
+                        stream_name
+                    );
+                    
+                    // Try to create the consumer group
+                    if let Err(create_err) = self.ensure_consumer_group(stream_name).await {
+                        error!(
+                            "[{}] Failed to create consumer group after NOGROUP error: {}",
+                            stream_name, create_err
+                        );
+                        return Err(anyhow::anyhow!("Failed to read from stream '{stream_name}': {e}"));
+                    }
+                    
+                    // Retry the XREADGROUP command once
+                    redis::cmd("XREADGROUP")
+                        .arg("GROUP")
+                        .arg(&self.group_name)
+                        .arg(&self.consumer_name)
+                        .arg("BLOCK")
+                        .arg(block_ms)
+                        .arg("COUNT")
+                        .arg(count)
+                        .arg("STREAMS")
+                        .arg(stream_name)
+                        .arg(">")
+                        .query_async(&mut self.client)
+                        .await
+                        .map_err(|retry_err| {
+                            error!(
+                                "[{}] XREADGROUP failed even after creating consumer group: {}",
+                                stream_name, retry_err
+                            );
+                            anyhow::anyhow!("Failed to read from stream '{stream_name}' after retry: {retry_err}")
+                        })?
+                } else {
+                    error!(
+                        "XREADGROUP failed for stream '{}': {} (group: {}, consumer: {}, block: {}ms, count: {})",
+                        stream_name, e, self.group_name, self.consumer_name, block_ms, count
+                    );
+                    return Err(anyhow::anyhow!("Failed to read from stream '{stream_name}': {e}"));
+                }
+            }
+        };
 
         let mut entries = Vec::new();
 
