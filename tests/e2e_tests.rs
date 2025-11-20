@@ -906,18 +906,19 @@ async fn test_full_pipeline_with_mock_ethereum() {
     // Check what's in the Redis streams for debugging (only if webhook not delivered)
     if !webhook_delivered {
         println!("\n🔍 Checking Redis streams (webhook not yet delivered)...");
-        let events_1: i64 = redis::cmd("XLEN")
-            .arg("events:1") // Event Ingestor publishes to events:{chain_id}
+        let stream_name = format!("events:{}", chain_id_str);
+        let events_count: i64 = redis::cmd("XLEN")
+            .arg(&stream_name) // Event Ingestor publishes to events:{chain_id}
             .query_async(&mut redis)
             .await
             .unwrap_or(0);
-        println!("   events:1 stream length: {events_1}");
+        println!("   {} stream length: {}", stream_name, events_count);
 
         // Try to read the event directly using XRANGE to see if it's malformed
-        if events_1 > 0 {
+        if events_count > 0 {
             println!("   Attempting to read event data...");
             let range_result: Vec<(String, Vec<(String, String)>)> = redis::cmd("XRANGE")
-                .arg("events:1")
+                .arg(&stream_name)
                 .arg("-") // Start from beginning
                 .arg("+") // To end
                 .arg("COUNT")
