@@ -197,7 +197,7 @@ jobs:
           SQLX_OFFLINE: true
 
       - name: Run E2E tests
-        run: cargo test --test e2e_tests -- --ignored --test-threads=1
+        run: cargo test --test e2e_tests -- --test-threads=1
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
