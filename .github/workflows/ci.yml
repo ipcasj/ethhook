@@ -555,8 +555,38 @@ jobs:
       contents: read
       packages: write
     
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: admin-api
+            dockerfile: crates/admin-api/Dockerfile
+            context: .
+          - name: event-ingestor
+            dockerfile: crates/event-ingestor/Dockerfile
+            context: .
+          - name: message-processor
+            dockerfile: crates/message-processor/Dockerfile
+            context: .
+          - name: webhook-delivery
+            dockerfile: crates/webhook-delivery/Dockerfile
+            context: .
+          - name: ui
+            dockerfile: ui/Dockerfile
+            context: ./ui
+          - name: demo-receiver
+            dockerfile: demo-webhook-receiver/Dockerfile
+            context: ./demo-webhook-receiver
+    
     steps:
       - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          df -h
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -574,77 +604,19 @@ jobs:
           echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
           echo "date=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
 
-      - name: Build and push admin-api
+      - name: Build and push ${{ matrix.name }}
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: crates/admin-api/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/ethhook-admin-api:latest
-            ghcr.io/${{ github.repository_owner }}/ethhook-admin-api:${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push event-ingestor
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: crates/event-ingestor/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/ethhook-event-ingestor:latest
-            ghcr.io/${{ github.repository_owner }}/ethhook-event-ingestor:${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push message-processor
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: crates/message-processor/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/ethhook-message-processor:latest
-            ghcr.io/${{ github.repository_owner }}/ethhook-message-processor:${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push webhook-delivery
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: crates/webhook-delivery/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/ethhook-webhook-delivery:latest
-            ghcr.io/${{ github.repository_owner }}/ethhook-webhook-delivery:${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push UI
-        uses: docker/build-push-action@v5
-        with:
-          context: ./ui
-          file: ui/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/ethhook-ui:latest
-            ghcr.io/${{ github.repository_owner }}/ethhook-ui:${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build and push demo receiver
-        uses: docker/build-push-action@v5
-        with:
-          context: ./demo-webhook-receiver
-          file: demo-webhook-receiver/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/ethhook-demo-receiver:latest
-            ghcr.io/${{ github.repository_owner }}/ethhook-demo-receiver:${{ steps.meta.outputs.sha_short }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ghcr.io/${{ github.repository_owner }}/ethhook-${{ matrix.name }}:latest
+            ghcr.io/${{ github.repository_owner }}/ethhook-${{ matrix.name }}:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
 
   summary:
     name: CI Summary
