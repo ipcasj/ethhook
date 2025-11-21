@@ -105,7 +105,7 @@ impl StreamConsumer {
             "🔧 Ensuring consumer group '{}' exists for stream '{}'...",
             self.group_name, stream_name
         );
-        
+
         // XGROUP CREATE stream_name group_name $ MKSTREAM
         // $ = start reading from new messages only
         // MKSTREAM = create stream if it doesn't exist
@@ -124,23 +124,26 @@ impl StreamConsumer {
                     "✅ Created consumer group '{}' for stream '{}'",
                     self.group_name, stream_name
                 );
-                
+
                 // Verify the group was actually created by checking it exists
                 let verify_result: Result<redis::Value, RedisError> = redis::cmd("XINFO")
                     .arg("GROUPS")
                     .arg(stream_name)
                     .query_async(&mut self.client)
                     .await;
-                
+
                 match verify_result {
                     Ok(_) => {
-                        info!("✅ Verified consumer group '{}' exists for stream '{}'", self.group_name, stream_name);
+                        info!(
+                            "✅ Verified consumer group '{}' exists for stream '{}'",
+                            self.group_name, stream_name
+                        );
                     }
                     Err(e) => {
                         warn!("⚠️  Could not verify consumer group: {}", e);
                     }
                 }
-                
+
                 Ok(())
             }
             Err(e) => {
@@ -213,16 +216,18 @@ impl StreamConsumer {
                         "[{}] NOGROUP error detected, attempting to create consumer group and retry...",
                         stream_name
                     );
-                    
+
                     // Try to create the consumer group
                     if let Err(create_err) = self.ensure_consumer_group(stream_name).await {
                         error!(
                             "[{}] Failed to create consumer group after NOGROUP error: {}",
                             stream_name, create_err
                         );
-                        return Err(anyhow::anyhow!("Failed to read from stream '{stream_name}': {e}"));
+                        return Err(anyhow::anyhow!(
+                            "Failed to read from stream '{stream_name}': {e}"
+                        ));
                     }
-                    
+
                     // Retry the XREADGROUP command once
                     redis::cmd("XREADGROUP")
                         .arg("GROUP")
@@ -249,7 +254,9 @@ impl StreamConsumer {
                         "XREADGROUP failed for stream '{}': {} (group: {}, consumer: {}, block: {}ms, count: {})",
                         stream_name, e, self.group_name, self.consumer_name, block_ms, count
                     );
-                    return Err(anyhow::anyhow!("Failed to read from stream '{stream_name}': {e}"));
+                    return Err(anyhow::anyhow!(
+                        "Failed to read from stream '{stream_name}': {e}"
+                    ));
                 }
             }
         };

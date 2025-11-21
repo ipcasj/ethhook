@@ -447,7 +447,7 @@ async fn test_real_e2e_full_pipeline() {
     } else {
         vec!["events:11155111"] // Sepolia testnet
     };
-    
+
     for stream in streams {
         let _: Result<String, _> = redis::cmd("XGROUP")
             .arg("CREATE")
@@ -463,7 +463,11 @@ async fn test_real_e2e_full_pipeline() {
     // Start services (skip Event Ingestor - requires real Ethereum connection)
     let start_time = Instant::now();
 
-    let env_str = if environment == "production" { "production" } else { "development" };
+    let env_str = if environment == "production" {
+        "production"
+    } else {
+        "development"
+    };
     let env_vars = vec![
         (
             "DATABASE_URL",
@@ -513,7 +517,7 @@ async fn test_real_e2e_full_pipeline() {
     println!("✓ Message Processor and Webhook Delivery ready");
 
     let stream_name = format!("events:{chain_id_str}");
-    
+
     println!("\n📥 STEP 1: Publishing event to {stream_name} stream...");
     println!("   (Skipping Event Ingestor - publishing directly to chain stream)");
 

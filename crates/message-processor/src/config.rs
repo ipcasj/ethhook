@@ -127,12 +127,10 @@ impl ProcessorConfig {
             // Development/Staging: Sepolia testnet only
             // Note: For testing/development, we only monitor Sepolia to keep tests simple
             // In a real staging environment, you might want to add testnet versions of L2s
-            vec![
-                ChainToProcess {
-                    chain_id: 11155111, // Sepolia Testnet
-                    stream_name: "events:11155111".to_string(),
-                },
-            ]
+            vec![ChainToProcess {
+                chain_id: 11155111, // Sepolia Testnet
+                stream_name: "events:11155111".to_string(),
+            }]
         };
 
         Ok(Self {

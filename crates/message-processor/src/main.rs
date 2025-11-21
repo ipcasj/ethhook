@@ -192,7 +192,7 @@ async fn main() -> Result<()> {
             "Failed to create consumer for stream {}",
             chain_config.stream_name
         ))?;
-        
+
         // Ensure consumer group exists for this stream on this consumer instance
         stream_consumer
             .ensure_consumer_group(&chain_config.stream_name)
@@ -201,10 +201,10 @@ async fn main() -> Result<()> {
                 "Failed to ensure consumer group for stream {}",
                 chain_config.stream_name
             ))?;
-        
+
         // Small delay to ensure Redis has fully processed the XGROUP CREATE command
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        
+
         let consumer = Arc::new(Mutex::new(stream_consumer));
 
         let matcher = Arc::clone(&matcher);
