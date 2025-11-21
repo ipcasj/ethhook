@@ -151,11 +151,11 @@ async fn handle_events_socket(socket: WebSocket, user_id: Uuid, state: AppState)
     let connected_msg = WsMessage::Connected {
         message: "Connected to events stream".to_string(),
     };
-    if let Ok(json) = serde_json::to_string(&connected_msg) {
-        if sender.send(Message::Text(json.into())).await.is_err() {
-            error!("Failed to send connection confirmation");
-            return;
-        }
+    if let Ok(json) = serde_json::to_string(&connected_msg)
+        && sender.send(Message::Text(json.into())).await.is_err()
+    {
+        error!("Failed to send connection confirmation");
+        return;
     }
 
     // Create Redis pubsub connection
@@ -243,10 +243,10 @@ async fn handle_events_socket(socket: WebSocket, user_id: Uuid, state: AppState)
                 let ping = WsMessage::Ping {
                     timestamp: chrono::Utc::now().timestamp(),
                 };
-                if let Ok(json) = serde_json::to_string(&ping) {
-                    if sender.send(Message::Text(json.into())).await.is_err() {
-                        break;
-                    }
+                if let Ok(json) = serde_json::to_string(&ping)
+                    && sender.send(Message::Text(json.into())).await.is_err()
+                {
+                    break;
                 }
             }
         }
@@ -265,11 +265,11 @@ async fn handle_stats_socket(socket: WebSocket, user_id: Uuid, state: AppState) 
     let connected_msg = WsMessage::Connected {
         message: "Connected to stats stream".to_string(),
     };
-    if let Ok(json) = serde_json::to_string(&connected_msg) {
-        if sender.send(Message::Text(json.into())).await.is_err() {
-            error!("Failed to send connection confirmation");
-            return;
-        }
+    if let Ok(json) = serde_json::to_string(&connected_msg)
+        && sender.send(Message::Text(json.into())).await.is_err()
+    {
+        error!("Failed to send connection confirmation");
+        return;
     }
 
     // Create Redis pubsub connection
@@ -364,10 +364,10 @@ async fn handle_stats_socket(socket: WebSocket, user_id: Uuid, state: AppState) 
                             active_endpoints: stats.3,
                         };
 
-                        if let Ok(json) = serde_json::to_string(&stats_msg) {
-                            if sender.send(Message::Text(json.into())).await.is_err() {
-                                break;
-                            }
+                        if let Ok(json) = serde_json::to_string(&stats_msg)
+                            && sender.send(Message::Text(json.into())).await.is_err()
+                        {
+                            break;
                         }
                     }
                     Err(e) => {
