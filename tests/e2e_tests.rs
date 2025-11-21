@@ -512,7 +512,7 @@ async fn test_real_e2e_full_pipeline() {
 
     println!("✓ Message Processor and Webhook Delivery ready");
 
-    let stream_name = format!("events:{}", chain_id_str);
+    let stream_name = format!("events:{chain_id_str}");
     
     println!("\n📥 STEP 1: Publishing event to {stream_name} stream...");
     println!("   (Skipping Event Ingestor - publishing directly to chain stream)");
@@ -912,7 +912,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
             .query_async(&mut redis)
             .await
             .unwrap_or(0);
-        println!("   {} stream length: {}", stream_name, events_count);
+        println!("   {stream_name} stream length: {events_count}");
 
         // Try to read the event directly using XRANGE to see if it's malformed
         if events_count > 0 {
