@@ -906,9 +906,9 @@ async fn test_full_pipeline_with_mock_ethereum() {
     // Check what's in the Redis streams for debugging (only if webhook not delivered)
     if !webhook_delivered {
         println!("\n🔍 Checking Redis streams (webhook not yet delivered)...");
-        let stream_name = format!("events:{}", chain_id_str);
+        let stream_name = "events:11155111"; // Sepolia testnet
         let events_count: i64 = redis::cmd("XLEN")
-            .arg(&stream_name) // Event Ingestor publishes to events:{chain_id}
+            .arg(stream_name) // Event Ingestor publishes to events:{chain_id}
             .query_async(&mut redis)
             .await
             .unwrap_or(0);
@@ -918,7 +918,7 @@ async fn test_full_pipeline_with_mock_ethereum() {
         if events_count > 0 {
             println!("   Attempting to read event data...");
             let range_result: Vec<(String, Vec<(String, String)>)> = redis::cmd("XRANGE")
-                .arg(&stream_name)
+                .arg(stream_name)
                 .arg("-") // Start from beginning
                 .arg("+") // To end
                 .arg("COUNT")
