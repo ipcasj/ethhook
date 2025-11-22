@@ -17,7 +17,7 @@ use axum::{
     http::{Request, StatusCode},
 };
 use serde_json::{Value, json};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use tower::util::ServiceExt; // for `oneshot`
 
 // Helper function to create test database pool
@@ -31,7 +31,7 @@ async fn create_test_pool() -> PgPool {
 }
 
 // Helper function to clean up test data
-async fn cleanup_test_data(pool: &PgPool, email: &str) {
+async fn cleanup_test_data(pool: &SqlitePool, email: &str) {
     // Use raw query to avoid SQLx offline mode issues
     let _ = sqlx::query("DELETE FROM users WHERE email = $1")
         .bind(email)

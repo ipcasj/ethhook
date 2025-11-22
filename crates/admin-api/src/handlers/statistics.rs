@@ -5,7 +5,7 @@ use axum::{
 };
 use chrono::{DateTime, Datelike, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 
 use crate::auth::AuthUser;
 
@@ -30,7 +30,7 @@ pub struct ErrorResponse {
 
 /// Get dashboard statistics for the authenticated user
 pub async fn get_dashboard_statistics(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
 ) -> Result<Json<DashboardStatistics>, (StatusCode, Json<ErrorResponse>)> {
     // Get events today count (last 24 hours)
@@ -41,8 +41,8 @@ pub async fn get_dashboard_statistics(
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
-        WHERE a.user_id = $1
-          AND e.ingested_at >= NOW() - INTERVAL '24 hours'
+        WHERE a.user_id = ?
+          AND e.ingested_at >= datetime('now') - INTERVAL '24 hours'
         "#,
         auth_user.user_id
     )
@@ -66,7 +66,7 @@ pub async fn get_dashboard_statistics(
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
-        WHERE a.user_id = $1
+        WHERE a.user_id = ?
         "#,
         auth_user.user_id
     )
@@ -93,7 +93,7 @@ pub async fn get_dashboard_statistics(
         FROM delivery_attempts da
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
-        WHERE a.user_id = $1
+        WHERE a.user_id = ?
         "#,
         auth_user.user_id
     )
@@ -122,7 +122,7 @@ pub async fn get_dashboard_statistics(
         SELECT COUNT(*) as "count!"
         FROM endpoints ep
         JOIN applications a ON ep.application_id = a.id
-        WHERE a.user_id = $1 AND ep.is_active = true
+        WHERE a.user_id = ? AND ep.is_active = true
         "#,
         auth_user.user_id
     )
@@ -253,7 +253,7 @@ pub struct ChainDistributionResponse {
 
 /// Get timeseries statistics for charts
 pub async fn get_timeseries_statistics(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Query(params): Query<TimeseriesQuery>,
 ) -> Result<Json<TimeseriesResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -279,12 +279,12 @@ pub async fn get_timeseries_statistics(
 
     // Build dynamic WHERE clause based on filters
     let mut where_conditions = vec![
-        "a.user_id = $2".to_string(),
-        "e.ingested_at >= NOW() - ($3 || ' hours')::interval".to_string(),
+        "a.user_id = ?".to_string(),
+        "e.ingested_at >= datetime('now') - (? || ' hours')::interval".to_string(),
     ];
 
     if chain_ids.is_some() {
-        where_conditions.push("ep.chain_id = ANY($4)".to_string());
+        where_conditions.push("ep.chain_id = ANY(?)".to_string());
     }
 
     if let Some(success_filter) = params.success {
@@ -292,7 +292,7 @@ pub async fn get_timeseries_statistics(
     }
 
     if start_date.is_some() && end_date.is_some() {
-        where_conditions.push("e.ingested_at BETWEEN $5 AND $6".to_string());
+        where_conditions.push("e.ingested_at BETWEEN ? AND ?".to_string());
     }
 
     let where_clause = where_conditions.join(" AND ");
@@ -302,7 +302,7 @@ pub async fn get_timeseries_statistics(
         r#"
         WITH time_buckets AS (
             SELECT 
-                date_trunc($1, e.ingested_at) as time_bucket,
+                date_trunc(?, e.ingested_at) as time_bucket,
                 COUNT(DISTINCT e.id)::bigint as event_count,
                 COUNT(da.id)::bigint as delivery_count,
                 COUNT(da.id) FILTER (WHERE da.success = true)::bigint as successful_deliveries,
@@ -399,7 +399,7 @@ pub async fn get_timeseries_statistics(
 
 /// Get chain distribution statistics for pie chart
 pub async fn get_chain_distribution(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
 ) -> Result<Json<ChainDistributionResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Map chain IDs to names
@@ -426,7 +426,7 @@ pub async fn get_chain_distribution(
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id,
         LATERAL unnest(ep.chain_ids) as chain_id
-        WHERE a.user_id = $1
+        WHERE a.user_id = ?
         GROUP BY chain_id
         ORDER BY COUNT(DISTINCT e.id) DESC
         "#,
@@ -497,7 +497,7 @@ pub struct ApplicationStatistics {
 
 /// Get statistics for a specific application
 pub async fn get_application_statistics(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<Json<ApplicationStatistics>, (StatusCode, Json<ErrorResponse>)> {
@@ -505,7 +505,7 @@ pub async fn get_application_statistics(
     let app = sqlx::query!(
         r#"
         SELECT id FROM applications
-        WHERE id = $1 AND user_id = $2
+        WHERE id = ? AND user_id = ?
         "#,
         app_id,
         auth_user.user_id
@@ -535,11 +535,11 @@ pub async fn get_application_statistics(
         r#"
         SELECT 
             COUNT(DISTINCT e.id) as "total!",
-            COUNT(DISTINCT e.id) FILTER (WHERE e.ingested_at >= NOW() - INTERVAL '24 hours') as "events_24h!"
+            COUNT(DISTINCT e.id) FILTER (WHERE e.ingested_at >= datetime('now') - INTERVAL '24 hours') as "events_24h!"
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
-        WHERE ep.application_id = $1
+        WHERE ep.application_id = ?
         "#,
         app_id
     )
@@ -561,7 +561,7 @@ pub async fn get_application_statistics(
             COUNT(*) as "total!",
             COUNT(*) FILTER (WHERE is_active = true) as "active!"
         FROM endpoints
-        WHERE application_id = $1
+        WHERE application_id = ?
         "#,
         app_id
     )
@@ -588,7 +588,7 @@ pub async fn get_application_statistics(
             MAX(duration_ms)::float8 as "max_duration"
         FROM delivery_attempts da
         JOIN endpoints ep ON da.endpoint_id = ep.id
-        WHERE ep.application_id = $1
+        WHERE ep.application_id = ?
         "#,
         app_id
     )
@@ -612,7 +612,7 @@ pub async fn get_application_statistics(
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
-        WHERE ep.application_id = $1
+        WHERE ep.application_id = ?
         "#,
         app_id
     )
@@ -654,7 +654,7 @@ pub async fn get_application_statistics(
 
 /// Get timeseries statistics for a specific application
 pub async fn get_application_timeseries(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
     Query(params): Query<TimeseriesQuery>,
@@ -663,7 +663,7 @@ pub async fn get_application_timeseries(
     let app = sqlx::query!(
         r#"
         SELECT id FROM applications
-        WHERE id = $1 AND user_id = $2
+        WHERE id = ? AND user_id = ?
         "#,
         app_id,
         auth_user.user_id
@@ -711,12 +711,12 @@ pub async fn get_application_timeseries(
 
     // Build dynamic WHERE clause
     let mut where_conditions = vec![
-        "ep.application_id = $2".to_string(),
-        "e.ingested_at >= NOW() - ($3 || ' hours')::interval".to_string(),
+        "ep.application_id = ?".to_string(),
+        "e.ingested_at >= datetime('now') - (? || ' hours')::interval".to_string(),
     ];
 
     if chain_ids.is_some() {
-        where_conditions.push("ep.chain_id = ANY($4)".to_string());
+        where_conditions.push("ep.chain_id = ANY(?)".to_string());
     }
 
     if let Some(success_filter) = params.success {
@@ -724,7 +724,7 @@ pub async fn get_application_timeseries(
     }
 
     if start_date.is_some() && end_date.is_some() {
-        where_conditions.push("e.ingested_at BETWEEN $5 AND $6".to_string());
+        where_conditions.push("e.ingested_at BETWEEN ? AND ?".to_string());
     }
 
     let where_clause = where_conditions.join(" AND ");
@@ -733,7 +733,7 @@ pub async fn get_application_timeseries(
     let query_str = format!(
         r#"
         SELECT 
-            date_trunc($1, e.ingested_at) as bucket,
+            date_trunc(?, e.ingested_at) as bucket,
             COUNT(DISTINCT e.id)::bigint as event_count,
             COUNT(da.id)::bigint as delivery_count,
             COUNT(da.id) FILTER (WHERE da.success = true)::bigint as successful_deliveries,
@@ -743,8 +743,8 @@ pub async fn get_application_timeseries(
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
         WHERE {where_clause}
-        GROUP BY date_trunc($1, e.ingested_at)
-        ORDER BY date_trunc($1, e.ingested_at) ASC
+        GROUP BY date_trunc(?, e.ingested_at)
+        ORDER BY date_trunc(?, e.ingested_at) ASC
         "#
     );
 
@@ -839,7 +839,7 @@ pub struct EndpointPerformanceResponse {
 
 /// Get endpoint performance for a specific application
 pub async fn get_application_endpoints_performance(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<Json<EndpointPerformanceResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -847,7 +847,7 @@ pub async fn get_application_endpoints_performance(
     let app = sqlx::query!(
         r#"
         SELECT id FROM applications
-        WHERE id = $1 AND user_id = $2
+        WHERE id = ? AND user_id = ?
         "#,
         app_id,
         auth_user.user_id
@@ -887,7 +887,7 @@ pub async fn get_application_endpoints_performance(
         FROM endpoints ep
         LEFT JOIN delivery_attempts da ON ep.id = da.endpoint_id
         LEFT JOIN events e ON da.event_id = e.id
-        WHERE ep.application_id = $1
+        WHERE ep.application_id = ?
         GROUP BY ep.id, ep.name, ep.webhook_url
         ORDER BY COUNT(DISTINCT e.id) DESC
         "#,
@@ -1052,7 +1052,7 @@ fn calculate_health_score(
 
 /// Get endpoint statistics
 pub async fn get_endpoint_statistics(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     axum::extract::Path(endpoint_id): axum::extract::Path<uuid::Uuid>,
 ) -> Result<Json<EndpointStatistics>, (StatusCode, Json<ErrorResponse>)> {
@@ -1062,7 +1062,7 @@ pub async fn get_endpoint_statistics(
         SELECT ep.id, ep.name, ep.webhook_url, ep.health_status, a.user_id
         FROM endpoints ep
         JOIN applications a ON ep.application_id = a.id
-        WHERE ep.id = $1
+        WHERE ep.id = ?
         "#,
         endpoint_id
     )
@@ -1099,7 +1099,7 @@ pub async fn get_endpoint_statistics(
         SELECT COUNT(DISTINCT e.id) as "count!"
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
-        WHERE da.endpoint_id = $1
+        WHERE da.endpoint_id = ?
         "#,
         endpoint_id
     )
@@ -1120,8 +1120,8 @@ pub async fn get_endpoint_statistics(
         SELECT COUNT(DISTINCT e.id) as "count!"
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
-        WHERE da.endpoint_id = $1
-          AND e.ingested_at >= NOW() - INTERVAL '24 hours'
+        WHERE da.endpoint_id = ?
+          AND e.ingested_at >= datetime('now') - INTERVAL '24 hours'
         "#,
         endpoint_id
     )
@@ -1149,7 +1149,7 @@ pub async fn get_endpoint_statistics(
             PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms)::float8 as p95,
             PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_ms)::float8 as p99
         FROM delivery_attempts
-        WHERE endpoint_id = $1
+        WHERE endpoint_id = ?
         "#,
         endpoint_id
     )
@@ -1172,7 +1172,7 @@ pub async fn get_endpoint_statistics(
             MAX(e.ingested_at) as last_event
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
-        WHERE da.endpoint_id = $1
+        WHERE da.endpoint_id = ?
         "#,
         endpoint_id
     )
@@ -1224,7 +1224,7 @@ pub async fn get_endpoint_statistics(
 
 /// Get endpoint timeseries data
 pub async fn get_endpoint_timeseries(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     axum::extract::Path(endpoint_id): axum::extract::Path<uuid::Uuid>,
     Query(query): Query<TimeseriesQuery>,
@@ -1235,7 +1235,7 @@ pub async fn get_endpoint_timeseries(
         SELECT ep.id, a.user_id
         FROM endpoints ep
         JOIN applications a ON ep.application_id = a.id
-        WHERE ep.id = $1
+        WHERE ep.id = ?
         "#,
         endpoint_id
     )
@@ -1293,8 +1293,8 @@ pub async fn get_endpoint_timeseries(
 
     // Build dynamic WHERE clause
     let mut where_conditions = vec![
-        "da.endpoint_id = $2".to_string(),
-        "e.ingested_at >= NOW() - ($3 || ' hours')::INTERVAL".to_string(),
+        "da.endpoint_id = ?".to_string(),
+        "e.ingested_at >= datetime('now') - (? || ' hours')::INTERVAL".to_string(),
     ];
 
     if let Some(success_filter) = query.success {
@@ -1302,7 +1302,7 @@ pub async fn get_endpoint_timeseries(
     }
 
     if start_date.is_some() && end_date.is_some() {
-        where_conditions.push("e.ingested_at BETWEEN $4 AND $5".to_string());
+        where_conditions.push("e.ingested_at BETWEEN ? AND ?".to_string());
     }
 
     let where_clause = where_conditions.join(" AND ");
@@ -1311,13 +1311,13 @@ pub async fn get_endpoint_timeseries(
     let query_str = format!(
         r#"
         SELECT 
-            date_trunc($1, e.ingested_at) as bucket,
+            date_trunc(?, e.ingested_at) as bucket,
             COUNT(DISTINCT e.id) as count
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
         WHERE {where_clause}
-        GROUP BY date_trunc($1, e.ingested_at)
-        ORDER BY date_trunc($1, e.ingested_at) ASC
+        GROUP BY date_trunc(?, e.ingested_at)
+        ORDER BY date_trunc(?, e.ingested_at) ASC
         "#
     );
 
@@ -1357,7 +1357,7 @@ pub async fn get_endpoint_timeseries(
 
 /// Get endpoint deliveries with pagination
 pub async fn get_endpoint_deliveries(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     axum::extract::Path(endpoint_id): axum::extract::Path<uuid::Uuid>,
     Query(query): Query<DeliveriesQuery>,
@@ -1368,7 +1368,7 @@ pub async fn get_endpoint_deliveries(
         SELECT ep.id, a.user_id
         FROM endpoints ep
         JOIN applications a ON ep.application_id = a.id
-        WHERE ep.id = $1
+        WHERE ep.id = ?
         "#,
         endpoint_id
     )
@@ -1408,7 +1408,7 @@ pub async fn get_endpoint_deliveries(
             r#"
             SELECT COUNT(*) as "count!"
             FROM delivery_attempts
-            WHERE endpoint_id = $1
+            WHERE endpoint_id = ?
             "#,
             endpoint_id
         )
@@ -1429,7 +1429,7 @@ pub async fn get_endpoint_deliveries(
             r#"
             SELECT COUNT(*) as "count!"
             FROM delivery_attempts
-            WHERE endpoint_id = $1 AND success = $2
+            WHERE endpoint_id = ? AND success = ?
             "#,
             endpoint_id,
             success_filter
@@ -1462,9 +1462,9 @@ pub async fn get_endpoint_deliveries(
                 da.error_message,
                 LEFT(da.response_body, 1000) as response_body
             FROM delivery_attempts da
-            WHERE da.endpoint_id = $1
+            WHERE da.endpoint_id = ?
             ORDER BY da.attempted_at DESC
-            LIMIT $2 OFFSET $3
+            LIMIT ? OFFSET ?
             "#,
             endpoint_id,
             limit,
@@ -1508,9 +1508,9 @@ pub async fn get_endpoint_deliveries(
                 da.error_message,
                 LEFT(da.response_body, 1000) as response_body
             FROM delivery_attempts da
-            WHERE da.endpoint_id = $1 AND da.success = $2
+            WHERE da.endpoint_id = ? AND da.success = ?
             ORDER BY da.attempted_at DESC
-            LIMIT $3 OFFSET $4
+            LIMIT ? OFFSET ?
             "#,
             endpoint_id,
             success_filter,
@@ -1603,7 +1603,7 @@ pub struct CUChainBreakdown {
 ///
 /// **ADMIN ONLY** - Returns 403 Forbidden for non-admin users.
 pub async fn get_alchemy_cu_stats(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
 ) -> Result<Json<AlchemyCUStats>, (StatusCode, Json<ErrorResponse>)> {
     // Check admin access
@@ -1624,7 +1624,7 @@ pub async fn get_alchemy_cu_stats(
         r#"
         SELECT COUNT(*) as "count!"
         FROM events
-        WHERE ingested_at >= NOW() - INTERVAL '24 hours'
+        WHERE ingested_at >= datetime('now') - INTERVAL '24 hours'
         "#
     )
     .fetch_one(&pool)
@@ -1644,7 +1644,7 @@ pub async fn get_alchemy_cu_stats(
         r#"
         SELECT COUNT(*) as "count!"
         FROM events
-        WHERE ingested_at >= DATE_TRUNC('month', NOW())
+        WHERE ingested_at >= DATE_TRUNC('month', datetime('now'))
         "#
     )
     .fetch_one(&pool)

@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::auth::AuthUser;
@@ -92,7 +92,7 @@ pub struct ErrorResponse {
 
 /// List all events for the authenticated user's endpoints
 pub async fn list_events(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Query(params): Query<ListEventsQuery>,
 ) -> Result<Json<EventListResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -108,7 +108,7 @@ pub async fn list_events(
                 SELECT e.id
                 FROM endpoints e
                 JOIN applications a ON e.application_id = a.id
-                WHERE e.id = $1 AND a.user_id = $2
+                WHERE e.id = ? AND a.user_id = ?
                 "#,
                 endpoint_id,
                 auth_user.user_id
@@ -150,7 +150,7 @@ pub async fn list_events(
 }
 
 async fn list_events_for_endpoint(
-    pool: &PgPool,
+    pool: &SqlitePool,
     endpoint_id: Uuid,
     limit: i64,
     offset: i64,
@@ -172,10 +172,10 @@ async fn list_events_for_endpoint(
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
-        WHERE da.endpoint_id = $1
+        WHERE da.endpoint_id = ?
         GROUP BY e.id, ep.name, ep.chain_ids
         ORDER BY e.block_number DESC, e.log_index DESC
-        LIMIT $2 OFFSET $3
+        LIMIT ? OFFSET ?
         "#,
         endpoint_id,
         limit,
@@ -226,7 +226,7 @@ async fn list_events_for_endpoint(
 }
 
 async fn list_events_for_user(
-    pool: &PgPool,
+    pool: &SqlitePool,
     user_id: Uuid,
     limit: i64,
     offset: i64,
@@ -250,9 +250,9 @@ async fn list_events_for_user(
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
-        WHERE a.user_id = $1
+        WHERE a.user_id = ?
         ORDER BY e.id, e.block_number DESC, e.log_index DESC
-        LIMIT $2 OFFSET $3
+        LIMIT ? OFFSET ?
         "#,
         user_id,
         limit,
@@ -303,7 +303,7 @@ async fn list_events_for_user(
 }
 
 async fn count_events_for_endpoint(
-    pool: &PgPool,
+    pool: &SqlitePool,
     endpoint_id: Uuid,
 ) -> Result<i64, (StatusCode, Json<ErrorResponse>)> {
     let result = sqlx::query!(
@@ -311,7 +311,7 @@ async fn count_events_for_endpoint(
         SELECT COUNT(DISTINCT e.id) as "count!"
         FROM events e
         JOIN delivery_attempts da ON e.id = da.event_id
-        WHERE da.endpoint_id = $1
+        WHERE da.endpoint_id = ?
         "#,
         endpoint_id
     )
@@ -330,7 +330,7 @@ async fn count_events_for_endpoint(
 }
 
 async fn count_events_for_user(
-    pool: &PgPool,
+    pool: &SqlitePool,
     user_id: Uuid,
 ) -> Result<i64, (StatusCode, Json<ErrorResponse>)> {
     let result = sqlx::query!(
@@ -340,7 +340,7 @@ async fn count_events_for_user(
         JOIN delivery_attempts da ON e.id = da.event_id
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
-        WHERE a.user_id = $1
+        WHERE a.user_id = ?
         "#,
         user_id
     )
@@ -360,7 +360,7 @@ async fn count_events_for_user(
 
 /// Get a specific event by ID
 pub async fn get_event(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(event_id): Path<Uuid>,
 ) -> Result<Json<EventResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -383,7 +383,7 @@ pub async fn get_event(
         LEFT JOIN delivery_attempts da ON e.id = da.event_id
         LEFT JOIN endpoints ep ON da.endpoint_id = ep.id
         LEFT JOIN applications a ON ep.application_id = a.id
-        WHERE e.id = $1 AND (a.user_id = $2 OR a.user_id IS NULL)
+        WHERE e.id = ? AND (a.user_id = ? OR a.user_id IS NULL)
         ORDER BY e.id
         "#,
         event_id,
@@ -438,7 +438,7 @@ pub async fn get_event(
 
 /// List delivery attempts for events
 pub async fn list_delivery_attempts(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Query(params): Query<ListDeliveryAttemptsQuery>,
 ) -> Result<Json<DeliveryAttemptListResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -463,7 +463,7 @@ pub async fn list_delivery_attempts(
 }
 
 async fn list_delivery_attempts_for_event(
-    pool: &PgPool,
+    pool: &SqlitePool,
     user_id: Uuid,
     event_id: Uuid,
     limit: i64,
@@ -478,9 +478,9 @@ async fn list_delivery_attempts_for_event(
         FROM delivery_attempts da
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
-        WHERE da.event_id = $1 AND a.user_id = $2
+        WHERE da.event_id = ? AND a.user_id = ?
         ORDER BY da.attempted_at DESC
-        LIMIT $3 OFFSET $4
+        LIMIT ? OFFSET ?
         "#,
         event_id,
         user_id,
@@ -520,7 +520,7 @@ async fn list_delivery_attempts_for_event(
 }
 
 async fn list_delivery_attempts_for_endpoint(
-    pool: &PgPool,
+    pool: &SqlitePool,
     user_id: Uuid,
     endpoint_id: Uuid,
     limit: i64,
@@ -535,9 +535,9 @@ async fn list_delivery_attempts_for_endpoint(
         FROM delivery_attempts da
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
-        WHERE da.endpoint_id = $1 AND a.user_id = $2
+        WHERE da.endpoint_id = ? AND a.user_id = ?
         ORDER BY da.attempted_at DESC
-        LIMIT $3 OFFSET $4
+        LIMIT ? OFFSET ?
         "#,
         endpoint_id,
         user_id,
@@ -577,7 +577,7 @@ async fn list_delivery_attempts_for_endpoint(
 }
 
 async fn list_delivery_attempts_for_user(
-    pool: &PgPool,
+    pool: &SqlitePool,
     user_id: Uuid,
     limit: i64,
     offset: i64,
@@ -591,9 +591,9 @@ async fn list_delivery_attempts_for_user(
         FROM delivery_attempts da
         JOIN endpoints ep ON da.endpoint_id = ep.id
         JOIN applications a ON ep.application_id = a.id
-        WHERE a.user_id = $1
+        WHERE a.user_id = ?
         ORDER BY da.attempted_at DESC
-        LIMIT $2 OFFSET $3
+        LIMIT ? OFFSET ?
         "#,
         user_id,
         limit,

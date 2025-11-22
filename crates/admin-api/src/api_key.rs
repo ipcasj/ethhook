@@ -6,7 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use uuid::Uuid;
 
 /// Extractor for API key authentication
@@ -44,7 +44,7 @@ where
             r#"
             SELECT a.id as application_id, a.user_id, a.is_active
             FROM applications a
-            WHERE a.api_key = $1
+            WHERE a.api_key = ?
             "#,
             api_key
         )
@@ -107,7 +107,7 @@ impl IntoResponse for ApiKeyError {
 /// Middleware to inject database pool into request extensions
 #[allow(dead_code)]
 pub async fn inject_db_pool(
-    pool: PgPool,
+    pool: SqlitePool,
 ) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Response> + Send>>
 {
     move |mut req: Request, next: Next| {

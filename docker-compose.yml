@@ -1,22 +1,6 @@
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: ethhook-postgres
-    environment:
-      POSTGRES_DB: ethhook
-      POSTGRES_USER: ethhook
-      POSTGRES_PASSWORD: password
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - ethhook-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ethhook"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  # PostgreSQL removed - using SQLite for config storage (zero overhead, faster for small data)
+  # Events/analytics moved to ClickHouse (Days 5-7)
 
   redis:
     image: redis:7-alpine
@@ -156,17 +140,7 @@ services:
     depends_on:
       - redis
 
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:latest
-    container_name: ethhook-postgres-exporter
-    ports:
-      - "9187:9187"
-    environment:
-      - DATA_SOURCE_NAME=postgresql://ethhook:password@postgres:5432/ethhook?sslmode=disable
-    networks:
-      - ethhook-network
-    depends_on:
-      - postgres
+  # postgres-exporter removed (no PostgreSQL)
 
   demo-webhook-receiver:
     build:
@@ -194,7 +168,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
   redis_data:
   prometheus_data:
   grafana_data:

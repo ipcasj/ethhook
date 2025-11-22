@@ -42,9 +42,10 @@ impl Config {
                 .parse()
                 .context("Failed to parse ADMIN_API_PORT")?,
 
-            database_url: env::var("DATABASE_URL").context("DATABASE_URL must be set")?,
+            database_url: env::var("DATABASE_URL")
+                .unwrap_or_else(|_| "sqlite:config.db".to_string()),
             database_max_connections: env::var("DATABASE_MAX_CONNECTIONS")
-                .unwrap_or_else(|_| "20".to_string())
+                .unwrap_or_else(|_| "5".to_string()) // SQLite: reduce from 20 to 5 (single file)
                 .parse()
                 .context("Failed to parse DATABASE_MAX_CONNECTIONS")?,
 

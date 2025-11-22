@@ -1,0 +1,45 @@
+# Multi-stage build for minimal final image
+FROM alpine:3.18 AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git \
+    libuv-dev \
+    curl-dev \
+    postgresql-dev \
+    hiredis-dev \
+    libwebsockets-dev \
+    openssl-dev
+
+# Copy source code
+WORKDIR /build
+COPY . .
+
+# Build
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build --target event-ingestor -j$(nproc)
+
+# Runtime stage - minimal image
+FROM alpine:3.18
+
+# Install runtime dependencies only
+RUN apk add --no-cache \
+    libuv \
+    libcurl \
+    postgresql-libs \
+    hiredis \
+    libwebsockets \
+    openssl
+
+# Copy binary from builder
+COPY --from=builder /build/build/bin/event-ingestor /usr/local/bin/
+
+# Run as non-root user
+RUN addgroup -g 1000 ethhook && \
+    adduser -D -u 1000 -G ethhook ethhook
+
+USER ethhook
+
+ENTRYPOINT ["/usr/local/bin/event-ingestor"]

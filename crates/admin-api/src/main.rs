@@ -3,7 +3,7 @@ use axum::{
     Router,
     routing::{delete, get, post, put},
 };
-use sqlx::postgres::PgPoolOptions;
+use sqlx::sqlite::SqlitePoolOptions;
 use std::time::Duration;
 use tokio::signal;
 use tower::ServiceBuilder;
@@ -41,17 +41,17 @@ async fn main() -> Result<()> {
         config.server_host, config.server_port
     );
 
-    // Create database connection pool
-    let pool = PgPoolOptions::new()
+    // Create database connection pool (SQLite)
+    let pool = SqlitePoolOptions::new()
         .max_connections(config.database_max_connections)
         .acquire_timeout(Duration::from_secs(5))
         .connect(&config.database_url)
         .await?;
 
-    info!("Database connection pool established");
+    info!("SQLite database connection pool established");
 
-    // Run migrations (ignore if already applied)
-    match sqlx::migrate!("../../migrations").run(&pool).await {
+    // Run migrations (SQLite schema)
+    match sqlx::migrate!("../../migrations-sqlite").run(&pool).await {
         Ok(_) => info!("Database migrations completed"),
         Err(sqlx::migrate::MigrateError::VersionMissing(_)) => {
             info!("Database migrations already applied, skipping");
@@ -97,7 +97,7 @@ async fn main() -> Result<()> {
 }
 
 /// Create the application router with all routes and middleware
-fn create_router(pool: sqlx::PgPool, config: Config) -> Router {
+fn create_router(pool: sqlx::SqlitePool, config: Config) -> Router {
     // Build CORS layer based on configuration
     let cors = if config.cors_allowed_origins.contains(&"*".to_string()) {
         // Allow all origins in development

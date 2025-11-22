@@ -5,17 +5,17 @@
  */
 
 use crate::config::Config;
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 
 /// Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: PgPool,
+    pub pool: SqlitePool,
     pub config: Config,
 }
 
 // Implement FromRef to allow extracting individual pieces from AppState
-impl axum::extract::FromRef<AppState> for PgPool {
+impl axum::extract::FromRef<AppState> for SqlitePool {
     fn from_ref(state: &AppState) -> Self {
         state.pool.clone()
     }

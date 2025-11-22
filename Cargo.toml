@@ -1,11 +1,8 @@
 [workspace]
 members = [
-    # Services - will be uncommented as we build them
-    "crates/event-ingestor",         # ✓ COMPLETE!
-    "crates/message-processor",      # ✓ COMPLETE!
-    "crates/webhook-delivery",       # ✓ COMPLETE!
-    "crates/admin-api",              # ✓ COMPLETE!
-    # "crates/leptos-portal",        # ✗ DEPRECATED - Using Next.js UI instead (see /ui/)
+    # Active Services
+    "crates/admin-api",              # ✓ REST API (SQLite)
+    "crates/pipeline",               # ✓ Unified pipeline (WebSocket + cache + delivery)
 
     # Foundation crates
     "crates/common",                 # ✓ COMPLETE!
@@ -19,6 +16,11 @@ members = [
     # Tools (commented out for production deployment)
     # "tools/load-tester",             # Load testing tool
 ]
+
+# Legacy crates removed (replaced by pipeline):
+# - crates/event-ingestor (replaced by pipeline/websocket.rs)
+# - crates/message-processor (replaced by pipeline batch processor)
+# - crates/webhook-delivery (replaced by pipeline delivery workers)
 resolver = "2"
 
 [workspace.package]
@@ -45,8 +47,8 @@ ethers = { version = "2.0", features = ["ws", "rustls"] }
 # alloy-provider = "0.1"
 # alloy-rpc-types = "0.1"
 
-# Database
-sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
+# Database (workspace default: SQLite)
+sqlx = { version = "0.8.6", features = ["runtime-tokio-rustls", "sqlite", "uuid", "chrono", "json"] }
 
 # Redis
 redis = { version = "0.24", features = ["tokio-comp", "connection-manager", "streams"] }

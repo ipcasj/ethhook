@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -80,7 +80,7 @@ pub struct EndpointListResponse {
 
 /// Create a new webhook endpoint
 pub async fn create_endpoint(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Json(payload): Json<CreateEndpointRequest>,
 ) -> Result<(StatusCode, Json<EndpointResponse>), (StatusCode, Json<ErrorResponse>)> {
@@ -96,7 +96,7 @@ pub async fn create_endpoint(
 
     // Verify application belongs to user
     let _app = sqlx::query!(
-        "SELECT id FROM applications WHERE id = $1 AND user_id = $2",
+        "SELECT id FROM applications WHERE id = ? AND user_id = ?",
         payload.application_id,
         auth_user.user_id
     )
@@ -129,7 +129,7 @@ pub async fn create_endpoint(
             application_id, name, webhook_url, description, hmac_secret,
             chain_ids, contract_addresses, event_signatures
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING id, application_id, name, webhook_url, description, hmac_secret,
                   chain_ids, contract_addresses, event_signatures,
                   is_active, created_at, updated_at
@@ -175,13 +175,13 @@ pub async fn create_endpoint(
 
 /// List endpoints for an application
 pub async fn list_endpoints(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<Json<EndpointListResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Verify application belongs to user
     let _app = sqlx::query!(
-        "SELECT id FROM applications WHERE id = $1 AND user_id = $2",
+        "SELECT id FROM applications WHERE id = ? AND user_id = ?",
         app_id,
         auth_user.user_id
     )
@@ -211,7 +211,7 @@ pub async fn list_endpoints(
                chain_ids, contract_addresses, event_signatures,
                is_active, created_at, updated_at
         FROM endpoints
-        WHERE application_id = $1
+        WHERE application_id = ?
         ORDER BY created_at DESC
         "#,
         app_id
@@ -251,7 +251,7 @@ pub async fn list_endpoints(
 
 /// List all endpoints for the authenticated user across all their applications
 pub async fn list_all_user_endpoints(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
 ) -> Result<Json<EndpointListResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Get all endpoints for user's applications
@@ -262,7 +262,7 @@ pub async fn list_all_user_endpoints(
                e.is_active, e.created_at, e.updated_at
         FROM endpoints e
         JOIN applications a ON e.application_id = a.id
-        WHERE a.user_id = $1
+        WHERE a.user_id = ?
         ORDER BY e.created_at DESC
         "#,
         auth_user.user_id
@@ -302,7 +302,7 @@ pub async fn list_all_user_endpoints(
 
 /// Get a specific endpoint
 pub async fn get_endpoint(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(endpoint_id): Path<Uuid>,
 ) -> Result<Json<EndpointResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -313,7 +313,7 @@ pub async fn get_endpoint(
                e.is_active, e.created_at, e.updated_at
         FROM endpoints e
         JOIN applications a ON e.application_id = a.id
-        WHERE e.id = $1 AND a.user_id = $2
+        WHERE e.id = ? AND a.user_id = ?
         "#,
         endpoint_id,
         auth_user.user_id
@@ -355,7 +355,7 @@ pub async fn get_endpoint(
 
 /// Update an endpoint
 pub async fn update_endpoint(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(endpoint_id): Path<Uuid>,
     Json(payload): Json<UpdateEndpointRequest>,
@@ -376,7 +376,7 @@ pub async fn update_endpoint(
         SELECT e.id
         FROM endpoints e
         JOIN applications a ON e.application_id = a.id
-        WHERE e.id = $1 AND a.user_id = $2
+        WHERE e.id = ? AND a.user_id = ?
         "#,
         endpoint_id,
         auth_user.user_id
@@ -401,7 +401,7 @@ pub async fn update_endpoint(
     })?;
 
     // Build update query
-    let _updates = ["updated_at = NOW()"];
+    let _updates = ["updated_at = datetime('now')"];
     let mut params = vec![];
 
     if payload.webhook_url.is_some() {
@@ -436,7 +436,7 @@ pub async fn update_endpoint(
 
     if let Some(url) = &payload.webhook_url {
         sqlx::query!(
-            "UPDATE endpoints SET webhook_url = $1 WHERE id = $2",
+            "UPDATE endpoints SET webhook_url = ? WHERE id = ?",
             url,
             endpoint_id
         )
@@ -454,7 +454,7 @@ pub async fn update_endpoint(
 
     if let Some(desc) = &payload.description {
         sqlx::query!(
-            "UPDATE endpoints SET description = $1 WHERE id = $2",
+            "UPDATE endpoints SET description = ? WHERE id = ?",
             desc,
             endpoint_id
         )
@@ -472,7 +472,7 @@ pub async fn update_endpoint(
 
     if let Some(chain_ids) = &payload.chain_ids {
         sqlx::query!(
-            "UPDATE endpoints SET chain_ids = $1 WHERE id = $2",
+            "UPDATE endpoints SET chain_ids = ? WHERE id = ?",
             chain_ids,
             endpoint_id
         )
@@ -490,7 +490,7 @@ pub async fn update_endpoint(
 
     if let Some(addrs) = &payload.contract_addresses {
         sqlx::query!(
-            "UPDATE endpoints SET contract_addresses = $1 WHERE id = $2",
+            "UPDATE endpoints SET contract_addresses = ? WHERE id = ?",
             addrs,
             endpoint_id
         )
@@ -508,7 +508,7 @@ pub async fn update_endpoint(
 
     if let Some(sigs) = &payload.event_signatures {
         sqlx::query!(
-            "UPDATE endpoints SET event_signatures = $1 WHERE id = $2",
+            "UPDATE endpoints SET event_signatures = ? WHERE id = ?",
             sigs,
             endpoint_id
         )
@@ -526,7 +526,7 @@ pub async fn update_endpoint(
 
     if let Some(active) = payload.is_active {
         sqlx::query!(
-            "UPDATE endpoints SET is_active = $1 WHERE id = $2",
+            "UPDATE endpoints SET is_active = ? WHERE id = ?",
             active,
             endpoint_id
         )
@@ -544,7 +544,7 @@ pub async fn update_endpoint(
 
     // Update timestamp
     sqlx::query!(
-        "UPDATE endpoints SET updated_at = NOW() WHERE id = $1",
+        "UPDATE endpoints SET updated_at = datetime('now') WHERE id = ?",
         endpoint_id
     )
     .execute(&mut *tx)
@@ -573,16 +573,16 @@ pub async fn update_endpoint(
 
 /// Delete an endpoint
 pub async fn delete_endpoint(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(endpoint_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     let result = sqlx::query!(
         r#"
         DELETE FROM endpoints
-        WHERE id = $1
+        WHERE id = ?
         AND application_id IN (
-            SELECT id FROM applications WHERE user_id = $2
+            SELECT id FROM applications WHERE user_id = ?
         )
         "#,
         endpoint_id,
@@ -613,7 +613,7 @@ pub async fn delete_endpoint(
 
 /// Regenerate HMAC secret for an endpoint
 pub async fn regenerate_hmac_secret(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(endpoint_id): Path<Uuid>,
 ) -> Result<Json<EndpointResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -623,10 +623,10 @@ pub async fn regenerate_hmac_secret(
     let endpoint = sqlx::query!(
         r#"
         UPDATE endpoints
-        SET hmac_secret = $1, updated_at = NOW()
-        WHERE id = $2
+        SET hmac_secret = ?, updated_at = datetime('now')
+        WHERE id = ?
         AND application_id IN (
-            SELECT id FROM applications WHERE user_id = $3
+            SELECT id FROM applications WHERE user_id = ?
         )
         RETURNING id, application_id, name, webhook_url, description, hmac_secret,
                   chain_ids, contract_addresses, event_signatures,

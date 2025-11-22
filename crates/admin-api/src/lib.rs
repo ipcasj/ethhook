@@ -87,10 +87,10 @@ pub use config::Config;
 pub use state::AppState;
 
 use axum::Router;
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 
 /// Create a test router for integration tests
-pub fn create_test_router(pool: PgPool) -> Router {
+pub fn create_test_router(pool: SqlitePool) -> Router {
     use axum::{
         Router,
         routing::{delete, get, post, put},

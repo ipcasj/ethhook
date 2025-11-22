@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -56,7 +56,7 @@ pub struct ApplicationListResponse {
 
 /// Create a new application
 pub async fn create_application(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Json(payload): Json<CreateApplicationRequest>,
 ) -> Result<(StatusCode, Json<ApplicationResponse>), (StatusCode, Json<ErrorResponse>)> {
@@ -78,7 +78,7 @@ pub async fn create_application(
     let app = sqlx::query!(
         r#"
         INSERT INTO applications (user_id, name, description, api_key, webhook_secret)
-        VALUES ($1, $2, $3, $4, $5)
+        VALUES (?, ?, ?, ?, ?)
         RETURNING id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         "#,
         auth_user.user_id,
@@ -116,7 +116,7 @@ pub async fn create_application(
 
 /// List all applications for the authenticated user
 pub async fn list_applications(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
 ) -> Result<Json<ApplicationListResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Get applications
@@ -124,7 +124,7 @@ pub async fn list_applications(
         r#"
         SELECT id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         FROM applications
-        WHERE user_id = $1
+        WHERE user_id = ?
         ORDER BY created_at DESC
         "#,
         auth_user.user_id
@@ -164,7 +164,7 @@ pub async fn list_applications(
 
 /// Get a specific application
 pub async fn get_application(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<Json<ApplicationResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -172,7 +172,7 @@ pub async fn get_application(
         r#"
         SELECT id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         FROM applications
-        WHERE id = $1 AND user_id = $2
+        WHERE id = ? AND user_id = ?
         "#,
         app_id,
         auth_user.user_id
@@ -211,7 +211,7 @@ pub async fn get_application(
 
 /// Update an application
 pub async fn update_application(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
     Json(payload): Json<UpdateApplicationRequest>,
@@ -228,7 +228,7 @@ pub async fn update_application(
 
     // Check if application exists and belongs to user
     let _existing = sqlx::query!(
-        "SELECT id FROM applications WHERE id = $1 AND user_id = $2",
+        "SELECT id FROM applications WHERE id = ? AND user_id = ?",
         app_id,
         auth_user.user_id
     )
@@ -252,7 +252,7 @@ pub async fn update_application(
     })?;
 
     // Build update query dynamically
-    let mut query = String::from("UPDATE applications SET updated_at = NOW()");
+    let mut query = String::from("UPDATE applications SET updated_at = datetime('now')");
     let mut params: Vec<String> = vec![];
 
     if let Some(name) = &payload.name {
@@ -317,12 +317,12 @@ pub async fn update_application(
 
 /// Delete an application
 pub async fn delete_application(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
     let result = sqlx::query!(
-        "DELETE FROM applications WHERE id = $1 AND user_id = $2",
+        "DELETE FROM applications WHERE id = ? AND user_id = ?",
         app_id,
         auth_user.user_id
     )
@@ -351,7 +351,7 @@ pub async fn delete_application(
 
 /// Regenerate API key for an application
 pub async fn regenerate_api_key(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<Json<ApplicationResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -361,8 +361,8 @@ pub async fn regenerate_api_key(
     let app = sqlx::query!(
         r#"
         UPDATE applications
-        SET api_key = $1, updated_at = NOW()
-        WHERE id = $2 AND user_id = $3
+        SET api_key = ?, updated_at = datetime('now')
+        WHERE id = ? AND user_id = ?
         RETURNING id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         "#,
         new_api_key,

@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use std::env;
 
 #[tokio::main]
@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Setting admin status for: {email}");
 
     let result = sqlx::query!(
-        "UPDATE users SET is_admin = true WHERE email = $1 RETURNING id, email, is_admin",
+        "UPDATE users SET is_admin = true WHERE email = ? RETURNING id, email, is_admin",
         email
     )
     .fetch_one(&pool)

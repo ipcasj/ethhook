@@ -1,5 +1,5 @@
 use bcrypt::{DEFAULT_COST, hash};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Resetting password for admin@ethhook.io...");
 
-    sqlx::query("UPDATE users SET password_hash = $1 WHERE email = 'admin@ethhook.io'")
+    sqlx::query("UPDATE users SET password_hash = ? WHERE email = 'admin@ethhook.io'")
         .bind(password_hash)
         .execute(&pool)
         .await?;

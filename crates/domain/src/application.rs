@@ -6,7 +6,9 @@ use validator::Validate;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct Application {
+    #[cfg_attr(feature = "sqlx", sqlx(try_from = "String"))]
     pub id: Uuid,
+    #[cfg_attr(feature = "sqlx", sqlx(try_from = "String"))]
     pub user_id: Uuid,
     pub name: String,
     pub description: Option<String>,

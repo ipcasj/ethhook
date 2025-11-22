@@ -1,0 +1,14 @@
+FROM alpine:3.18 AS builder
+RUN apk add --no-cache build-base cmake libuv-dev postgresql-dev openssl-dev
+WORKDIR /build
+COPY . .
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build --target admin-api -j$(nproc)
+
+FROM alpine:3.18
+RUN apk add --no-cache libuv postgresql-libs openssl && \
+    addgroup -g 1000 ethhook && adduser -D -u 1000 -G ethhook ethhook
+COPY --from=builder /build/build/bin/admin-api /usr/local/bin/
+USER ethhook
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/admin-api"]

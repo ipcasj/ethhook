@@ -29,7 +29,7 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use jsonwebtoken::{DecodingKey, Validation, decode};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
@@ -386,13 +386,13 @@ async fn handle_stats_socket(socket: WebSocket, user_id: Uuid, state: AppState) 
 }
 
 /// Fetch latest dashboard statistics
-async fn fetch_dashboard_stats(pool: &PgPool) -> Result<(i64, i64, f64, i64), sqlx::Error> {
+async fn fetch_dashboard_stats(pool: &SqlitePool) -> Result<(i64, i64, f64, i64), sqlx::Error> {
     let events_total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events")
         .fetch_one(pool)
         .await?;
 
     let events_24h: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM events WHERE ingested_at > NOW() - INTERVAL '24 hours'",
+        "SELECT COUNT(*) FROM events WHERE ingested_at > datetime('now') - INTERVAL '24 hours'",
     )
     .fetch_one(pool)
     .await?;

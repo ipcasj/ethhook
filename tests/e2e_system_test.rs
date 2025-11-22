@@ -19,7 +19,7 @@
  * Expected runtime: ~10-15 seconds
  */
 
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use std::process::{Child, Command};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
@@ -78,7 +78,7 @@ fn stop_service(mut child: Child, name: &str) {
 }
 
 // Helper: Create test user
-async fn create_test_user(pool: &PgPool) -> Uuid {
+async fn create_test_user(pool: &SqlitePool) -> Uuid {
     let user_id = Uuid::new_v4();
     sqlx::query(
         "INSERT INTO users (id, email, password_hash)
@@ -94,7 +94,7 @@ async fn create_test_user(pool: &PgPool) -> Uuid {
 }
 
 // Helper: Create test application
-async fn create_test_application(pool: &PgPool, user_id: Uuid) -> Uuid {
+async fn create_test_application(pool: &SqlitePool, user_id: Uuid) -> Uuid {
     let app_id = Uuid::new_v4();
     sqlx::query(
         "INSERT INTO applications (id, user_id, name, description, webhook_secret)
@@ -113,7 +113,7 @@ async fn create_test_application(pool: &PgPool, user_id: Uuid) -> Uuid {
 
 // Helper: Create test endpoint
 async fn create_test_endpoint(
-    pool: &PgPool,
+    pool: &SqlitePool,
     application_id: Uuid,
     url: &str,
     contract: &str,

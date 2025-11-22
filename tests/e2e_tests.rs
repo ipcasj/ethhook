@@ -33,7 +33,7 @@
 use chrono::Utc;
 use redis::RedisError;
 use serial_test::serial;
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use std::process::{Child, Command};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
@@ -207,7 +207,7 @@ async fn create_test_pool() -> PgPool {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://ethhook:password@localhost:5432/ethhook".to_string());
 
-    sqlx::postgres::PgPoolOptions::new()
+    sqlx::sqlite::PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
         .await
@@ -227,7 +227,7 @@ async fn create_redis_client() -> redis::aio::MultiplexedConnection {
 }
 
 /// Helper: Create test user
-async fn create_test_user(pool: &PgPool, test_name: &str) -> Uuid {
+async fn create_test_user(pool: &SqlitePool, test_name: &str) -> Uuid {
     let user_id = Uuid::new_v4();
 
     sqlx::query(
@@ -245,7 +245,7 @@ async fn create_test_user(pool: &PgPool, test_name: &str) -> Uuid {
 }
 
 /// Helper: Create test application
-async fn create_test_application(pool: &PgPool, user_id: Uuid, test_name: &str) -> Uuid {
+async fn create_test_application(pool: &SqlitePool, user_id: Uuid, test_name: &str) -> Uuid {
     let app_id = Uuid::new_v4();
 
     sqlx::query(
@@ -266,7 +266,7 @@ async fn create_test_application(pool: &PgPool, user_id: Uuid, test_name: &str) 
 
 /// Helper: Create test endpoint
 async fn create_test_endpoint(
-    pool: &PgPool,
+    pool: &SqlitePool,
     application_id: Uuid,
     url: String,
     contract: Option<&str>,
@@ -308,7 +308,7 @@ async fn create_test_endpoint(
 }
 
 /// Helper: Cleanup test data
-async fn cleanup_test_data(pool: &PgPool, user_id: Uuid) {
+async fn cleanup_test_data(pool: &SqlitePool, user_id: Uuid) {
     let _ = sqlx::query("DELETE FROM users WHERE id = $1")
         .bind(user_id)
         .execute(pool)

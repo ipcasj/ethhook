@@ -1,6 +1,6 @@
 use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 use tracing::{debug, error};
 use uuid::Uuid;
 use validator::Validate;
@@ -60,7 +60,7 @@ pub struct ErrorResponse {
 
 /// Register a new user
 pub async fn register(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     State(config): State<Config>,
     Json(payload): Json<RegisterRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -93,7 +93,7 @@ pub async fn register(
     let user = sqlx::query!(
         r#"
         INSERT INTO users (email, password_hash, name)
-        VALUES ($1, $2, $3)
+        VALUES (?, ?, ?)
         RETURNING id, email, name, is_admin, created_at
         "#,
         payload.email,
@@ -153,7 +153,7 @@ pub async fn register(
 
 /// Login user
 pub async fn login(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     State(config): State<Config>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<AuthResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -172,7 +172,7 @@ pub async fn login(
         r#"
         SELECT id, email, name, password_hash, is_admin, created_at
         FROM users
-        WHERE email = $1
+        WHERE email = ?
         "#,
         payload.email
     )
@@ -245,14 +245,14 @@ pub async fn login(
 
 /// Get user profile
 pub async fn get_profile(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<ErrorResponse>)> {
     let user = sqlx::query!(
         r#"
         SELECT id, email, name, is_admin, created_at
         FROM users
-        WHERE id = $1
+        WHERE id = ?
         "#,
         auth_user.user_id
     )
@@ -285,7 +285,7 @@ pub struct UpdateProfileRequest {
 
 /// Update user profile
 pub async fn update_profile(
-    State(pool): State<PgPool>,
+    State(pool): State<SqlitePool>,
     auth_user: AuthUser,
     Json(payload): Json<UpdateProfileRequest>,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<ErrorResponse>)> {
@@ -312,8 +312,8 @@ pub async fn update_profile(
     let user = sqlx::query!(
         r#"
         UPDATE users
-        SET name = $1, updated_at = NOW()
-        WHERE id = $2
+        SET name = ?, updated_at = datetime('now')
+        WHERE id = ?
         RETURNING id, email, name, is_admin, created_at
         "#,
         name,

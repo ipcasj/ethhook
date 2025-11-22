@@ -6,6 +6,7 @@ use validator::Validate;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
 pub struct User {
+    #[cfg_attr(feature = "sqlx", sqlx(try_from = "String"))]
     pub id: Uuid,
     pub email: String,
     pub password_hash: String,

@@ -1,4 +1,3 @@
 [env]
-# Enable SQLx offline mode by default
-# This allows compilation without a database connection
-SQLX_OFFLINE = "true"
+# SQLite doesn't need offline mode (local file, always available)
+# SQLX_OFFLINE = "false"

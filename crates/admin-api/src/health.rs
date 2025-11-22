@@ -1,9 +1,9 @@
 use axum::Json;
 use serde_json::{json, Value};
-use sqlx::PgPool;
+use sqlx::SqlitePool;
 
 /// Health check endpoint with database connectivity test
-pub async fn health_check(pool: axum::extract::State<PgPool>) -> Json<Value> {
+pub async fn health_check(pool: axum::extract::State<SqlitePool>) -> Json<Value> {
     // Test database connection
     let db_healthy = sqlx::query("SELECT 1")
         .fetch_optional(&*pool)
@@ -24,7 +24,7 @@ pub async fn health_check(pool: axum::extract::State<PgPool>) -> Json<Value> {
 }
 
 /// Readiness probe - checks if service is ready to accept traffic
-pub async fn readiness_check(pool: axum::extract::State<PgPool>) -> Json<Value> {
+pub async fn readiness_check(pool: axum::extract::State<SqlitePool>) -> Json<Value> {
     let db_ready = sqlx::query("SELECT 1")
         .fetch_optional(&*pool)
         .await
