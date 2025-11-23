@@ -554,7 +554,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    
+
     strategy:
       fail-fast: false
       matrix:
@@ -577,7 +577,7 @@ jobs:
           - name: demo-receiver
             dockerfile: demo-webhook-receiver/Dockerfile
             context: ./demo-webhook-receiver
-    
+
     steps:
       - uses: actions/checkout@v4
 

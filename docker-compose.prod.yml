@@ -11,8 +11,8 @@ services:
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     ports:
-      - "8123:8123"  # HTTP interface
-      - "9000:9000"  # Native interface
+      - "8123:8123" # HTTP interface
+      - "9000:9000" # Native interface
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse-init:/docker-entrypoint-initdb.d
@@ -209,8 +209,8 @@ networks:
     driver: bridge
 
 volumes:
-  clickhouse_data:  # ClickHouse database for events/deliveries
-  pipeline_data:    # SQLite database for pipeline config
-  admin_data:       # SQLite database for admin-api config
+  clickhouse_data: # ClickHouse database for events/deliveries
+  pipeline_data: # SQLite database for pipeline config
+  admin_data: # SQLite database for admin-api config
   prometheus_data:
   grafana_data:

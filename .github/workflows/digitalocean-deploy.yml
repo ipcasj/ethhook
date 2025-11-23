@@ -9,8 +9,8 @@ name: Production Deployment
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:  # Allow manual deployment
+    branches: [main]
+  workflow_dispatch: # Allow manual deployment
 
 jobs:
   deploy:
@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,25 +27,25 @@ jobs:
       - name: Validate Required Secrets
         run: |
           echo "🔍 Validating GitHub secrets configuration..."
-          
+
           if [ -z "${{ secrets.DROPLET_HOST }}" ]; then
             echo "❌ ERROR: DROPLET_HOST secret is not set!"
             echo "Please configure at: https://github.com/${{ github.repository }}/settings/secrets/actions"
             exit 1
           fi
-          
+
           if [ -z "${{ secrets.DROPLET_USER }}" ]; then
             echo "❌ ERROR: DROPLET_USER secret is not set!"
             echo "Please configure at: https://github.com/${{ github.repository }}/settings/secrets/actions"
             exit 1
           fi
-          
+
           if [ -z "${{ secrets.DROPLET_SSH_KEY }}" ]; then
             echo "❌ ERROR: DROPLET_SSH_KEY secret is not set!"
             echo "Please configure at: https://github.com/${{ github.repository }}/settings/secrets/actions"
             exit 1
           fi
-          
+
           echo "✅ All required secrets are configured"
           echo "   - DROPLET_HOST: ${{ secrets.DROPLET_HOST }}"
           echo "   - DROPLET_USER: ${{ secrets.DROPLET_USER }}"
@@ -59,7 +59,7 @@ jobs:
           echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           echo "✓ SSH key written and permissions set"
-          
+
           # Add host key to known_hosts (allow ssh-keyscan to fail gracefully)
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
           echo "✓ Host key added to known_hosts"
@@ -69,7 +69,7 @@ jobs:
           # Retry SSH connection up to 3 times with exponential backoff
           MAX_RETRIES=3
           RETRY_COUNT=0
-          
+
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             echo "🔗 SSH connection attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
             
@@ -145,15 +145,15 @@ jobs:
               fi
             fi
           done
-      
+
       - name: Health Check
         run: |
           echo "🏥 Running health checks..."
-          
+
           # Check API health endpoint (admin-api runs on port 3000)
           max_attempts=10
           attempt=1
-          
+
           while [ $attempt -le $max_attempts ]; do
             echo "Attempt $attempt/$max_attempts: Checking API health..."
             
@@ -171,7 +171,7 @@ jobs:
             sleep 10
             attempt=$((attempt + 1))
           done
-          
+
           # Check UI is accessible (UI runs on port 3002)
           echo "Checking UI accessibility..."
           if curl -f -s "http://${{ secrets.DROPLET_HOST }}:3002/" > /dev/null; then
@@ -179,12 +179,12 @@ jobs:
           else
             echo "⚠️  UI health check failed (this may be OK if UI is still starting)"
           fi
-      
+
       - name: Cleanup
         if: always()
         run: |
           rm -f ~/.ssh/deploy_key
-      
+
       - name: Deployment Summary
         if: success()
         run: |
@@ -196,7 +196,7 @@ jobs:
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "All services are running and healthy ✅" >> $GITHUB_STEP_SUMMARY
-      
+
       - name: Notify on Failure
         if: failure()
         run: |
@@ -211,7 +211,7 @@ jobs:
     runs-on: ubuntu-latest
     if: failure() && github.event_name == 'workflow_dispatch'
     needs: deploy
-    
+
     steps:
       - name: Setup SSH key
         run: |
@@ -221,11 +221,11 @@ jobs:
           echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           echo "✓ SSH key written and permissions set"
-          
+
           # Add host key to known_hosts (allow ssh-keyscan to fail gracefully)
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
           echo "✓ Host key added to known_hosts"
-      
+
       - name: Rollback to previous version
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'ENDSSH'
@@ -243,7 +243,7 @@ jobs:
             
             echo "✅ Rollback complete!"
           ENDSSH
-      
+
       - name: Cleanup
         if: always()
         run: |
