@@ -29,6 +29,7 @@ tower-http = { version = "0.6", features = ["trace", "timeout"] }
 
 # Database (async SQLite - lightweight, embedded)
 sqlx = { version = "0.8.6", features = ["runtime-tokio-native-tls", "sqlite", "chrono", "uuid", "migrate"] }
+clickhouse = { workspace = true }
 
 # In-memory caching (hot path: zero DB queries)
 dashmap = "6.1"

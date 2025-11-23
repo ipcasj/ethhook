@@ -8,6 +8,14 @@ use validator::Validate;
 use crate::auth::{AuthUser, generate_token, hash_password, verify_password};
 use crate::config::Config;
 
+/// Helper to parse SQLite datetime string
+fn parse_sqlite_datetime(s: &str) -> chrono::DateTime<chrono::Utc> {
+    chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+        .ok()
+        .and_then(|dt| dt.and_local_timezone(chrono::Utc).single())
+        .unwrap_or_else(chrono::Utc::now)
+}
+
 /// Request to register a new user
 #[derive(Debug, Deserialize, Validate)]
 pub struct RegisterRequest {
@@ -92,9 +100,9 @@ pub async fn register(
     );
     let user = sqlx::query!(
         r#"
-        INSERT INTO users (email, password_hash, name)
+        INSERT INTO users (email, password_hash, full_name)
         VALUES (?, ?, ?)
-        RETURNING id, email, name, is_admin, created_at
+        RETURNING id, email, full_name as name, is_admin, created_at
         "#,
         payload.email,
         password_hash,
@@ -120,11 +128,19 @@ pub async fn register(
         )
     })?;
 
+    let user_id = user.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null user ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
+    )))?;
+
     // Generate JWT token
     let token = generate_token(
-        user.id,
+        user_id,
         user.email.clone(),
-        user.is_admin.unwrap_or(false),
+        user.is_admin != 0,
         &config.jwt_secret,
         config.jwt_expiration_hours,
     )
@@ -141,11 +157,11 @@ pub async fn register(
 
     Ok(Json(AuthResponse {
         user: UserResponse {
-            id: user.id,
+            id: user_id,
             email: user.email.clone(),
             name: user.name.unwrap_or_default(),
-            is_admin: user.is_admin.unwrap_or(false),
-            created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
+            is_admin: user.is_admin != 0,
+            created_at: parse_sqlite_datetime(&user.created_at),
         },
         token,
     }))
@@ -170,7 +186,7 @@ pub async fn login(
     // Find user by email
     let user = sqlx::query!(
         r#"
-        SELECT id, email, name, password_hash, is_admin, created_at
+        SELECT id, email, full_name as name, password_hash, is_admin, created_at
         FROM users
         WHERE email = ?
         "#,
@@ -212,11 +228,19 @@ pub async fn login(
         ));
     }
 
+    let user_id = user.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null user ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
+    )))?;
+
     // Generate JWT token
     let token = generate_token(
-        user.id,
+        user_id,
         user.email.clone(),
-        user.is_admin.unwrap_or(false),
+        user.is_admin != 0,
         &config.jwt_secret,
         config.jwt_expiration_hours,
     )
@@ -233,11 +257,11 @@ pub async fn login(
 
     Ok(Json(AuthResponse {
         user: UserResponse {
-            id: user.id,
-            email: user.email,
+            id: user_id,
+            email: user.email.clone(),
             name: user.name.unwrap_or_default(),
-            is_admin: user.is_admin.unwrap_or(false),
-            created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
+            is_admin: user.is_admin != 0,
+            created_at: parse_sqlite_datetime(&user.created_at),
         },
         token,
     }))
@@ -250,7 +274,7 @@ pub async fn get_profile(
 ) -> Result<Json<UserResponse>, (StatusCode, Json<ErrorResponse>)> {
     let user = sqlx::query!(
         r#"
-        SELECT id, email, name, is_admin, created_at
+        SELECT id, email, full_name as name, is_admin, created_at
         FROM users
         WHERE id = ?
         "#,
@@ -267,16 +291,24 @@ pub async fn get_profile(
         )
     })?;
 
+    let user_id = user.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null user ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
+    )))?;
+
     Ok(Json(UserResponse {
-        id: user.id,
+        id: user_id,
         email: user.email,
         name: user.name.unwrap_or_default(),
-        is_admin: user.is_admin.unwrap_or(false),
-        created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
+        is_admin: user.is_admin != 0,
+        created_at: parse_sqlite_datetime(&user.created_at),
     }))
 }
 
-/// Request to update user profile
+/// Update user profile
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateProfileRequest {
     #[validate(length(min = 1, message = "Name cannot be empty"))]
@@ -312,9 +344,9 @@ pub async fn update_profile(
     let user = sqlx::query!(
         r#"
         UPDATE users
-        SET name = ?, updated_at = datetime('now')
+        SET full_name = ?, updated_at = datetime('now')
         WHERE id = ?
-        RETURNING id, email, name, is_admin, created_at
+        RETURNING id, email, full_name as name, is_admin, created_at
         "#,
         name,
         auth_user.user_id
@@ -330,11 +362,19 @@ pub async fn update_profile(
         )
     })?;
 
+    let user_id = user.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null user ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
+    )))?;
+
     Ok(Json(UserResponse {
-        id: user.id,
+        id: user_id,
         email: user.email,
         name: user.name.unwrap_or_default(),
-        is_admin: user.is_admin.unwrap_or(false),
-        created_at: user.created_at.unwrap_or_else(chrono::Utc::now),
+        is_admin: user.is_admin != 0,
+        created_at: parse_sqlite_datetime(&user.created_at),
     }))
 }

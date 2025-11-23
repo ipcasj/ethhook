@@ -1,6 +1,32 @@
 services:
   # =============================================================================
-  # APPLICATION SERVICES (Zero infrastructure - SQLite + SSE)
+  # DATA STORAGE (ClickHouse for events, SQLite for config)
+  # =============================================================================
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: ethhook-clickhouse
+    environment:
+      - CLICKHOUSE_DB=ethhook
+      - CLICKHOUSE_USER=ethhook
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9000:9000"  # Native interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-init:/docker-entrypoint-initdb.d
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # =============================================================================
+  # APPLICATION SERVICES
   # =============================================================================
   # Pipeline: Unified service (WebSocket + batch processing + delivery)
   pipeline:
@@ -13,6 +39,10 @@ services:
     environment:
       - RUST_LOG=info
       - CONFIG_DB_PATH=sqlite:/data/config.db
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_USER=ethhook
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_DATABASE=ethhook
       - ETHEREUM_WS_URL=${ETHEREUM_WS_URL}
       - ARBITRUM_WS_URL=${ARBITRUM_WS_URL}
       - OPTIMISM_WS_URL=${OPTIMISM_WS_URL}
@@ -28,6 +58,9 @@ services:
       - pipeline_data:/data
     networks:
       - ethhook-network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -47,6 +80,10 @@ services:
       - RUST_LOG=info
       - DATABASE_URL=sqlite:/data/config.db
       - DATABASE_MAX_CONNECTIONS=5
+      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_USER=ethhook
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_DATABASE=ethhook
       - JWT_SECRET=${JWT_SECRET}
       - PORT=3000
       - ENVIRONMENT=production
@@ -56,6 +93,9 @@ services:
       - admin_data:/data
     networks:
       - ethhook-network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
@@ -169,7 +209,8 @@ networks:
     driver: bridge
 
 volumes:
-  pipeline_data:  # SQLite database for pipeline
-  admin_data:     # SQLite database for admin-api
+  clickhouse_data:  # ClickHouse database for events/deliveries
+  pipeline_data:    # SQLite database for pipeline config
+  admin_data:       # SQLite database for admin-api config
   prometheus_data:
   grafana_data:

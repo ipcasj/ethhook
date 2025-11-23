@@ -12,6 +12,7 @@
 
 // Module declarations
 pub mod auth;
+pub mod clickhouse;
 pub mod db;
 pub mod error;
 pub mod logging;
@@ -19,6 +20,7 @@ pub mod types;
 
 // Re-export commonly used types
 pub use auth::{create_jwt, hash_password, sign_hmac, verify_hmac, verify_jwt, verify_password};
+pub use clickhouse::ClickHouseClient;
 pub use db::create_pool;
 pub use error::{Error, Result};
 pub use logging::init_tracing;

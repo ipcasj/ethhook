@@ -5,12 +5,14 @@
  */
 
 use crate::config::Config;
+use ethhook_common::ClickHouseClient;
 use sqlx::SqlitePool;
 
 /// Application state shared across handlers
 #[derive(Clone)]
 pub struct AppState {
     pub pool: SqlitePool,
+    pub clickhouse: ClickHouseClient,
     pub config: Config,
 }
 

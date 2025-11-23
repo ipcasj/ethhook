@@ -65,12 +65,17 @@ async fn main() -> Result<()> {
         }
     }
 
+    // Initialize ClickHouse client
+    let clickhouse = ethhook_common::ClickHouseClient::from_env()
+        .map_err(|e| anyhow::anyhow!("Failed to initialize ClickHouse client: {}", e))?;
+    info!("ClickHouse client initialized");
+
     // Spawn background task for SSE stats broadcasting
     tokio::spawn(handlers::sse::stats_broadcaster_task(pool.clone()));
     info!("SSE stats broadcaster task started");
 
     // Build application router
-    let app = create_router(pool.clone(), config.clone());
+    let app = create_router(pool.clone(), clickhouse, config.clone());
 
     // Create metrics router (separate server on port 9090)
     let metrics_app = Router::new().route("/metrics", get(metrics_handler));
@@ -101,7 +106,7 @@ async fn main() -> Result<()> {
 }
 
 /// Create the application router with all routes and middleware
-fn create_router(pool: sqlx::SqlitePool, config: Config) -> Router {
+fn create_router(pool: sqlx::SqlitePool, clickhouse: ethhook_common::ClickHouseClient, config: Config) -> Router {
     // Build CORS layer based on configuration
     let cors = if config.cors_allowed_origins.contains(&"*".to_string()) {
         // Allow all origins in development
@@ -129,7 +134,7 @@ fn create_router(pool: sqlx::SqlitePool, config: Config) -> Router {
             .allow_credentials(true)
     };
 
-    let state = AppState { pool, config };
+    let state = AppState { pool, clickhouse, config };
 
     // Public routes (no authentication required)
     let public_routes = Router::new()
@@ -239,11 +244,9 @@ fn create_router(pool: sqlx::SqlitePool, config: Config) -> Router {
         )
         .layer(axum::middleware::from_fn(auth::inject_jwt_secret));
 
-    // WebSocket routes (authentication via query param) - DEPRECATED
-    let websocket_routes = Router::new()
-        .route("/ws/events", get(handlers::websocket::ws_events_handler))
-        .route("/ws/stats", get(handlers::websocket::ws_stats_handler))
-        .with_state(state.clone());
+    // WebSocket routes REMOVED - replaced with SSE (see sse_routes below)
+    // Old: /ws/events, /ws/stats
+    // New: /api/v1/events/stream, /api/v1/stats/stream
 
     // Server-Sent Events (SSE) routes (authentication via Bearer token)
     let sse_routes = Router::new()
@@ -256,7 +259,6 @@ fn create_router(pool: sqlx::SqlitePool, config: Config) -> Router {
         .merge(public_routes)
         .merge(protected_routes)
         .merge(sse_routes)
-        .merge(websocket_routes)
         .with_state(state);
 
     // Build application with middleware

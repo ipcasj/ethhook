@@ -30,22 +30,18 @@
 
 use axum::{
     extract::State,
-    headers::{authorization::Bearer, Authorization},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{
         sse::{Event, KeepAlive, Sse},
         IntoResponse,
     },
-    TypedHeader,
 };
-use futures::stream::Stream;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, time::Duration};
 use tokio::sync::broadcast;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use tracing::{debug, info, warn};
-use uuid::Uuid;
 
 use crate::{auth::Claims, AppState};
 
@@ -116,11 +112,18 @@ pub static EVENT_BROADCASTER: once_cell::sync::Lazy<broadcast::Sender<SseMessage
  */
 pub async fn events_stream(
     State(state): State<AppState>,
-    TypedHeader(Authorization(bearer)): TypedHeader<Authorization<Bearer>>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, StatusCode> {
+    // Extract Bearer token from Authorization header
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
     // Validate JWT token
     let claims = decode::<Claims>(
-        bearer.token(),
+        token,
         &DecodingKey::from_secret(state.config.jwt_secret.as_ref()),
         &Validation::default(),
     )
@@ -129,10 +132,7 @@ pub async fn events_stream(
         StatusCode::UNAUTHORIZED
     })?;
 
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
-        warn!("Invalid user_id in JWT: {}", e);
-        StatusCode::UNAUTHORIZED
-    })?;
+    let user_id = claims.claims.sub;
 
     info!("SSE events stream: user_id={}", user_id);
 
@@ -145,11 +145,10 @@ pub async fn events_stream(
         Ok(msg) => Some(Ok::<Event, Infallible>(
             Event::default().json_data(msg).unwrap(),
         )),
-        Err(broadcast::error::RecvError::Lagged(n)) => {
+        Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(n)) => {
             warn!("SSE client lagged by {} messages", n);
             None
         }
-        Err(broadcast::error::RecvError::Closed) => None,
     });
 
     // Add heartbeat every 30 seconds
@@ -183,11 +182,18 @@ pub async fn events_stream(
  */
 pub async fn stats_stream(
     State(state): State<AppState>,
-    TypedHeader(Authorization(bearer)): TypedHeader<Authorization<Bearer>>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, StatusCode> {
+    // Extract Bearer token from Authorization header
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
     // Validate JWT token
     let claims = decode::<Claims>(
-        bearer.token(),
+        token,
         &DecodingKey::from_secret(state.config.jwt_secret.as_ref()),
         &Validation::default(),
     )
@@ -196,10 +202,7 @@ pub async fn stats_stream(
         StatusCode::UNAUTHORIZED
     })?;
 
-    let user_id = Uuid::parse_str(&claims.sub).map_err(|e| {
-        warn!("Invalid user_id in JWT: {}", e);
-        StatusCode::UNAUTHORIZED
-    })?;
+    let user_id = claims.claims.sub;
 
     info!("SSE stats stream: user_id={}", user_id);
 
@@ -215,11 +218,10 @@ pub async fn stats_stream(
             )),
             _ => None,
         },
-        Err(broadcast::error::RecvError::Lagged(n)) => {
+        Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(n)) => {
             warn!("SSE stats client lagged by {} messages", n);
             None
         }
-        Err(broadcast::error::RecvError::Closed) => None,
     });
 
     // Add heartbeat every 30 seconds
@@ -295,7 +297,7 @@ struct CurrentStats {
     active_endpoints: i32,
 }
 
-async fn get_current_stats(pool: &sqlx::SqlitePool) -> Result<CurrentStats, sqlx::Error> {
+async fn get_current_stats(_pool: &sqlx::SqlitePool) -> Result<CurrentStats, sqlx::Error> {
     // Placeholder - implement actual stats queries
     // This would aggregate from events/endpoints tables
     Ok(CurrentStats {

@@ -11,6 +11,14 @@ use validator::Validate;
 use crate::auth::AuthUser;
 use crate::handlers::users::ErrorResponse;
 
+/// Helper to parse SQLite datetime string to chrono::DateTime<Utc>
+fn parse_sqlite_datetime(s: &str) -> chrono::DateTime<chrono::Utc> {
+    chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+        .ok()
+        .and_then(|dt| dt.and_local_timezone(chrono::Utc).single())
+        .unwrap_or_else(chrono::Utc::now)
+}
+
 /// Request to create a new application
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateApplicationRequest {
@@ -98,18 +106,31 @@ pub async fn create_application(
         )
     })?;
 
+    let id = app.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(&s).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
+    )))?;
+    
+    let user_id = Uuid::parse_str(&app.user_id).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
+    ))?;
+
     Ok((
         StatusCode::CREATED,
         Json(ApplicationResponse {
-            id: app.id,
-            user_id: app.user_id,
+            id,
+            user_id,
             name: app.name,
             description: app.description,
             api_key: app.api_key.unwrap_or_default(),
-            webhook_secret: app.webhook_secret,
-            is_active: app.is_active.unwrap_or(true),
-            created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
-            updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
+            webhook_secret: app.webhook_secret.unwrap_or_default(),
+            is_active: app.is_active != 0,
+            created_at: parse_sqlite_datetime(&app.created_at),
+            updated_at: parse_sqlite_datetime(&app.updated_at),
         }),
     ))
 }
@@ -140,21 +161,26 @@ pub async fn list_applications(
         )
     })?;
 
-    let total = apps.len() as i64;
-    let applications = apps
+    let applications: Vec<ApplicationResponse> = apps
         .into_iter()
-        .map(|app| ApplicationResponse {
-            id: app.id,
-            user_id: app.user_id,
-            name: app.name,
-            description: app.description,
-            api_key: app.api_key.unwrap_or_default(),
-            webhook_secret: app.webhook_secret,
-            is_active: app.is_active.unwrap_or(true),
-            created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
-            updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
+        .filter_map(|app| {
+            let id = app.id.and_then(|s| Uuid::parse_str(s.as_str()).ok())?;
+            let user_id = Uuid::parse_str(app.user_id.as_str()).ok()?;
+            Some(ApplicationResponse {
+                id,
+                user_id,
+                name: app.name,
+                description: app.description,
+                api_key: app.api_key.unwrap_or_default(),
+                webhook_secret: app.webhook_secret.unwrap_or_default(),
+                is_active: app.is_active != 0,
+                created_at: parse_sqlite_datetime(&app.created_at),
+                updated_at: parse_sqlite_datetime(&app.updated_at),
+            })
         })
         .collect();
+    
+    let total = applications.len() as i64;
 
     Ok(Json(ApplicationListResponse {
         applications,
@@ -196,16 +222,29 @@ pub async fn get_application(
         )
     })?;
 
+    let id = app.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
+    )))?;
+    
+    let user_id = Uuid::parse_str(app.user_id.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
+    ))?;
+
     Ok(Json(ApplicationResponse {
-        id: app.id,
-        user_id: app.user_id,
+        id,
+        user_id,
         name: app.name,
         description: app.description,
         api_key: app.api_key.unwrap_or_default(),
-        webhook_secret: app.webhook_secret,
-        is_active: app.is_active.unwrap_or(true),
-        created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
-        updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
+        webhook_secret: app.webhook_secret.unwrap_or_default(),
+        is_active: app.is_active != 0,
+        created_at: parse_sqlite_datetime(&app.created_at),
+        updated_at: parse_sqlite_datetime(&app.updated_at),
     }))
 }
 
@@ -284,11 +323,11 @@ pub async fn update_application(
             Uuid,
             String,
             Option<String>,
+            Option<String>,
+            String,
+            i64,
             String,
             String,
-            bool,
-            chrono::DateTime<chrono::Utc>,
-            chrono::DateTime<chrono::Utc>,
         ),
     >(&query)
     .fetch_one(&pool)
@@ -307,11 +346,11 @@ pub async fn update_application(
         user_id: app.1,
         name: app.2,
         description: app.3,
-        api_key: app.4,
+        api_key: app.4.unwrap_or_default(),
         webhook_secret: app.5,
-        is_active: app.6,
-        created_at: app.7,
-        updated_at: app.8,
+        is_active: app.6 != 0,
+        created_at: parse_sqlite_datetime(&app.7),
+        updated_at: parse_sqlite_datetime(&app.8),
     }))
 }
 
@@ -388,16 +427,29 @@ pub async fn regenerate_api_key(
         )
     })?;
 
+    let id = app.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
+    )))?;
+    
+    let user_id = Uuid::parse_str(app.user_id.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
+    ))?;
+
     Ok(Json(ApplicationResponse {
-        id: app.id,
-        user_id: app.user_id,
+        id,
+        user_id,
         name: app.name,
         description: app.description,
         api_key: app.api_key.unwrap_or_default(),
-        webhook_secret: app.webhook_secret,
-        is_active: app.is_active.unwrap_or(true),
-        created_at: app.created_at.unwrap_or_else(chrono::Utc::now),
-        updated_at: app.updated_at.unwrap_or_else(chrono::Utc::now),
+        webhook_secret: app.webhook_secret.unwrap_or_default(),
+        is_active: app.is_active != 0,
+        created_at: parse_sqlite_datetime(&app.created_at),
+        updated_at: parse_sqlite_datetime(&app.updated_at),
     }))
 }
 

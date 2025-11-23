@@ -8,12 +8,15 @@ pub struct Config {
     pub server_host: String,
     pub server_port: u16,
 
-    /// Database connection
+    /// Database connection (SQLite for config)
     pub database_url: String,
     pub database_max_connections: u32,
 
-    /// Redis connection (for WebSocket pubsub)
-    pub redis_url: String,
+    /// ClickHouse connection (for events/deliveries)
+    pub clickhouse_url: String,
+    pub clickhouse_user: String,
+    pub clickhouse_password: String,
+    pub clickhouse_database: String,
 
     /// JWT configuration
     pub jwt_secret: String,
@@ -49,8 +52,14 @@ impl Config {
                 .parse()
                 .context("Failed to parse DATABASE_MAX_CONNECTIONS")?,
 
-            redis_url: env::var("REDIS_URL")
-                .unwrap_or_else(|_| "redis://localhost:6379".to_string()),
+            clickhouse_url: env::var("CLICKHOUSE_URL")
+                .unwrap_or_else(|_| "http://localhost:8123".to_string()),
+            clickhouse_user: env::var("CLICKHOUSE_USER")
+                .unwrap_or_else(|_| "default".to_string()),
+            clickhouse_password: env::var("CLICKHOUSE_PASSWORD")
+                .unwrap_or_else(|_| "".to_string()),
+            clickhouse_database: env::var("CLICKHOUSE_DATABASE")
+                .unwrap_or_else(|_| "ethhook".to_string()),
 
             jwt_secret: env::var("JWT_SECRET").context("JWT_SECRET must be set")?,
             jwt_expiration_hours: env::var("JWT_EXPIRATION_HOURS")

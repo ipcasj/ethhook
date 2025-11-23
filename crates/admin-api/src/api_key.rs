@@ -36,7 +36,7 @@ where
         // Get database pool from extensions
         let pool = parts
             .extensions
-            .get::<PgPool>()
+            .get::<SqlitePool>()
             .ok_or(ApiKeyError::InternalError)?;
 
         // Validate API key and get application
@@ -53,13 +53,20 @@ where
         .map_err(|_| ApiKeyError::InternalError)?
         .ok_or(ApiKeyError::InvalidApiKey)?;
 
-        if !app.is_active.unwrap_or(false) {
+        if app.is_active == 0 {
             return Err(ApiKeyError::InactiveApplication);
         }
 
+        let application_id = app.application_id
+            .ok_or(ApiKeyError::InternalError)
+            .and_then(|id| Uuid::parse_str(id.as_str()).map_err(|_| ApiKeyError::InternalError))?;
+        
+        let user_id = Uuid::parse_str(app.user_id.as_str())
+            .map_err(|_| ApiKeyError::InternalError)?;
+
         Ok(ApiKeyAuth {
-            application_id: app.application_id,
-            user_id: app.user_id,
+            application_id,
+            user_id,
         })
     }
 }

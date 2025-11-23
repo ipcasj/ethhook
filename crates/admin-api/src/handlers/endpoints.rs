@@ -11,6 +11,25 @@ use validator::Validate;
 use crate::auth::AuthUser;
 use crate::handlers::users::ErrorResponse;
 
+/// Helper to serialize Vec to JSON string for SQLite
+fn serialize_json<T: serde::Serialize>(data: &[T]) -> String {
+    serde_json::to_string(data).unwrap_or_else(|_| "[]".to_string())
+}
+
+/// Helper to deserialize JSON string from SQLite to Vec
+fn deserialize_json<T: serde::de::DeserializeOwned>(s: Option<&str>) -> Vec<T> {
+    s.and_then(|s| serde_json::from_str(s).ok())
+        .unwrap_or_default()
+}
+
+/// Helper to parse SQLite datetime string
+fn parse_sqlite_datetime(s: &str) -> chrono::DateTime<chrono::Utc> {
+    chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+        .ok()
+        .and_then(|dt| dt.and_local_timezone(chrono::Utc).single())
+        .unwrap_or_else(chrono::Utc::now)
+}
+
 /// Request to create a webhook endpoint
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateEndpointRequest {
@@ -121,6 +140,11 @@ pub async fn create_endpoint(
 
     // Generate HMAC secret
     let hmac_secret = generate_hmac_secret();
+    
+    // Serialize JSON arrays to strings for SQLite storage
+    let chain_ids_json = serialize_json(&payload.chain_ids);
+    let contract_addresses_json = serialize_json(&payload.contract_addresses);
+    let event_signatures_json = serialize_json(&payload.event_signatures);
 
     // Create endpoint
     let endpoint = sqlx::query!(
@@ -139,9 +163,9 @@ pub async fn create_endpoint(
         payload.webhook_url,
         payload.description,
         hmac_secret,
-        &payload.chain_ids,
-        &payload.contract_addresses,
-        &payload.event_signatures
+        chain_ids_json,
+        contract_addresses_json,
+        event_signatures_json
     )
     .fetch_one(&pool)
     .await
@@ -154,21 +178,34 @@ pub async fn create_endpoint(
         )
     })?;
 
+    let id = endpoint.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
+    )))?;
+    
+    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid application_id UUID format".to_string() }),
+    ))?;
+
     Ok((
         StatusCode::CREATED,
         Json(EndpointResponse {
-            id: endpoint.id,
-            application_id: endpoint.application_id,
+            id,
+            application_id,
             name: endpoint.name,
             webhook_url: endpoint.webhook_url,
             description: endpoint.description,
             hmac_secret: endpoint.hmac_secret,
-            chain_ids: endpoint.chain_ids.unwrap_or_default(),
-            contract_addresses: endpoint.contract_addresses.unwrap_or_default(),
-            event_signatures: endpoint.event_signatures.unwrap_or_default(),
-            is_active: endpoint.is_active.unwrap_or(true),
-            created_at: endpoint.created_at.unwrap_or_else(chrono::Utc::now),
-            updated_at: endpoint.updated_at.unwrap_or_else(chrono::Utc::now),
+            chain_ids: deserialize_json(endpoint.chain_ids.as_deref()),
+            contract_addresses: deserialize_json(endpoint.contract_addresses.as_deref()),
+            event_signatures: deserialize_json(endpoint.event_signatures.as_deref()),
+            is_active: endpoint.is_active != 0,
+            created_at: parse_sqlite_datetime(&endpoint.created_at),
+            updated_at: parse_sqlite_datetime(&endpoint.updated_at),
         }),
     ))
 }
@@ -227,24 +264,29 @@ pub async fn list_endpoints(
         )
     })?;
 
-    let total = endpoints.len() as i64;
-    let endpoints = endpoints
+    let endpoints: Vec<EndpointResponse> = endpoints
         .into_iter()
-        .map(|ep| EndpointResponse {
-            id: ep.id,
-            application_id: ep.application_id,
-            name: ep.name,
-            webhook_url: ep.webhook_url,
-            description: ep.description,
-            hmac_secret: ep.hmac_secret,
-            chain_ids: ep.chain_ids.unwrap_or_default(),
-            contract_addresses: ep.contract_addresses.unwrap_or_default(),
-            event_signatures: ep.event_signatures.unwrap_or_default(),
-            is_active: ep.is_active.unwrap_or(true),
-            created_at: ep.created_at.unwrap_or_else(chrono::Utc::now),
-            updated_at: ep.updated_at.unwrap_or_else(chrono::Utc::now),
+        .filter_map(|ep| {
+            let id = ep.id.and_then(|s| Uuid::parse_str(s.as_str()).ok())?;
+            let application_id = Uuid::parse_str(ep.application_id.as_str()).ok()?;
+            Some(EndpointResponse {
+                id,
+                application_id,
+                name: ep.name,
+                webhook_url: ep.webhook_url,
+                description: ep.description,
+                hmac_secret: ep.hmac_secret,
+                chain_ids: deserialize_json(ep.chain_ids.as_deref()),
+                contract_addresses: deserialize_json(ep.contract_addresses.as_deref()),
+                event_signatures: deserialize_json(ep.event_signatures.as_deref()),
+                is_active: ep.is_active != 0,
+                created_at: parse_sqlite_datetime(&ep.created_at),
+                updated_at: parse_sqlite_datetime(&ep.updated_at),
+            })
         })
         .collect();
+    
+    let total = endpoints.len() as i64;
 
     Ok(Json(EndpointListResponse { endpoints, total }))
 }
@@ -278,24 +320,29 @@ pub async fn list_all_user_endpoints(
         )
     })?;
 
-    let total = endpoints.len() as i64;
-    let endpoints = endpoints
+    let endpoints: Vec<EndpointResponse> = endpoints
         .into_iter()
-        .map(|ep| EndpointResponse {
-            id: ep.id,
-            application_id: ep.application_id,
-            name: ep.name,
-            webhook_url: ep.webhook_url,
-            description: ep.description,
-            hmac_secret: ep.hmac_secret,
-            chain_ids: ep.chain_ids.unwrap_or_default(),
-            contract_addresses: ep.contract_addresses.unwrap_or_default(),
-            event_signatures: ep.event_signatures.unwrap_or_default(),
-            is_active: ep.is_active.unwrap_or(true),
-            created_at: ep.created_at.unwrap_or_else(chrono::Utc::now),
-            updated_at: ep.updated_at.unwrap_or_else(chrono::Utc::now),
+        .filter_map(|ep| {
+            let id = ep.id.and_then(|s| Uuid::parse_str(s.as_str()).ok())?;
+            let application_id = Uuid::parse_str(ep.application_id.as_str()).ok()?;
+            Some(EndpointResponse {
+                id,
+                application_id,
+                name: ep.name,
+                webhook_url: ep.webhook_url,
+                description: ep.description,
+                hmac_secret: ep.hmac_secret,
+                chain_ids: deserialize_json(ep.chain_ids.as_deref()),
+                contract_addresses: deserialize_json(ep.contract_addresses.as_deref()),
+                event_signatures: deserialize_json(ep.event_signatures.as_deref()),
+                is_active: ep.is_active != 0,
+                created_at: parse_sqlite_datetime(&ep.created_at),
+                updated_at: parse_sqlite_datetime(&ep.updated_at),
+            })
         })
         .collect();
+    
+    let total = endpoints.len() as i64;
 
     Ok(Json(EndpointListResponse { endpoints, total }))
 }
@@ -337,19 +384,32 @@ pub async fn get_endpoint(
         )
     })?;
 
+    let id = endpoint.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
+    )))?;
+    
+    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid application_id UUID format".to_string() }),
+    ))?;
+
     Ok(Json(EndpointResponse {
-        id: endpoint.id,
-        application_id: endpoint.application_id,
+        id,
+        application_id,
         name: endpoint.name,
         webhook_url: endpoint.webhook_url,
         description: endpoint.description,
         hmac_secret: endpoint.hmac_secret,
-        chain_ids: endpoint.chain_ids.unwrap_or_default(),
-        contract_addresses: endpoint.contract_addresses.unwrap_or_default(),
-        event_signatures: endpoint.event_signatures.unwrap_or_default(),
-        is_active: endpoint.is_active.unwrap_or(true),
-        created_at: endpoint.created_at.unwrap_or_else(chrono::Utc::now),
-        updated_at: endpoint.updated_at.unwrap_or_else(chrono::Utc::now),
+        chain_ids: deserialize_json(endpoint.chain_ids.as_deref()),
+        contract_addresses: deserialize_json(endpoint.contract_addresses.as_deref()),
+        event_signatures: deserialize_json(endpoint.event_signatures.as_deref()),
+        is_active: endpoint.is_active != 0,
+        created_at: parse_sqlite_datetime(&endpoint.created_at),
+        updated_at: parse_sqlite_datetime(&endpoint.updated_at),
     }))
 }
 
@@ -471,9 +531,10 @@ pub async fn update_endpoint(
     }
 
     if let Some(chain_ids) = &payload.chain_ids {
+        let chain_ids_json = serialize_json(chain_ids);
         sqlx::query!(
             "UPDATE endpoints SET chain_ids = ? WHERE id = ?",
-            chain_ids,
+            chain_ids_json,
             endpoint_id
         )
         .execute(&mut *tx)
@@ -489,9 +550,10 @@ pub async fn update_endpoint(
     }
 
     if let Some(addrs) = &payload.contract_addresses {
+        let addrs_json = serialize_json(addrs);
         sqlx::query!(
             "UPDATE endpoints SET contract_addresses = ? WHERE id = ?",
-            addrs,
+            addrs_json,
             endpoint_id
         )
         .execute(&mut *tx)
@@ -507,9 +569,10 @@ pub async fn update_endpoint(
     }
 
     if let Some(sigs) = &payload.event_signatures {
+        let sigs_json = serialize_json(sigs);
         sqlx::query!(
             "UPDATE endpoints SET event_signatures = ? WHERE id = ?",
-            sigs,
+            sigs_json,
             endpoint_id
         )
         .execute(&mut *tx)
@@ -655,19 +718,32 @@ pub async fn regenerate_hmac_secret(
         )
     })?;
 
+    let id = endpoint.id.ok_or_else(|| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
+    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
+    )))?;
+    
+    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid application_id UUID format".to_string() }),
+    ))?;
+
     Ok(Json(EndpointResponse {
-        id: endpoint.id,
-        application_id: endpoint.application_id,
+        id,
+        application_id,
         name: endpoint.name,
         webhook_url: endpoint.webhook_url,
         description: endpoint.description,
         hmac_secret: endpoint.hmac_secret,
-        chain_ids: endpoint.chain_ids.unwrap_or_default(),
-        contract_addresses: endpoint.contract_addresses.unwrap_or_default(),
-        event_signatures: endpoint.event_signatures.unwrap_or_default(),
-        is_active: endpoint.is_active.unwrap_or(true),
-        created_at: endpoint.created_at.unwrap_or_else(chrono::Utc::now),
-        updated_at: endpoint.updated_at.unwrap_or_else(chrono::Utc::now),
+        chain_ids: deserialize_json(endpoint.chain_ids.as_deref()),
+        contract_addresses: deserialize_json(endpoint.contract_addresses.as_deref()),
+        event_signatures: deserialize_json(endpoint.event_signatures.as_deref()),
+        is_active: endpoint.is_active != 0,
+        created_at: parse_sqlite_datetime(&endpoint.created_at),
+        updated_at: parse_sqlite_datetime(&endpoint.updated_at),
     }))
 }
 

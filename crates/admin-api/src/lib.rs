@@ -104,7 +104,10 @@ pub fn create_test_router(pool: SqlitePool) -> Router {
     let config = Config {
         database_url: String::new(), // Not used in tests
         database_max_connections: 5,
-        redis_url: "redis://localhost:6379".to_string(),
+        clickhouse_url: "http://localhost:8123".to_string(),
+        clickhouse_user: "default".to_string(),
+        clickhouse_password: String::new(),
+        clickhouse_database: "default".to_string(),
         jwt_secret: std::env::var("JWT_SECRET")
             .unwrap_or_else(|_| "test-secret-key-for-testing-only".to_string()),
         jwt_expiration_hours: 24,
@@ -115,7 +118,10 @@ pub fn create_test_router(pool: SqlitePool) -> Router {
         cors_allowed_origins: vec!["*".to_string()],
     };
 
-    let state = AppState { pool, config };
+    let clickhouse = ethhook_common::ClickHouseClient::from_env()
+        .unwrap_or_else(|_| panic!("Failed to create test ClickHouse client"));
+
+    let state = AppState { pool, clickhouse, config };
 
     let public_routes = Router::new()
         .route("/health", get(|| async { "OK" }))

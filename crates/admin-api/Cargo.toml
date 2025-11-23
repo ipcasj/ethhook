@@ -16,6 +16,7 @@ serde_json = { workspace = true }
 
 # Database
 sqlx = { workspace = true }
+clickhouse = { workspace = true }
 
 # Authentication & Security
 jsonwebtoken = { workspace = true }
