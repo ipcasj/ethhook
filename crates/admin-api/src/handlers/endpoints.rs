@@ -113,11 +113,15 @@ pub async fn create_endpoint(
         )
     })?;
 
+    // Convert UUIDs to strings for SQLite
+    let user_id_str = auth_user.user_id.to_string();
+    let app_id_str = payload.application_id.to_string();
+
     // Verify application belongs to user
     let _app = sqlx::query!(
         "SELECT id FROM applications WHERE id = ? AND user_id = ?",
-        payload.application_id,
-        auth_user.user_id
+        app_id_str,
+        user_id_str
     )
     .fetch_optional(&pool)
     .await
@@ -147,18 +151,20 @@ pub async fn create_endpoint(
     let event_signatures_json = serialize_json(&payload.event_signatures);
 
     // Create endpoint
+    let endpoint_id = Uuid::new_v4().to_string();
     let endpoint = sqlx::query!(
         r#"
         INSERT INTO endpoints (
-            application_id, name, webhook_url, description, hmac_secret,
+            id, application_id, name, webhook_url, description, hmac_secret,
             chain_ids, contract_addresses, event_signatures
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         RETURNING id, application_id, name, webhook_url, description, hmac_secret,
                   chain_ids, contract_addresses, event_signatures,
                   is_active, created_at, updated_at
         "#,
-        payload.application_id,
+        endpoint_id,
+        app_id_str,
         payload.name,
         payload.webhook_url,
         payload.description,
@@ -216,11 +222,15 @@ pub async fn list_endpoints(
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<Json<EndpointListResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Convert UUIDs to strings for SQLite
+    let user_id_str = auth_user.user_id.to_string();
+    let app_id_str = app_id.to_string();
+
     // Verify application belongs to user
     let _app = sqlx::query!(
         "SELECT id FROM applications WHERE id = ? AND user_id = ?",
-        app_id,
-        auth_user.user_id
+        app_id_str,
+        user_id_str
     )
     .fetch_optional(&pool)
     .await
@@ -251,7 +261,7 @@ pub async fn list_endpoints(
         WHERE application_id = ?
         ORDER BY created_at DESC
         "#,
-        app_id
+        app_id_str
     )
     .fetch_all(&pool)
     .await
@@ -296,6 +306,9 @@ pub async fn list_all_user_endpoints(
     State(pool): State<SqlitePool>,
     auth_user: AuthUser,
 ) -> Result<Json<EndpointListResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Convert UUID to string for SQLite
+    let user_id_str = auth_user.user_id.to_string();
+
     // Get all endpoints for user's applications
     let endpoints = sqlx::query!(
         r#"
@@ -307,7 +320,7 @@ pub async fn list_all_user_endpoints(
         WHERE a.user_id = ?
         ORDER BY e.created_at DESC
         "#,
-        auth_user.user_id
+        user_id_str
     )
     .fetch_all(&pool)
     .await
@@ -353,6 +366,10 @@ pub async fn get_endpoint(
     auth_user: AuthUser,
     Path(endpoint_id): Path<Uuid>,
 ) -> Result<Json<EndpointResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Convert UUIDs to strings for SQLite
+    let user_id_str = auth_user.user_id.to_string();
+    let endpoint_id_str = endpoint_id.to_string();
+
     let endpoint = sqlx::query!(
         r#"
         SELECT e.id, e.application_id, e.name, e.webhook_url, e.description, e.hmac_secret,
@@ -362,8 +379,8 @@ pub async fn get_endpoint(
         JOIN applications a ON e.application_id = a.id
         WHERE e.id = ? AND a.user_id = ?
         "#,
-        endpoint_id,
-        auth_user.user_id
+        endpoint_id_str,
+        user_id_str
     )
     .fetch_optional(&pool)
     .await
@@ -430,6 +447,10 @@ pub async fn update_endpoint(
         )
     })?;
 
+    // Convert UUIDs to strings for SQLite
+    let user_id_str = auth_user.user_id.to_string();
+    let endpoint_id_str = endpoint_id.to_string();
+
     // Verify endpoint exists and belongs to user
     let _existing = sqlx::query!(
         r#"
@@ -438,8 +459,8 @@ pub async fn update_endpoint(
         JOIN applications a ON e.application_id = a.id
         WHERE e.id = ? AND a.user_id = ?
         "#,
-        endpoint_id,
-        auth_user.user_id
+        endpoint_id_str,
+        user_id_str
     )
     .fetch_optional(&pool)
     .await
@@ -498,7 +519,7 @@ pub async fn update_endpoint(
         sqlx::query!(
             "UPDATE endpoints SET webhook_url = ? WHERE id = ?",
             url,
-            endpoint_id
+            endpoint_id_str
         )
         .execute(&mut *tx)
         .await
@@ -516,7 +537,7 @@ pub async fn update_endpoint(
         sqlx::query!(
             "UPDATE endpoints SET description = ? WHERE id = ?",
             desc,
-            endpoint_id
+            endpoint_id_str
         )
         .execute(&mut *tx)
         .await
@@ -535,7 +556,7 @@ pub async fn update_endpoint(
         sqlx::query!(
             "UPDATE endpoints SET chain_ids = ? WHERE id = ?",
             chain_ids_json,
-            endpoint_id
+            endpoint_id_str
         )
         .execute(&mut *tx)
         .await
@@ -554,7 +575,7 @@ pub async fn update_endpoint(
         sqlx::query!(
             "UPDATE endpoints SET contract_addresses = ? WHERE id = ?",
             addrs_json,
-            endpoint_id
+            endpoint_id_str
         )
         .execute(&mut *tx)
         .await
@@ -573,7 +594,7 @@ pub async fn update_endpoint(
         sqlx::query!(
             "UPDATE endpoints SET event_signatures = ? WHERE id = ?",
             sigs_json,
-            endpoint_id
+            endpoint_id_str
         )
         .execute(&mut *tx)
         .await
@@ -591,7 +612,7 @@ pub async fn update_endpoint(
         sqlx::query!(
             "UPDATE endpoints SET is_active = ? WHERE id = ?",
             active,
-            endpoint_id
+            endpoint_id_str
         )
         .execute(&mut *tx)
         .await
@@ -608,7 +629,7 @@ pub async fn update_endpoint(
     // Update timestamp
     sqlx::query!(
         "UPDATE endpoints SET updated_at = datetime('now') WHERE id = ?",
-        endpoint_id
+        endpoint_id_str
     )
     .execute(&mut *tx)
     .await
@@ -640,6 +661,10 @@ pub async fn delete_endpoint(
     auth_user: AuthUser,
     Path(endpoint_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    // Convert UUIDs to strings for SQLite
+    let user_id_str = auth_user.user_id.to_string();
+    let endpoint_id_str = endpoint_id.to_string();
+
     let result = sqlx::query!(
         r#"
         DELETE FROM endpoints
@@ -648,8 +673,8 @@ pub async fn delete_endpoint(
             SELECT id FROM applications WHERE user_id = ?
         )
         "#,
-        endpoint_id,
-        auth_user.user_id
+        endpoint_id_str,
+        user_id_str
     )
     .execute(&pool)
     .await
@@ -680,6 +705,10 @@ pub async fn regenerate_hmac_secret(
     auth_user: AuthUser,
     Path(endpoint_id): Path<Uuid>,
 ) -> Result<Json<EndpointResponse>, (StatusCode, Json<ErrorResponse>)> {
+    // Convert UUIDs to strings for SQLite
+    let user_id_str = auth_user.user_id.to_string();
+    let endpoint_id_str = endpoint_id.to_string();
+
     // Generate new HMAC secret
     let new_secret = generate_hmac_secret();
 
@@ -696,8 +725,8 @@ pub async fn regenerate_hmac_secret(
                   is_active, created_at, updated_at
         "#,
         new_secret,
-        endpoint_id,
-        auth_user.user_id
+        endpoint_id_str,
+        user_id_str
     )
     .fetch_optional(&pool)
     .await

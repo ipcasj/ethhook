@@ -83,13 +83,16 @@ pub async fn create_application(
     let webhook_secret = generate_hmac_secret();
 
     // Create application
+    let app_id = Uuid::new_v4().to_string();
+    let user_id_str = auth_user.user_id.to_string();
     let app = sqlx::query!(
         r#"
-        INSERT INTO applications (user_id, name, description, api_key, webhook_secret)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO applications (id, user_id, name, description, api_key, webhook_secret)
+        VALUES (?, ?, ?, ?, ?, ?)
         RETURNING id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         "#,
-        auth_user.user_id,
+        app_id,
+        user_id_str,
         payload.name,
         payload.description,
         api_key,
@@ -141,6 +144,7 @@ pub async fn list_applications(
     auth_user: AuthUser,
 ) -> Result<Json<ApplicationListResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Get applications
+    let user_id_str = auth_user.user_id.to_string();
     let apps = sqlx::query!(
         r#"
         SELECT id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
@@ -148,7 +152,7 @@ pub async fn list_applications(
         WHERE user_id = ?
         ORDER BY created_at DESC
         "#,
-        auth_user.user_id
+        user_id_str
     )
     .fetch_all(&pool)
     .await
@@ -194,14 +198,16 @@ pub async fn get_application(
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<Json<ApplicationResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let app_id_str = app_id.to_string();
+    let user_id_str = auth_user.user_id.to_string();
     let app = sqlx::query!(
         r#"
         SELECT id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         FROM applications
         WHERE id = ? AND user_id = ?
         "#,
-        app_id,
-        auth_user.user_id
+        app_id_str,
+        user_id_str
     )
     .fetch_optional(&pool)
     .await
@@ -266,10 +272,12 @@ pub async fn update_application(
     })?;
 
     // Check if application exists and belongs to user
+    let app_id_str = app_id.to_string();
+    let user_id_str = auth_user.user_id.to_string();
     let _existing = sqlx::query!(
         "SELECT id FROM applications WHERE id = ? AND user_id = ?",
-        app_id,
-        auth_user.user_id
+        app_id_str,
+        user_id_str
     )
     .fetch_optional(&pool)
     .await
@@ -319,8 +327,8 @@ pub async fn update_application(
     let app = sqlx::query_as::<
         _,
         (
-            Uuid,
-            Uuid,
+            String,
+            String,
             String,
             Option<String>,
             Option<String>,
@@ -340,10 +348,20 @@ pub async fn update_application(
             }),
         )
     })?;
+    
+    let id = Uuid::parse_str(&app.0).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid ID format".to_string() }),
+    ))?;
+    
+    let user_id = Uuid::parse_str(&app.1).map_err(|_| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
+    ))?;
 
     Ok(Json(ApplicationResponse {
-        id: app.0,
-        user_id: app.1,
+        id,
+        user_id,
         name: app.2,
         description: app.3,
         api_key: app.4.unwrap_or_default(),
@@ -360,10 +378,12 @@ pub async fn delete_application(
     auth_user: AuthUser,
     Path(app_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorResponse>)> {
+    let app_id_str = app_id.to_string();
+    let user_id_str = auth_user.user_id.to_string();
     let result = sqlx::query!(
         "DELETE FROM applications WHERE id = ? AND user_id = ?",
-        app_id,
-        auth_user.user_id
+        app_id_str,
+        user_id_str
     )
     .execute(&pool)
     .await
@@ -396,6 +416,8 @@ pub async fn regenerate_api_key(
 ) -> Result<Json<ApplicationResponse>, (StatusCode, Json<ErrorResponse>)> {
     // Generate new API key
     let new_api_key = generate_api_key();
+    let app_id_str = app_id.to_string();
+    let user_id_str = auth_user.user_id.to_string();
 
     let app = sqlx::query!(
         r#"
@@ -405,8 +427,8 @@ pub async fn regenerate_api_key(
         RETURNING id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at
         "#,
         new_api_key,
-        app_id,
-        auth_user.user_id
+        app_id_str,
+        user_id_str
     )
     .fetch_optional(&pool)
     .await

@@ -275,13 +275,14 @@ pub async fn get_profile(
     State(pool): State<SqlitePool>,
     auth_user: AuthUser,
 ) -> Result<Json<UserResponse>, (StatusCode, Json<ErrorResponse>)> {
+    let user_id_str = auth_user.user_id.to_string();
     let user = sqlx::query!(
         r#"
         SELECT id, email, full_name as name, is_admin, created_at
         FROM users
         WHERE id = ?
         "#,
-        auth_user.user_id
+        user_id_str
     )
     .fetch_one(&pool)
     .await
@@ -344,6 +345,7 @@ pub async fn update_profile(
         ));
     };
 
+    let user_id_str = auth_user.user_id.to_string();
     let user = sqlx::query!(
         r#"
         UPDATE users
@@ -352,7 +354,7 @@ pub async fn update_profile(
         RETURNING id, email, full_name as name, is_admin, created_at
         "#,
         name,
-        auth_user.user_id
+        user_id_str
     )
     .fetch_one(&pool)
     .await
