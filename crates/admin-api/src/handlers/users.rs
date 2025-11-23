@@ -94,16 +94,19 @@ pub async fn register(
     })?;
 
     // Insert user
+    // Generate UUID for SQLite (no auto-generation)
+    let user_id = Uuid::new_v4().to_string();
     debug!(
-        "Attempting to create user with email: {}, name: {}",
-        payload.email, payload.name
+        "Attempting to create user with email: {}, name: {}, id: {}",
+        payload.email, payload.name, user_id
     );
     let user = sqlx::query!(
         r#"
-        INSERT INTO users (email, password_hash, full_name)
-        VALUES (?, ?, ?)
+        INSERT INTO users (id, email, password_hash, full_name)
+        VALUES (?, ?, ?, ?)
         RETURNING id, email, full_name as name, is_admin, created_at
         "#,
+        user_id,
         payload.email,
         password_hash,
         payload.name
