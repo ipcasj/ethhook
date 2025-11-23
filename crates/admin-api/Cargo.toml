@@ -29,9 +29,10 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 validator = { workspace = true }
 
-# Redis for WebSocket pubsub
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
+# Server-Sent Events (SSE) for real-time updates
 futures = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+once_cell = "1.20"
 
 # Logging
 tracing = { workspace = true }

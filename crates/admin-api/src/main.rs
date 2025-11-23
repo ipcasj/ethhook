@@ -65,6 +65,10 @@ async fn main() -> Result<()> {
         }
     }
 
+    // Spawn background task for SSE stats broadcasting
+    tokio::spawn(handlers::sse::stats_broadcaster_task(pool.clone()));
+    info!("SSE stats broadcaster task started");
+
     // Build application router
     let app = create_router(pool.clone(), config.clone());
 
@@ -235,16 +239,23 @@ fn create_router(pool: sqlx::SqlitePool, config: Config) -> Router {
         )
         .layer(axum::middleware::from_fn(auth::inject_jwt_secret));
 
-    // WebSocket routes (authentication via query param)
+    // WebSocket routes (authentication via query param) - DEPRECATED
     let websocket_routes = Router::new()
         .route("/ws/events", get(handlers::websocket::ws_events_handler))
         .route("/ws/stats", get(handlers::websocket::ws_stats_handler))
         .with_state(state.clone());
 
+    // Server-Sent Events (SSE) routes (authentication via Bearer token)
+    let sse_routes = Router::new()
+        .route("/events/stream", get(handlers::sse::events_stream))
+        .route("/stats/stream", get(handlers::sse::stats_stream))
+        .layer(axum::middleware::from_fn(auth::inject_jwt_secret));
+
     // Combine routes
     let api_routes = Router::new()
         .merge(public_routes)
         .merge(protected_routes)
+        .merge(sse_routes)
         .merge(websocket_routes)
         .with_state(state);
 

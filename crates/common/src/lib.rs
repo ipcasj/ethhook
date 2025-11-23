@@ -3,8 +3,7 @@
 //! Shared utilities and infrastructure code used by all EthHook services.
 //!
 //! This crate provides:
-//! - Database connection pooling (PostgreSQL via sqlx)
-//! - Redis client with Stream and Queue helpers
+//! - Database connection pooling (SQLite via sqlx)
 //! - Custom error types
 //! - JWT token creation and validation
 //! - Password hashing and verification
@@ -16,7 +15,6 @@ pub mod auth;
 pub mod db;
 pub mod error;
 pub mod logging;
-pub mod redis_client;
 pub mod types;
 
 // Re-export commonly used types
@@ -24,5 +22,4 @@ pub use auth::{create_jwt, hash_password, sign_hmac, verify_hmac, verify_jwt, ve
 pub use db::create_pool;
 pub use error::{Error, Result};
 pub use logging::init_tracing;
-pub use redis_client::RedisClient;
 pub use types::{BlockchainEvent, DeliveryJob};

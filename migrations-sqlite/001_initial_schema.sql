@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS applications (
     user_id TEXT NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
+    api_key TEXT UNIQUE,
+    webhook_secret TEXT,
     is_active INTEGER NOT NULL DEFAULT 1,
     rate_limit_per_minute INTEGER NOT NULL DEFAULT 60,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -36,16 +38,19 @@ CREATE TABLE IF NOT EXISTS applications (
 
 CREATE INDEX idx_applications_user_id ON applications(user_id);
 CREATE INDEX idx_applications_active ON applications(is_active) WHERE is_active = 1;
+CREATE INDEX idx_applications_api_key ON applications(api_key) WHERE api_key IS NOT NULL;
 
 -- Endpoints table (webhook destinations)
 CREATE TABLE IF NOT EXISTS endpoints (
     id TEXT PRIMARY KEY,
     application_id TEXT NOT NULL,
     name TEXT NOT NULL,
-    url TEXT NOT NULL,
+    webhook_url TEXT NOT NULL,
+    description TEXT,
     hmac_secret TEXT NOT NULL,
-    contract_address TEXT,
-    event_topics TEXT, -- JSON array stored as TEXT
+    chain_ids TEXT, -- JSON array stored as TEXT
+    contract_addresses TEXT, -- JSON array stored as TEXT
+    event_signatures TEXT, -- JSON array stored as TEXT
     rate_limit_per_second INTEGER NOT NULL DEFAULT 10,
     max_retries INTEGER NOT NULL DEFAULT 3,
     timeout_seconds INTEGER NOT NULL DEFAULT 30,
@@ -59,7 +64,6 @@ CREATE TABLE IF NOT EXISTS endpoints (
 );
 
 CREATE INDEX idx_endpoints_application_id ON endpoints(application_id);
-CREATE INDEX idx_endpoints_contract_address ON endpoints(contract_address) WHERE contract_address IS NOT NULL;
 CREATE INDEX idx_endpoints_active ON endpoints(is_active, health_status) WHERE is_active = 1;
 
 -- Triggers for updated_at timestamps

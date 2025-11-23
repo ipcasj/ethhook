@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.85-slim AS builder
+FROM rust:1.83-slim as builder
 
 WORKDIR /app
 
@@ -9,33 +9,37 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace files
+# Copy workspace manifests
 COPY Cargo.toml Cargo.lock ./
 COPY .cargo .cargo
+
+# Copy all crate source directories
 COPY crates/common crates/common
 COPY crates/config crates/config
 COPY crates/domain crates/domain
-COPY crates/admin-api crates/admin-api
+COPY crates/pipeline crates/pipeline
+
+# Copy migrations
 COPY migrations-sqlite migrations-sqlite
 
-# Build the application (SQLite doesn't need offline mode)
+# Build release binary
 ENV DATABASE_URL=sqlite:config.db
-RUN cargo build --release --bin ethhook-admin-api
+RUN cargo build --release --bin pipeline
 
 # Runtime stage
-FROM debian:bookworm-slim AS runtime
+FROM debian:bookworm-slim
+
 WORKDIR /app
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
-    libssl3 \
     sqlite3 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the built binary from the builder stage
-COPY --from=builder /app/target/release/ethhook-admin-api /usr/local/bin/admin-api
+# Copy binary from builder
+COPY --from=builder /app/target/release/pipeline /usr/local/bin/pipeline
 
 # Copy migrations
 COPY migrations-sqlite /app/migrations-sqlite
@@ -45,7 +49,7 @@ RUN mkdir -p /data && chmod 777 /data
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-3000}/health || exit 1
+    CMD curl -f http://localhost:${HEALTH_CHECK_PORT:-8080}/health || exit 1
 
 # Run as non-root user
 RUN useradd -m -u 1000 ethhook && chown -R ethhook:ethhook /app /data
@@ -53,12 +57,10 @@ USER ethhook
 
 # Default environment
 ENV RUST_LOG=info \
-    DATABASE_URL=sqlite:/data/config.db \
-    DATABASE_MAX_CONNECTIONS=5 \
-    PORT=3000
+    CONFIG_DB_PATH=sqlite:/data/config.db \
+    HEALTH_CHECK_PORT=8080 \
+    METRICS_PORT=9090
 
-# Expose port
-EXPOSE 3000
+EXPOSE 8080 9090
 
-# Run the application
-CMD ["/usr/local/bin/admin-api"]
+CMD ["pipeline"]
