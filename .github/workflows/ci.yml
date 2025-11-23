@@ -188,16 +188,15 @@ jobs:
           sqlx database create
           sqlx migrate run
 
-      - name: Build service binaries for E2E tests
+      - name: Build pipeline binary
         run: |
-          cargo build -p ethhook-message-processor
-          cargo build -p ethhook-webhook-delivery
-          cargo build -p ethhook-event-ingestor
+          cargo build -p pipeline
         env:
           SQLX_OFFLINE: true
 
-      - name: Run E2E tests
-        run: cargo test --test e2e_tests -- --test-threads=1
+      # E2E tests moved to integration_tests.rs
+      - name: Run integration tests
+        run: cargo test --test integration_tests -- --test-threads=1
         env:
           DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
@@ -249,9 +248,7 @@ jobs:
         with:
           name: binaries-${{ matrix.target }}
           path: |
-            target/${{ matrix.target }}/release/event-ingestor
-            target/${{ matrix.target }}/release/ethhook-message-processor
-            target/${{ matrix.target }}/release/ethhook-webhook-delivery
+            target/${{ matrix.target }}/release/pipeline
             target/${{ matrix.target }}/release/ethhook-admin-api
 
   sqlx-check:
@@ -479,12 +476,10 @@ jobs:
           sqlx database create
           sqlx migrate run
 
-      - name: Build and start backend services
+      - name: Build backend services
         run: |
           cargo build -p ethhook-admin-api
-          cargo build -p ethhook-message-processor
-          cargo build -p ethhook-webhook-delivery
-          cargo build -p ethhook-event-ingestor
+          cargo build -p pipeline
         env:
           SQLX_OFFLINE: true
 
@@ -562,14 +557,8 @@ jobs:
           - name: admin-api
             dockerfile: crates/admin-api/Dockerfile
             context: .
-          - name: event-ingestor
-            dockerfile: crates/event-ingestor/Dockerfile
-            context: .
-          - name: message-processor
-            dockerfile: crates/message-processor/Dockerfile
-            context: .
-          - name: webhook-delivery
-            dockerfile: crates/webhook-delivery/Dockerfile
+          - name: pipeline
+            dockerfile: crates/pipeline/Dockerfile
             context: .
           - name: ui
             dockerfile: ui/Dockerfile
