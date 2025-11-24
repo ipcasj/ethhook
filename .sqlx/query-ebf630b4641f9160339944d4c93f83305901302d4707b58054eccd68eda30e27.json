@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE endpoints SET contract_addresses = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "ebf630b4641f9160339944d4c93f83305901302d4707b58054eccd68eda30e27"
+}

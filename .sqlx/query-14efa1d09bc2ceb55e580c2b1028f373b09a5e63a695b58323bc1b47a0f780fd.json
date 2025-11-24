@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE endpoints SET is_active = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "14efa1d09bc2ceb55e580c2b1028f373b09a5e63a695b58323bc1b47a0f780fd"
+}

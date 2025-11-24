@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE endpoints SET event_signatures = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "eaef68d76251b776f3040424414d5134346f0d8479c33c09342a5651baafc8eb"
+}

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT e.id\n        FROM endpoints e\n        JOIN applications a ON e.application_id = a.id\n        WHERE e.id = ? AND a.user_id = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "9cd8df71cc09e70797fc9628b4278447b996c3dc559ac7a1faa7974ba8f06e91"
+}

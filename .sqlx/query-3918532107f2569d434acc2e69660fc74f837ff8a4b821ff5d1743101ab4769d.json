@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT a.id as application_id, a.user_id, a.is_active\n            FROM applications a\n            WHERE a.api_key = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "application_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_active",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "3918532107f2569d434acc2e69660fc74f837ff8a4b821ff5d1743101ab4769d"
+}

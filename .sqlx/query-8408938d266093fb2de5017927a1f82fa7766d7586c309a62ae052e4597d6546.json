@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        DELETE FROM endpoints\n        WHERE id = ?\n        AND application_id IN (\n            SELECT id FROM applications WHERE user_id = ?\n        )\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "8408938d266093fb2de5017927a1f82fa7766d7586c309a62ae052e4597d6546"
+}

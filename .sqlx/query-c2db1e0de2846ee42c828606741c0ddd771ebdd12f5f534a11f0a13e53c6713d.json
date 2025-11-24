@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT e.id, e.application_id, e.name, e.webhook_url, e.description, e.hmac_secret,\n               e.chain_ids, e.contract_addresses, e.event_signatures,\n               e.is_active, e.created_at, e.updated_at\n        FROM endpoints e\n        JOIN applications a ON e.application_id = a.id\n        WHERE a.user_id = ?\n        ORDER BY e.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "application_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "webhook_url",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "hmac_secret",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "chain_ids",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "contract_addresses",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "event_signatures",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_active",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 11,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "c2db1e0de2846ee42c828606741c0ddd771ebdd12f5f534a11f0a13e53c6713d"
+}

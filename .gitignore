@@ -70,9 +70,9 @@ crates/leptos-portal/dist/
 **/dist/
 **/pkg/
 
-# SQLx offline mode
-.sqlx/
-!.sqlx/*.json  # Keep the query cache for offline builds
+# SQLx offline mode - keep query cache for offline builds
+# (commented out to track .sqlx/*.json files)
+# .sqlx/
 
 # ============================================================================
 # LOGS AND TEMPORARY FILES

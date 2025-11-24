@@ -1,0 +1,68 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO applications (id, user_id, name, description, api_key, webhook_secret)\n        VALUES (?, ?, ?, ?, ?, ?)\n        RETURNING id, user_id, name, description, api_key, webhook_secret, is_active, created_at, updated_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "description",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "api_key",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "webhook_secret",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_active",
+        "ordinal": 6,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at",
+        "ordinal": 8,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d114a080831f7a865995b48e704c25ac1c540aee28dac1a8a1d47681eeb011af"
+}

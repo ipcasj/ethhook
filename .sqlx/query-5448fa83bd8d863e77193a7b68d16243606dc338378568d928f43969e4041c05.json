@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        UPDATE users\n        SET full_name = ?, updated_at = datetime('now')\n        WHERE id = ?\n        RETURNING id, email, full_name as name, is_admin, created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_admin",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "created_at",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "5448fa83bd8d863e77193a7b68d16243606dc338378568d928f43969e4041c05"
+}
