@@ -91,26 +91,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_pool_creation() {
-        // This test requires DATABASE_URL env var
-        if let Ok(database_url) = std::env::var("DATABASE_URL") {
-            let result = create_pool(&database_url, 5).await;
-            assert!(result.is_ok(), "Failed to create pool: {:?}", result.err());
+        // Use in-memory SQLite for testing
+        let database_url = "sqlite::memory:";
+        let result = create_pool(database_url, 5).await;
+        assert!(result.is_ok(), "Failed to create pool: {:?}", result.err());
 
-            let pool = result.unwrap();
-            let (size, idle) = pool_stats(&pool);
-            assert!(size > 0, "Pool should have connections");
-            assert!(idle <= size as usize, "Idle should not exceed size");
-        } else {
-            println!("Skipping test: DATABASE_URL not set");
-        }
+        let pool = result.unwrap();
+        let (size, idle) = pool_stats(&pool);
+        assert!(size > 0, "Pool should have connections");
+        assert!(idle <= size as usize, "Idle should not exceed size");
     }
 
     #[tokio::test]
     async fn test_health_check() {
-        if let Ok(database_url) = std::env::var("DATABASE_URL") {
-            let pool = create_pool(&database_url, 5).await.unwrap();
-            let result = health_check(&pool).await;
-            assert!(result.is_ok(), "Health check should pass");
-        }
+        // Use in-memory SQLite for testing
+        let database_url = "sqlite::memory:";
+        let pool = create_pool(database_url, 5).await.unwrap();
+        let result = health_check(&pool).await;
+        assert!(result.is_ok(), "Health check should pass");
     }
 }
