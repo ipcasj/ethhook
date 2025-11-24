@@ -22,18 +22,26 @@ use tower::util::ServiceExt; // for `oneshot`
 
 // Helper function to create test database pool
 async fn create_test_pool() -> SqlitePool {
-    let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:test.db".to_string());
+    // Use in-memory database for tests (faster and isolated)
+    let database_url = "sqlite::memory:".to_string();
 
-    SqlitePool::connect(&database_url)
+    let pool = SqlitePool::connect(&database_url)
         .await
-        .expect("Failed to connect to test database")
+        .expect("Failed to connect to test database");
+
+    // Run migrations to set up schema
+    sqlx::migrate!("../../migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to run migrations");
+
+    pool
 }
 
 // Helper function to clean up test data
 async fn cleanup_test_data(pool: &SqlitePool, email: &str) {
     // Use raw query to avoid SQLx offline mode issues
-    let _ = sqlx::query("DELETE FROM users WHERE email = $1")
+    let _ = sqlx::query("DELETE FROM users WHERE email = ?")
         .bind(email)
         .execute(pool)
         .await;

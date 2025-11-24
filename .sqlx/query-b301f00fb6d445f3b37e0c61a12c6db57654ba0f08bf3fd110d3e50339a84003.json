@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE users SET is_admin = true WHERE email = ? RETURNING id, email, is_admin",
+  "query": "UPDATE users SET is_admin = 1 WHERE email = ? RETURNING id, email, is_admin",
   "describe": {
     "columns": [
       {
@@ -28,5 +28,5 @@
       true
     ]
   },
-  "hash": "4faa79f3d0a65f68e3ee4a4b2c0bd816579059175fb01c737eae27ce90a0219f"
+  "hash": "b301f00fb6d445f3b37e0c61a12c6db57654ba0f08bf3fd110d3e50339a84003"
 }

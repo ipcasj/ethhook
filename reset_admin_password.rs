@@ -14,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Resetting password for admin@ethhook.io...");
     
     sqlx::query!(
-        "UPDATE users SET password_hash = $1 WHERE email = 'admin@ethhook.io'",
+        "UPDATE users SET password_hash = ? WHERE email = 'admin@ethhook.io'",
         password_hash
     )
     .execute(&pool)

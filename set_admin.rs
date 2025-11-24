@@ -12,16 +12,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| "admin@ethhook.io".to_string());
     
     let result = sqlx::query!(
-        "UPDATE users SET is_admin = true WHERE email = $1 RETURNING id, email, is_admin",
+        "UPDATE users SET is_admin = 1 WHERE email = ? RETURNING id, email, is_admin",
         email
     )
     .fetch_one(&pool)
     .await?;
     
     println!("✓ Updated user:");
-    println!("  ID: {}", result.id);
+    println!("  ID: {}", result.id.as_deref().unwrap_or("unknown"));
     println!("  Email: {}", result.email);
-    println!("  Is Admin: {}", result.is_admin);
+    println!("  Is Admin: {}", result.is_admin.map(|v| v != 0).unwrap_or(false));
     
     Ok(())
 }
