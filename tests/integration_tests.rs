@@ -24,12 +24,20 @@ use wiremock::{
 
 /// Helper: Create test database pool
 async fn create_test_pool() -> SqlitePool {
-    let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string());
+    // Use in-memory database for tests (faster and isolated)
+    let database_url = "sqlite::memory:".to_string();
 
-    SqlitePool::connect(&database_url)
+    let pool = SqlitePool::connect(&database_url)
         .await
-        .expect("Failed to connect to test database")
+        .expect("Failed to connect to test database");
+
+    // Run migrations to set up schema
+    sqlx::migrate!("../migrations")
+        .run(&pool)
+        .await
+        .expect("Failed to run migrations");
+
+    pool
 }
 
 /// Helper: Create test user
