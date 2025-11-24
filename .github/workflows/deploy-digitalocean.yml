@@ -19,14 +19,14 @@ jobs:
       - name: Check deployment configuration
         id: check-config
         run: |
-          if [ -z "${{ secrets.DO_HOST }}" ] || [ -z "${{ secrets.DO_SSH_PRIVATE_KEY }}" ]; then
+          if [ -z "${{ secrets.DROPLET_HOST }}" ] || [ -z "${{ secrets.DROPLET_SSH_KEY }}" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Deployment skipped: DO_HOST or DO_SSH_PRIVATE_KEY secrets not configured"
+            echo "⚠️ Deployment skipped: DROPLET_HOST or DROPLET_SSH_KEY secrets not configured"
             echo ""
             echo "To enable automated deployment:"
             echo "1. Go to Settings → Secrets and variables → Actions"
-            echo "2. Add DO_HOST (your server IP)"
-            echo "3. Add DO_SSH_PRIVATE_KEY (your SSH private key)"
+            echo "2. Add DROPLET_HOST (your server IP)"
+            echo "3. Add DROPLET_SSH_KEY (your SSH private key)"
             exit 0
           else
             echo "skip=false" >> $GITHUB_OUTPUT
@@ -41,14 +41,14 @@ jobs:
         if: steps.check-config.outputs.skip == 'false'
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.DROPLET_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.DO_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
       - name: Pull latest images on server
         if: steps.check-config.outputs.skip == 'false'
         run: |
-          ssh root@${{ secrets.DO_HOST }} << 'EOF'
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             cd ~/ethhook
             
             # Login to GitHub Container Registry
@@ -63,7 +63,7 @@ jobs:
       - name: Deploy services
         if: steps.check-config.outputs.skip == 'false'
         run: |
-          ssh root@${{ secrets.DO_HOST }} << 'EOF'
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             cd ~/ethhook
             
             # Stop services gracefully
@@ -81,7 +81,7 @@ jobs:
       - name: Wait for services to be healthy
         if: steps.check-config.outputs.skip == 'false'
         run: |
-          ssh root@${{ secrets.DO_HOST }} << 'EOF'
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             echo "Waiting for services to become healthy..."
             sleep 10
             
@@ -102,7 +102,7 @@ jobs:
         if: steps.check-config.outputs.skip == 'false'
         run: |
           sleep 5
-          HEALTH_CHECK=$(curl -f -s http://${{ secrets.DO_HOST }}:3001/health || echo "failed")
+          HEALTH_CHECK=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:3001/health || echo "failed")
           if [ "$HEALTH_CHECK" = "failed" ]; then
             echo "❌ API health check failed"
             exit 1
@@ -113,7 +113,7 @@ jobs:
       - name: Cleanup old Docker images
         if: steps.check-config.outputs.skip == 'false'
         run: |
-          ssh root@${{ secrets.DO_HOST }} << 'EOF'
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             # Remove dangling images to save space
             docker image prune -f
             echo "✅ Cleaned up old Docker images"
@@ -125,7 +125,8 @@ jobs:
           if [ "${{ job.status }}" = "success" ]; then
             echo "✅ Deployment to DigitalOcean successful!"
             echo "🚀 Services: pipeline, admin-api, ui, demo-webhook-receiver"
-            echo "🌐 Server: ${{ secrets.DO_HOST }}"
+            echo "🌐 Server: ${{ secrets.DROPLET_HOST }}"
+            echo "🔗 Production URL: ${{ secrets.PRODUCTION_URL }}"
           else
             echo "❌ Deployment failed. Check logs above."
           fi
