@@ -45,6 +45,25 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Setup project directory on server
+        if: steps.check-config.outputs.skip == 'false'
+        run: |
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
+            # Create project directory if it doesn't exist
+            if [ ! -d ~/ethhook ]; then
+              echo "Creating ~/ethhook directory..."
+              mkdir -p ~/ethhook
+              cd ~/ethhook
+              git clone https://github.com/ipcasj/ethhook.git .
+              echo "✅ Repository cloned"
+            else
+              echo "✅ Directory exists"
+              cd ~/ethhook
+              git pull origin main
+              echo "✅ Repository updated"
+            fi
+          EOF
+
       - name: Pull latest images on server
         if: steps.check-config.outputs.skip == 'false'
         run: |
