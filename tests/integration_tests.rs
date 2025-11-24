@@ -12,7 +12,6 @@
  * Run with: cargo test --test integration_tests
  */
 
-use chrono::Utc;
 use ethhook_common::auth::sign_hmac;
 use serde_json::json;
 use serial_test::serial;
@@ -25,8 +24,8 @@ use wiremock::{
 
 /// Helper: Create test database pool
 async fn create_test_pool() -> SqlitePool {
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite::memory:".to_string());
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string());
 
     SqlitePool::connect(&database_url)
         .await
@@ -66,7 +65,7 @@ async fn create_test_application(pool: &SqlitePool, user_id: Uuid, test_name: &s
     .bind(&app_id_str)
     .bind(&user_id_str)
     .bind(format!("Test {test_name} Application"))
-    .bind(format!("test_api_key_{}", app_id))
+    .bind(format!("test_api_key_{app_id}"))
     .bind("test_webhook_secret")
     .execute(pool)
     .await
@@ -78,17 +77,17 @@ async fn create_test_application(pool: &SqlitePool, user_id: Uuid, test_name: &s
 /// Helper: Cleanup test data
 async fn cleanup_test_data(pool: &SqlitePool, user_id: Uuid) {
     let user_id_str = user_id.to_string();
-    
+
     let _ = sqlx::query("DELETE FROM endpoints WHERE application_id IN (SELECT id FROM applications WHERE user_id = ?)")
         .bind(&user_id_str)
         .execute(pool)
         .await;
-    
+
     let _ = sqlx::query("DELETE FROM applications WHERE user_id = ?")
         .bind(&user_id_str)
         .execute(pool)
         .await;
-    
+
     let _ = sqlx::query("DELETE FROM users WHERE id = ?")
         .bind(&user_id_str)
         .execute(pool)
@@ -166,7 +165,7 @@ async fn test_webhook_hmac_signature() {
     let secret = "test_webhook_secret";
     let signature = sign_hmac(&payload_str, secret);
 
-    println!("✓ Generated HMAC signature: {}", signature);
+    println!("✓ Generated HMAC signature: {signature}");
 
     // Send webhook request
     let client = reqwest::Client::new();
@@ -183,7 +182,7 @@ async fn test_webhook_hmac_signature() {
     println!("✓ Webhook delivered successfully");
 
     // Verify signature matches
-    let expected_signature = sign_hmac(&payload_str, secret);
+    let _expected_signature = sign_hmac(&payload_str, secret);
     println!("✓ Signature verification: matches expected");
 
     println!("✅ Webhook HMAC signature test passed");
@@ -195,10 +194,10 @@ async fn test_application_crud() {
     println!("🚀 Testing Application CRUD Operations");
 
     let pool = create_test_pool().await;
-    
+
     // Create user
     let user_id = create_test_user(&pool, "crud").await;
-    let user_id_str = user_id.to_string();
+    let _user_id_str = user_id.to_string();
 
     // Create application
     let app_id = create_test_application(&pool, user_id, "CRUD").await;
@@ -207,13 +206,12 @@ async fn test_application_crud() {
     println!("✓ Created application");
 
     // Read application
-    let app: (String, String, i64) = sqlx::query_as(
-        "SELECT id, name, is_active FROM applications WHERE id = ?"
-    )
-    .bind(&app_id_str)
-    .fetch_one(&pool)
-    .await
-    .expect("Failed to read application");
+    let app: (String, String, i64) =
+        sqlx::query_as("SELECT id, name, is_active FROM applications WHERE id = ?")
+            .bind(&app_id_str)
+            .fetch_one(&pool)
+            .await
+            .expect("Failed to read application");
 
     assert_eq!(app.0, app_id_str, "Application ID should match");
     assert_eq!(app.2, 1, "Application should be active");
@@ -227,13 +225,11 @@ async fn test_application_crud() {
         .await
         .expect("Failed to update application");
 
-    let updated_name: String = sqlx::query_scalar(
-        "SELECT name FROM applications WHERE id = ?"
-    )
-    .bind(&app_id_str)
-    .fetch_one(&pool)
-    .await
-    .expect("Failed to read updated application");
+    let updated_name: String = sqlx::query_scalar("SELECT name FROM applications WHERE id = ?")
+        .bind(&app_id_str)
+        .fetch_one(&pool)
+        .await
+        .expect("Failed to read updated application");
 
     assert_eq!(updated_name, "Updated Application Name");
     println!("✓ Updated application successfully");

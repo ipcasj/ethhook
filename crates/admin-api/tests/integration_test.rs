@@ -22,8 +22,8 @@ use tower::util::ServiceExt; // for `oneshot`
 
 // Helper function to create test database pool
 async fn create_test_pool() -> SqlitePool {
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite:test.db".to_string());
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:test.db".to_string());
 
     SqlitePool::connect(&database_url)
         .await
