@@ -64,6 +64,25 @@ jobs:
             fi
           EOF
 
+      - name: Configure environment variables on server
+        if: steps.check-config.outputs.skip == 'false'
+        run: |
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "cd ~/ethhook && cat > .env" << 'ENDENV'
+          # ClickHouse Configuration
+          CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}
+          
+          # JWT Configuration
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          
+          # Blockchain WebSocket URLs (optional - only needed for specific chains)
+          ETHEREUM_WS_URL=${{ secrets.ETHEREUM_WS_URL }}
+          ARBITRUM_WS_URL=${{ secrets.ARBITRUM_WS_URL }}
+          OPTIMISM_WS_URL=${{ secrets.OPTIMISM_WS_URL }}
+          BASE_WS_URL=${{ secrets.BASE_WS_URL }}
+          SEPOLIA_WS_URL=${{ secrets.SEPOLIA_WS_URL }}
+          ENDENV
+          echo "✅ Environment variables configured"
+
       - name: Pull latest images on server
         if: steps.check-config.outputs.skip == 'false'
         run: |
