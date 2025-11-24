@@ -56,14 +56,14 @@ services:
     container_name: ethhook-event-ingestor
     env_file: .env
     environment:
-      - DATABASE_URL=postgresql://ethhook:password@postgres:5432/ethhook
+      - DATABASE_URL=sqlite:/data/config.db
       - REDIS_URL=redis://redis:6379
       - REDIS_HOST=redis
+    volumes:
+      - event_ingestor_data:/data
     networks:
       - ethhook-network
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -165,3 +165,6 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+  event_ingestor_data:
+  message_processor_data:
+  webhook_delivery_data:
