@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
     info!("SQLite database connection pool established");
 
     // Run migrations (SQLite schema)
-    match sqlx::migrate!("../../migrations-sqlite").run(&pool).await {
+    match sqlx::migrate!("../../migrations").run(&pool).await {
         Ok(_) => info!("Database migrations completed"),
         Err(sqlx::migrate::MigrateError::VersionMissing(_)) => {
             info!("Database migrations already applied, skipping");

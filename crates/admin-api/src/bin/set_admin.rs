@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|| "admin@ethhook.io".to_string());
 
     println!("Connecting to database...");
-    let pool = PgPool::connect(&database_url).await?;
+    let pool = SqlitePool::connect(&database_url).await?;
 
     println!("Setting admin status for: {email}");
 
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     println!("\n✓ SUCCESS: Admin status updated");
-    println!("  User ID: {}", result.id);
+    println!("  User ID: {:?}", result.id);
     println!("  Email: {}", result.email);
     println!("  Is Admin: {:?}", result.is_admin);
     println!();

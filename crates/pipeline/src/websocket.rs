@@ -27,8 +27,6 @@ use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
 use tracing::{debug, error, info, warn};
-use uuid::Uuid;
-use chrono::Utc;
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 

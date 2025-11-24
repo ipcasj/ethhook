@@ -50,7 +50,7 @@ pub async fn init_config_db(
         .context("Failed to connect to config database")?;
 
     // Run migrations (relative to workspace root)
-    sqlx::migrate!("../../migrations-sqlite")
+    sqlx::migrate!("../../migrations")
         .run(&db)
         .await
         .context("Failed to run database migrations")?;

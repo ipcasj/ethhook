@@ -4,9 +4,9 @@ use sqlx::SqlitePool;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://ethhook:password@localhost:5432/ethhook".to_string());
+        .unwrap_or_else(|_| "sqlite:config.db".to_string());
 
-    let pool = PgPool::connect(&database_url).await?;
+    let pool = SqlitePool::connect(&database_url).await?;
 
     let password = "SecureAdmin123!";
     let password_hash = hash(password, DEFAULT_COST)?;
