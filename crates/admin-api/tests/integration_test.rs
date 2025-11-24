@@ -9,7 +9,7 @@
  * 5. API key validation
  *
  * Run with: cargo test -p ethhook-admin-api --test integration_test -- --ignored
- * (Requires PostgreSQL and Redis running)
+ * (Requires SQLite database and Redis running)
  */
 
 use axum::{
@@ -21,11 +21,11 @@ use sqlx::SqlitePool;
 use tower::util::ServiceExt; // for `oneshot`
 
 // Helper function to create test database pool
-async fn create_test_pool() -> PgPool {
+async fn create_test_pool() -> SqlitePool {
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgresql://ethhook:password@localhost:5432/ethhook".to_string());
+        .unwrap_or_else(|_| "sqlite:test.db".to_string());
 
-    PgPool::connect(&database_url)
+    SqlitePool::connect(&database_url)
         .await
         .expect("Failed to connect to test database")
 }
@@ -49,7 +49,7 @@ async fn get_json_response(response: axum::response::Response) -> Value {
 }
 
 #[tokio::test]
-#[ignore] // Requires PostgreSQL
+#[ignore] // Requires SQLite database
 async fn test_user_registration_success() {
     let pool = create_test_pool().await;
     let test_email = "test_register@example.com";
@@ -92,7 +92,7 @@ async fn test_user_registration_success() {
 }
 
 #[tokio::test]
-#[ignore] // Requires PostgreSQL
+#[ignore] // Requires SQLite
 async fn test_user_registration_duplicate_email() {
     let pool = create_test_pool().await;
     let test_email = "test_duplicate@example.com";
@@ -142,7 +142,7 @@ async fn test_user_registration_duplicate_email() {
 }
 
 #[tokio::test]
-#[ignore] // Requires PostgreSQL
+#[ignore] // Requires SQLite
 async fn test_user_login_success() {
     let pool = create_test_pool().await;
     let test_email = "test_login@example.com";
@@ -202,7 +202,7 @@ async fn test_user_login_success() {
 }
 
 #[tokio::test]
-#[ignore] // Requires PostgreSQL
+#[ignore] // Requires SQLite
 async fn test_user_login_invalid_password() {
     let pool = create_test_pool().await;
     let test_email = "test_invalid_pw@example.com";
@@ -254,7 +254,7 @@ async fn test_user_login_invalid_password() {
 }
 
 #[tokio::test]
-#[ignore] // Requires PostgreSQL
+#[ignore] // Requires SQLite
 async fn test_get_user_profile_authenticated() {
     let pool = create_test_pool().await;
     let test_email = "test_profile@example.com";
@@ -309,7 +309,7 @@ async fn test_get_user_profile_authenticated() {
 }
 
 #[tokio::test]
-#[ignore] // Requires PostgreSQL
+#[ignore] // Requires SQLite
 async fn test_get_user_profile_unauthenticated() {
     let pool = create_test_pool().await;
     let app = ethhook_admin_api::create_test_router(pool);
@@ -330,7 +330,7 @@ async fn test_get_user_profile_unauthenticated() {
 }
 
 #[tokio::test]
-#[ignore] // Requires PostgreSQL
+#[ignore] // Requires SQLite
 async fn test_complete_application_workflow() {
     let pool = create_test_pool().await;
     let test_email = "test_app_workflow@example.com";
@@ -474,7 +474,7 @@ async fn test_complete_application_workflow() {
 }
 
 #[tokio::test]
-#[ignore] // Requires PostgreSQL
+#[ignore] // Requires SQLite
 async fn test_jwt_validation() {
     let pool = create_test_pool().await;
     let app = ethhook_admin_api::create_test_router(pool);

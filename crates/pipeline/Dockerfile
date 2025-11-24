@@ -20,7 +20,7 @@ COPY crates/domain crates/domain
 COPY crates/pipeline crates/pipeline
 
 # Copy migrations
-COPY migrations-sqlite migrations-sqlite
+COPY migrations migrations
 
 # Build release binary
 ENV DATABASE_URL=sqlite:config.db
@@ -42,7 +42,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /app/target/release/pipeline /usr/local/bin/pipeline
 
 # Copy migrations
-COPY migrations-sqlite /app/migrations-sqlite
+COPY migrations /app/migrations
 
 # Create data directory
 RUN mkdir -p /data && chmod 777 /data

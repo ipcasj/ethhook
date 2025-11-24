@@ -222,15 +222,15 @@ pub async fn create_endpoint(
             id,
             application_id,
             name: endpoint.name,
-            webhook_url: endpoint.webhook_url.unwrap_or_default(),
+            webhook_url: endpoint.webhook_url,
             description: endpoint.description,
             hmac_secret: endpoint.hmac_secret,
             chain_ids: deserialize_json(endpoint.chain_ids.as_deref()),
             contract_addresses: deserialize_json(endpoint.contract_addresses.as_deref()),
             event_signatures: deserialize_json(endpoint.event_signatures.as_deref()),
             is_active: endpoint.is_active.unwrap_or(0) != 0,
-            created_at: parse_sqlite_datetime(endpoint.created_at.as_deref()),
-            updated_at: parse_sqlite_datetime(endpoint.updated_at.as_deref()),
+            created_at: parse_sqlite_datetime(&endpoint.created_at),
+            updated_at: parse_sqlite_datetime(&endpoint.updated_at),
         }),
     ))
 }
@@ -302,15 +302,15 @@ pub async fn list_endpoints(
                 id,
                 application_id,
                 name: ep.name,
-                webhook_url: ep.webhook_url.unwrap_or_default(),
+                webhook_url: ep.webhook_url,
                 description: ep.description,
                 hmac_secret: ep.hmac_secret,
                 chain_ids: deserialize_json(ep.chain_ids.as_deref()),
                 contract_addresses: deserialize_json(ep.contract_addresses.as_deref()),
                 event_signatures: deserialize_json(ep.event_signatures.as_deref()),
                 is_active: ep.is_active.unwrap_or(0) != 0,
-                created_at: parse_sqlite_datetime(ep.created_at.as_deref()),
-                updated_at: parse_sqlite_datetime(ep.updated_at.as_deref()),
+                created_at: parse_sqlite_datetime(&ep.created_at),
+                updated_at: parse_sqlite_datetime(&ep.updated_at),
             })
         })
         .collect();
@@ -361,15 +361,15 @@ pub async fn list_all_user_endpoints(
                 id,
                 application_id,
                 name: ep.name,
-                webhook_url: ep.webhook_url.unwrap_or_default(),
+                webhook_url: ep.webhook_url,
                 description: ep.description,
                 hmac_secret: ep.hmac_secret,
                 chain_ids: deserialize_json(ep.chain_ids.as_deref()),
                 contract_addresses: deserialize_json(ep.contract_addresses.as_deref()),
                 event_signatures: deserialize_json(ep.event_signatures.as_deref()),
                 is_active: ep.is_active.unwrap_or(0) != 0,
-                created_at: parse_sqlite_datetime(ep.created_at.as_deref()),
-                updated_at: parse_sqlite_datetime(ep.updated_at.as_deref()),
+                created_at: parse_sqlite_datetime(&ep.created_at),
+                updated_at: parse_sqlite_datetime(&ep.updated_at),
             })
         })
         .collect();
@@ -454,15 +454,15 @@ pub async fn get_endpoint(
         id,
         application_id,
         name: endpoint.name,
-        webhook_url: endpoint.webhook_url.unwrap_or_default(),
+        webhook_url: endpoint.webhook_url,
         description: endpoint.description,
         hmac_secret: endpoint.hmac_secret,
         chain_ids: deserialize_json(endpoint.chain_ids.as_deref()),
         contract_addresses: deserialize_json(endpoint.contract_addresses.as_deref()),
         event_signatures: deserialize_json(endpoint.event_signatures.as_deref()),
         is_active: endpoint.is_active.unwrap_or(0) != 0,
-        created_at: parse_sqlite_datetime(endpoint.created_at.as_deref()),
-        updated_at: parse_sqlite_datetime(endpoint.updated_at.as_deref()),
+        created_at: parse_sqlite_datetime(&endpoint.created_at),
+        updated_at: parse_sqlite_datetime(&endpoint.updated_at),
     }))
 }
 
@@ -817,15 +817,15 @@ pub async fn regenerate_hmac_secret(
         id,
         application_id,
         name: endpoint.name,
-        webhook_url: endpoint.webhook_url.unwrap_or_default(),
+        webhook_url: endpoint.webhook_url,
         description: endpoint.description,
         hmac_secret: endpoint.hmac_secret,
         chain_ids: deserialize_json(endpoint.chain_ids.as_deref()),
         contract_addresses: deserialize_json(endpoint.contract_addresses.as_deref()),
         event_signatures: deserialize_json(endpoint.event_signatures.as_deref()),
         is_active: endpoint.is_active.unwrap_or(0) != 0,
-        created_at: parse_sqlite_datetime(endpoint.created_at.as_deref()),
-        updated_at: parse_sqlite_datetime(endpoint.updated_at.as_deref()),
+        created_at: parse_sqlite_datetime(&endpoint.created_at),
+        updated_at: parse_sqlite_datetime(&endpoint.updated_at),
     }))
 }
 

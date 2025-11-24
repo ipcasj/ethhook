@@ -53,7 +53,7 @@ where
         .map_err(|_| ApiKeyError::InternalError)?
         .ok_or(ApiKeyError::InvalidApiKey)?;
 
-        if app.is_active == 0 {
+        if app.is_active.unwrap_or(0) == 0 {
             return Err(ApiKeyError::InactiveApplication);
         }
 

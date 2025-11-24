@@ -16,7 +16,7 @@ COPY crates/common crates/common
 COPY crates/config crates/config
 COPY crates/domain crates/domain
 COPY crates/admin-api crates/admin-api
-COPY migrations-sqlite migrations-sqlite
+COPY migrations migrations
 
 # Build the application (SQLite doesn't need offline mode)
 ENV DATABASE_URL=sqlite:config.db
@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /app/target/release/ethhook-admin-api /usr/local/bin/admin-api
 
 # Copy migrations
-COPY migrations-sqlite /app/migrations-sqlite
+COPY migrations /app/migrations
 
 # Create data directory
 RUN mkdir -p /data && chmod 777 /data

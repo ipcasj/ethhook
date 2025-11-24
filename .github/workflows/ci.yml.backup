@@ -53,6 +53,20 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ethhook
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: ethhook
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       redis:
         image: redis:7-alpine
         ports:
@@ -88,11 +102,11 @@ jobs:
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features sqlite
+        run: cargo install sqlx-cli --no-default-features --features postgres
 
       - name: Run database migrations
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
         run: |
           sqlx database create
           sqlx migrate run
@@ -100,14 +114,14 @@ jobs:
       - name: Run tests (without database-dependent tests)
         run: cargo test --workspace --lib --bins
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-for-ci
 
       - name: Run Admin API integration tests
         run: cargo test -p ethhook-admin-api --test integration_test -- --ignored --test-threads=1
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-key-for-testing-only
 
@@ -116,6 +130,20 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ethhook
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: ethhook
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       redis:
         image: redis:7-alpine
         ports:
@@ -151,11 +179,11 @@ jobs:
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/*.rs') }}
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features sqlite
+        run: cargo install sqlx-cli --no-default-features --features postgres
 
       - name: Run database migrations
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
         run: |
           sqlx database create
           sqlx migrate run
@@ -170,7 +198,7 @@ jobs:
       - name: Run integration tests
         run: cargo test --test integration_tests -- --test-threads=1
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
           REDIS_HOST: localhost
           REDIS_PORT: 6379
@@ -288,7 +316,7 @@ jobs:
         run: |
           # Allow specific vulnerabilities we can't fix yet:
           # - RUSTSEC-2024-0437: protobuf 2.28.0 (prometheus 0.13 dependency, v0.14 has breaking changes)
-          # - RUSTSEC-2023-0071: rsa in sqlx-mysql (we use SQLite, not MySQL)
+          # - RUSTSEC-2023-0071: rsa in sqlx-mysql (we use PostgreSQL, not MySQL)
           # - RUSTSEC-2024-0436: paste unmaintained (sqlx dependency)
           # - RUSTSEC-2024-0370: proc-macro-error unmaintained (validator dependency)
           # 
@@ -304,6 +332,20 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ethhook
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: ethhook
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       redis:
         image: redis:7-alpine
         ports:
@@ -323,11 +365,11 @@ jobs:
           components: llvm-tools-preview
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features sqlite
+        run: cargo install sqlx-cli --no-default-features --features postgres
 
       - name: Run database migrations
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
         run: |
           sqlx database create
           sqlx migrate run
@@ -338,7 +380,7 @@ jobs:
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-for-ci
 
@@ -394,6 +436,20 @@ jobs:
     if: github.event_name == 'pull_request'
 
     services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ethhook
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: ethhook
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       redis:
         image: redis:7-alpine
         ports:
@@ -411,11 +467,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features sqlite
+        run: cargo install sqlx-cli --no-default-features --features postgres
 
       - name: Run database migrations
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
         run: |
           sqlx database create
           sqlx migrate run
@@ -446,7 +502,7 @@ jobs:
         working-directory: ui
         run: npm run test:e2e
         env:
-          DATABASE_URL: sqlite:test.db
+          DATABASE_URL: postgresql://ethhook:password@localhost:5432/ethhook
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: test-secret-for-e2e
           NEXT_PUBLIC_API_BASE_URL: http://localhost:8080/api/v1

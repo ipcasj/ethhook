@@ -149,10 +149,10 @@ pub async fn create_application(
             name: app.name,
             description: app.description,
             api_key: app.api_key.unwrap_or_default(),
-            webhook_secret: app.webhook_secret,
+            webhook_secret: app.webhook_secret.unwrap_or_default(),
             is_active: app.is_active.unwrap_or(0) != 0,
             created_at: parse_sqlite_datetime(app.created_at.as_deref()),
-            updated_at: parse_sqlite_datetime(app.updated_at.as_deref()),
+            updated_at: parse_sqlite_datetime(&app.updated_at),
         }),
     ))
 }
@@ -195,10 +195,10 @@ pub async fn list_applications(
                 name: app.name,
                 description: app.description,
                 api_key: app.api_key.unwrap_or_default(),
-                webhook_secret: app.webhook_secret,
+                webhook_secret: app.webhook_secret.unwrap_or_default(),
                 is_active: app.is_active.unwrap_or(0) != 0,
                 created_at: parse_sqlite_datetime(app.created_at.as_deref()),
-                updated_at: parse_sqlite_datetime(app.updated_at.as_deref()),
+                updated_at: parse_sqlite_datetime(&app.updated_at),
             })
         })
         .collect();
@@ -283,10 +283,10 @@ pub async fn get_application(
         name: app.name,
         description: app.description,
         api_key: app.api_key.unwrap_or_default(),
-        webhook_secret: app.webhook_secret,
+        webhook_secret: app.webhook_secret.unwrap_or_default(),
         is_active: app.is_active.unwrap_or(0) != 0,
         created_at: parse_sqlite_datetime(app.created_at.as_deref()),
-        updated_at: parse_sqlite_datetime(app.updated_at.as_deref()),
+        updated_at: parse_sqlite_datetime(&app.updated_at),
     }))
 }
 
@@ -411,8 +411,8 @@ pub async fn update_application(
         api_key: app.4.unwrap_or_default(),
         webhook_secret: app.5,
         is_active: app.6 != 0,
-        created_at: parse_sqlite_datetime(Some(&app.7)),
-        updated_at: parse_sqlite_datetime(Some(&app.8)),
+        created_at: parse_sqlite_datetime(&app.7),
+        updated_at: parse_sqlite_datetime(&app.8),
     }))
 }
 
@@ -529,10 +529,10 @@ pub async fn regenerate_api_key(
         name: app.name,
         description: app.description,
         api_key: app.api_key.unwrap_or_default(),
-        webhook_secret: app.webhook_secret,
+        webhook_secret: app.webhook_secret.unwrap_or_default(),
         is_active: app.is_active.unwrap_or(0) != 0,
         created_at: parse_sqlite_datetime(app.created_at.as_deref()),
-        updated_at: parse_sqlite_datetime(app.updated_at.as_deref()),
+        updated_at: parse_sqlite_datetime(&app.updated_at),
     }))
 }
 

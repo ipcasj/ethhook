@@ -158,7 +158,7 @@ pub async fn register(
     let token = generate_token(
         user_id,
         user.email.clone(),
-        user.is_admin != 0,
+        user.is_admin.unwrap_or(0) != 0,
         &config.jwt_secret,
         config.jwt_expiration_hours,
     )
@@ -178,8 +178,8 @@ pub async fn register(
             id: user_id,
             email: user.email.clone(),
             name: user.name.unwrap_or_default(),
-            is_admin: user.is_admin != 0,
-            created_at: parse_sqlite_datetime(user.created_at.as_deref()),
+            is_admin: user.is_admin.unwrap_or(0) != 0,
+            created_at: parse_sqlite_datetime(&user.created_at),
         },
         token,
     }))
@@ -292,7 +292,7 @@ pub async fn login(
             email: user.email.clone(),
             name: user.name.unwrap_or_default(),
             is_admin: user.is_admin.unwrap_or(0) != 0,
-            created_at: parse_sqlite_datetime(user.created_at.as_deref()),
+            created_at: parse_sqlite_datetime(&user.created_at),
         },
         token,
     }))
@@ -349,7 +349,7 @@ pub async fn get_profile(
         email: user.email,
         name: user.name.unwrap_or_default(),
         is_admin: user.is_admin.unwrap_or(0) != 0,
-        created_at: parse_sqlite_datetime(user.created_at.as_deref()),
+        created_at: parse_sqlite_datetime(&user.created_at),
     }))
 }
 
@@ -434,6 +434,6 @@ pub async fn update_profile(
         email: user.email,
         name: user.name.unwrap_or_default(),
         is_admin: user.is_admin.unwrap_or(0) != 0,
-        created_at: parse_sqlite_datetime(user.created_at.as_deref()),
+        created_at: parse_sqlite_datetime(&user.created_at),
     }))
 }

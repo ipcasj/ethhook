@@ -50,13 +50,13 @@ pub struct ChainConfig {
     pub explorer_url: String,
 }
 
-/// PostgreSQL database configuration
+/// SQLite database configuration
 ///
 /// Java equivalent: spring.datasource.*
 #[derive(Debug, Clone, Deserialize)]
 pub struct DatabaseConfig {
     /// Connection string
-    /// Format: postgresql://user:password@host:port/database
+    /// Format: sqlite://path/to/database.db or sqlite::memory:
     pub url: String,
 
     /// Maximum number of connections in the pool
@@ -302,7 +302,7 @@ mod tests {
         // SAFETY: Test code only - setting test environment variables
         unsafe {
             env::set_var("JWT_SECRET", "short");
-            env::set_var("DATABASE_URL", "postgresql://localhost/test");
+            env::set_var("DATABASE_URL", "sqlite::memory:");
             env::set_var("REDIS_URL", "redis://localhost");
             env::set_var("ETH_MAINNET_WS", "wss://test");
             env::set_var("ETH_MAINNET_HTTP", "https://test");

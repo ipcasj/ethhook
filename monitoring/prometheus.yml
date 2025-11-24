@@ -1,0 +1,38 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ethhook'
+    environment: 'development'
+
+scrape_configs:
+  # Docker service discovery - services will be scraped if they expose /metrics endpoint
+  - job_name: 'event-ingestor'
+    static_configs:
+      - targets: ['event-ingestor:9090']
+    metrics_path: '/metrics'
+    
+  - job_name: 'message-processor'
+    static_configs:
+      - targets: ['message-processor:9090']
+    metrics_path: '/metrics'
+    
+  - job_name: 'webhook-delivery'
+    static_configs:
+      - targets: ['webhook-delivery:9090']
+    metrics_path: '/metrics'
+    
+  - job_name: 'admin-api'
+    static_configs:
+      - targets: ['admin-api:9090']
+    metrics_path: '/metrics'
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    metrics_path: '/metrics'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

@@ -89,7 +89,7 @@ mod tests {
     fn test_config_defaults() {
         // This test requires DATABASE_URL and JWT_SECRET
         unsafe {
-            env::set_var("DATABASE_URL", "postgresql://localhost/test");
+            env::set_var("DATABASE_URL", "sqlite::memory:");
             env::set_var("JWT_SECRET", "test-secret-key");
         }
 

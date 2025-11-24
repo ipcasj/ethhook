@@ -1,0 +1,68 @@
+[package]
+name = "ethhook-event-ingestor"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Async runtime (like Java's ExecutorService but way better)
+tokio = { version = "1.42", features = ["full"] }
+
+# WebSocket client (for persistent connections to Alchemy/Infura)
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+
+# JSON parsing (for RPC responses)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Redis client (for deduplication & stream publishing)
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+
+# Error handling (better than try-catch)
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Logging (like SLF4J + Logback in Java)
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Metrics (Prometheus)
+prometheus = { version = "0.13", features = ["process"] }
+axum = { workspace = true }
+
+# Environment variables
+dotenvy = "0.15"
+
+# Our common crate (auth, logging, database utilities)
+ethhook-common = { path = "../common" }
+ethhook-config = { path = "../config" }
+ethhook-domain = { path = "../domain" }
+
+# Async utilities
+futures-util = "0.3"
+
+# Random number generation (for jitter in exponential backoff)
+rand = "0.8"
+
+# Static initialization for metrics
+lazy_static = "1.5"
+
+# URL parsing
+# URL parsing
+url = "2.5"
+
+# Hex encoding/decoding
+hex = "0.4"
+
+# Time utilities
+chrono = { workspace = true }
+
+# Database (SQLite)
+sqlx = { workspace = true }
+
+[lib]
+name = "ethhook_event_ingestor"
+path = "src/lib.rs"
+
+[[bin]]
+name = "event-ingestor"
+path = "src/main.rs"

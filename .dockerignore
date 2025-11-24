@@ -1,0 +1,70 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Build artifacts
+target/
+**/*.rs.bk
+*.pdb
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.digitalocean.example
+!.env.production.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+*.md
+!README.md
+docs/
+.private/
+.claude/
+.copilot/
+
+# CI/CD
+.github/
+
+# Node.js (for ui/)
+node_modules/
+.next/
+out/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test files
+tests/
+test-*.sh
+
+# Tools and scripts
+tools/
+scripts/
+*.sh
+!deploy.sh
+
+# Monitoring configs (not needed in image)
+monitoring/
+
+# Other
+.cargo/
+Makefile
+.dockerignore
+docker-compose.yml
+docker-compose.prod.yml
