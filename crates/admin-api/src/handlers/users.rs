@@ -131,13 +131,26 @@ pub async fn register(
         )
     })?;
 
-    let user_id = user.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null user ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
-    )))?;
+    let user_id = user
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null user ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid user ID format".to_string(),
+                    }),
+                )
+            })
+        })?;
 
     // Generate JWT token
     let token = generate_token(
@@ -231,13 +244,26 @@ pub async fn login(
         ));
     }
 
-    let user_id = user.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null user ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
-    )))?;
+    let user_id = user
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null user ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid user ID format".to_string(),
+                    }),
+                )
+            })
+        })?;
 
     // Generate JWT token
     let token = generate_token(
@@ -295,13 +321,26 @@ pub async fn get_profile(
         )
     })?;
 
-    let user_id = user.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null user ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
-    )))?;
+    let user_id = user
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null user ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid user ID format".to_string(),
+                    }),
+                )
+            })
+        })?;
 
     Ok(Json(UserResponse {
         id: user_id,
@@ -367,13 +406,26 @@ pub async fn update_profile(
         )
     })?;
 
-    let user_id = user.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null user ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
-    )))?;
+    let user_id = user
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null user ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid user ID format".to_string(),
+                    }),
+                )
+            })
+        })?;
 
     Ok(Json(UserResponse {
         id: user_id,

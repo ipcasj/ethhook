@@ -14,11 +14,11 @@ pub struct Endpoint {
     pub url: String,
     pub hmac_secret: String,
     pub contract_address: Option<String>,
-    
+
     // SQLite stores this as JSON TEXT
     #[cfg_attr(feature = "sqlx", sqlx(json))]
     pub event_topics: Option<Vec<String>>,
-    
+
     pub rate_limit_per_second: i32,
     pub max_retries: i32,
     pub timeout_seconds: i32,

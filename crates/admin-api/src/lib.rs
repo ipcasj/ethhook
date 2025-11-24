@@ -121,7 +121,11 @@ pub fn create_test_router(pool: SqlitePool) -> Router {
     let clickhouse = ethhook_common::ClickHouseClient::from_env()
         .unwrap_or_else(|_| panic!("Failed to create test ClickHouse client"));
 
-    let state = AppState { pool, clickhouse, config };
+    let state = AppState {
+        pool,
+        clickhouse,
+        config,
+    };
 
     let public_routes = Router::new()
         .route("/health", get(|| async { "OK" }))

@@ -3,8 +3,8 @@ use sqlx::SqlitePool;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite:config.db".to_string());
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:config.db".to_string());
 
     let pool = SqlitePool::connect(&database_url).await?;
 

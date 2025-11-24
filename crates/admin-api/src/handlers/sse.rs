@@ -27,23 +27,22 @@
  * 4. Send events as SSE messages
  * 5. Handle disconnection and cleanup
  */
-
 use axum::{
     extract::State,
     http::{HeaderMap, StatusCode},
     response::{
-        sse::{Event, KeepAlive, Sse},
         IntoResponse,
+        sse::{Event, KeepAlive, Sse},
     },
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{DecodingKey, Validation, decode};
 use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, time::Duration};
 use tokio::sync::broadcast;
-use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+use tokio_stream::{StreamExt, wrappers::BroadcastStream};
 use tracing::{debug, info, warn};
 
-use crate::{auth::Claims, AppState};
+use crate::{AppState, auth::Claims};
 
 /// Maximum number of events to buffer in broadcast channel
 const EVENT_BUFFER_SIZE: usize = 100;
@@ -152,18 +151,17 @@ pub async fn events_stream(
     });
 
     // Add heartbeat every 30 seconds
-    let heartbeat_stream = tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(
-        Duration::from_secs(30),
-    ))
-    .map(|_| {
-        Ok::<Event, Infallible>(
-            Event::default()
-                .json_data(SseMessage::Ping {
-                    timestamp: chrono::Utc::now().timestamp(),
-                })
-                .unwrap(),
-        )
-    });
+    let heartbeat_stream =
+        tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(Duration::from_secs(30)))
+            .map(|_| {
+                Ok::<Event, Infallible>(
+                    Event::default()
+                        .json_data(SseMessage::Ping {
+                            timestamp: chrono::Utc::now().timestamp(),
+                        })
+                        .unwrap(),
+                )
+            });
 
     let merged = tokio_stream::StreamExt::merge(event_stream, heartbeat_stream);
 
@@ -225,18 +223,17 @@ pub async fn stats_stream(
     });
 
     // Add heartbeat every 30 seconds
-    let heartbeat_stream = tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(
-        Duration::from_secs(30),
-    ))
-    .map(|_| {
-        Ok::<Event, Infallible>(
-            Event::default()
-                .json_data(SseMessage::Ping {
-                    timestamp: chrono::Utc::now().timestamp(),
-                })
-                .unwrap(),
-        )
-    });
+    let heartbeat_stream =
+        tokio_stream::wrappers::IntervalStream::new(tokio::time::interval(Duration::from_secs(30)))
+            .map(|_| {
+                Ok::<Event, Infallible>(
+                    Event::default()
+                        .json_data(SseMessage::Ping {
+                            timestamp: chrono::Utc::now().timestamp(),
+                        })
+                        .unwrap(),
+                )
+            });
 
     let merged = tokio_stream::StreamExt::merge(stats_stream, heartbeat_stream);
 

@@ -38,9 +38,9 @@ async fn main() -> Result<()> {
         tokio::signal::ctrl_c()
             .await
             .expect("Failed to install Ctrl+C handler");
-        
+
         warn!("Received Ctrl-C, initiating graceful shutdown");
-        
+
         // Broadcast shutdown to all workers
         if let Err(e) = shutdown_tx_clone.send(()) {
             error!("Failed to send shutdown signal: {}", e);
@@ -56,13 +56,15 @@ async fn main() -> Result<()> {
     let (event_tx, _event_rx) = mpsc::channel::<BlockchainEvent>(EVENT_CHANNEL_SIZE);
     let (_delivery_tx, _delivery_rx) = mpsc::channel::<DeliveryJob>(DELIVERY_CHANNEL_SIZE);
 
-    info!("Initialized channels: events={}, deliveries={}", 
-          EVENT_CHANNEL_SIZE, DELIVERY_CHANNEL_SIZE);
+    info!(
+        "Initialized channels: events={}, deliveries={}",
+        EVENT_CHANNEL_SIZE, DELIVERY_CHANNEL_SIZE
+    );
 
     // Initialize config database and endpoint cache
-    let db_path = std::env::var("CONFIG_DB_PATH")
-        .unwrap_or_else(|_| "sqlite:config.db".to_string());
-    
+    let db_path =
+        std::env::var("CONFIG_DB_PATH").unwrap_or_else(|_| "sqlite:config.db".to_string());
+
     config_db::init_config_db(&db_path, shutdown_tx.subscribe())
         .await
         .expect("Failed to initialize config database");
@@ -70,7 +72,7 @@ async fn main() -> Result<()> {
     // Start WebSocket ingestor (Days 3-4)
     let ws_handle = tokio::spawn(websocket::start_ingestor(
         event_tx.clone(),
-        shutdown_tx.subscribe()
+        shutdown_tx.subscribe(),
     ));
 
     // TODO: Start batch processor (Days 5-7) - CRITICAL for performance
@@ -85,13 +87,10 @@ async fn main() -> Result<()> {
     // Wait for shutdown signal
     info!("Pipeline service running, waiting for shutdown signal");
     let mut shutdown_rx = shutdown_tx.subscribe();
-    
+
     // Safety Rule #4: Timeout protection
     // Even shutdown should have timeout to prevent hanging forever
-    match tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        shutdown_rx.recv()
-    ).await {
+    match tokio::time::timeout(std::time::Duration::from_secs(5), shutdown_rx.recv()).await {
         Ok(Ok(_)) => {
             info!("Shutdown signal received, cleaning up");
         }
@@ -112,7 +111,7 @@ async fn main() -> Result<()> {
     if let Err(e) = health_monitor.await {
         error!("Health monitor task failed: {}", e);
     }
-    
+
     if let Err(e) = ws_handle.await {
         error!("WebSocket ingestor task failed: {}", e);
     }

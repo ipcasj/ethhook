@@ -1,15 +1,15 @@
 // Events handlers with ClickHouse integration
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::auth::AuthUser;
 use crate::AppState;
+use crate::auth::AuthUser;
 
 #[derive(Debug, Serialize)]
 pub struct EventResponse {
@@ -100,15 +100,13 @@ pub async fn list_events(
                  topics, data, toUnixTimestamp64Milli(ingested_at) as ingested_at_ts,
                  toUnixTimestamp64Milli(processed_at) as processed_at_ts
                  FROM events 
-                 WHERE endpoint_id = '{}' AND user_id = '{}'
+                 WHERE endpoint_id = '{endpoint_id_str}' AND user_id = '{user_id}'
                  ORDER BY ingested_at DESC, id DESC
-                 LIMIT {} OFFSET {}",
-                endpoint_id_str, user_id, page_size, offset
+                 LIMIT {page_size} OFFSET {offset}"
             ),
             format!(
                 "SELECT count() as total FROM events 
-                 WHERE endpoint_id = '{}' AND user_id = '{}'",
-                endpoint_id_str, user_id
+                 WHERE endpoint_id = '{endpoint_id_str}' AND user_id = '{user_id}'"
             ),
         )
     } else {
@@ -119,12 +117,11 @@ pub async fn list_events(
                  topics, data, toUnixTimestamp64Milli(ingested_at) as ingested_at_ts,
                  toUnixTimestamp64Milli(processed_at) as processed_at_ts
                  FROM events 
-                 WHERE user_id = '{}'
+                 WHERE user_id = '{user_id}'
                  ORDER BY ingested_at DESC, id DESC
-                 LIMIT {} OFFSET {}",
-                user_id, page_size, offset
+                 LIMIT {page_size} OFFSET {offset}"
             ),
-            format!("SELECT count() as total FROM events WHERE user_id = '{}'", user_id),
+            format!("SELECT count() as total FROM events WHERE user_id = '{user_id}'"),
         )
     };
 
@@ -180,8 +177,7 @@ pub async fn list_events(
             contract_address: e.contract_address,
             topics: e.topics,
             data: e.data,
-            ingested_at: DateTime::from_timestamp_millis(e.ingested_at_ts)
-                .unwrap_or_else(|| Utc::now()),
+            ingested_at: DateTime::from_timestamp_millis(e.ingested_at_ts).unwrap_or_else(Utc::now),
             processed_at: if e.processed_at_ts > 0 {
                 DateTime::from_timestamp_millis(e.processed_at_ts)
             } else {
@@ -209,9 +205,8 @@ pub async fn get_event(
          topics, data, toUnixTimestamp64Milli(ingested_at) as ingested_at_ts,
          toUnixTimestamp64Milli(processed_at) as processed_at_ts
          FROM events 
-         WHERE id = '{}' AND user_id = '{}'
-         LIMIT 1",
-        event_id_str, user_id
+         WHERE id = '{event_id_str}' AND user_id = '{user_id}'
+         LIMIT 1"
     );
 
     #[derive(Debug, clickhouse::Row, Deserialize)]
@@ -251,8 +246,7 @@ pub async fn get_event(
         contract_address: event.contract_address,
         topics: event.topics,
         data: event.data,
-        ingested_at: DateTime::from_timestamp_millis(event.ingested_at_ts)
-            .unwrap_or_else(|| Utc::now()),
+        ingested_at: DateTime::from_timestamp_millis(event.ingested_at_ts).unwrap_or_else(Utc::now),
         processed_at: if event.processed_at_ts > 0 {
             DateTime::from_timestamp_millis(event.processed_at_ts)
         } else {
@@ -275,7 +269,7 @@ pub async fn list_delivery_attempts(
     let user_id = auth_user.user_id;
 
     let status_filter = if let Some(status) = query.status {
-        format!("AND status = '{}'", status)
+        format!("AND status = '{status}'")
     } else {
         String::new()
     };
@@ -284,15 +278,13 @@ pub async fn list_delivery_attempts(
         "SELECT id, event_id, endpoint_id, attempt_number, status, http_status,
          error_message, toUnixTimestamp64Milli(attempted_at) as attempted_at_ts, duration_ms
          FROM delivery_attempts 
-         WHERE user_id = '{}' {}
+         WHERE user_id = '{user_id}' {status_filter}
          ORDER BY attempted_at DESC
-         LIMIT {} OFFSET {}",
-        user_id, status_filter, page_size, offset
+         LIMIT {page_size} OFFSET {offset}"
     );
 
     let count_query = format!(
-        "SELECT count() as total FROM delivery_attempts WHERE user_id = '{}' {}",
-        user_id, status_filter
+        "SELECT count() as total FROM delivery_attempts WHERE user_id = '{user_id}' {status_filter}"
     );
 
     #[derive(Debug, clickhouse::Row, Deserialize)]
@@ -338,7 +330,7 @@ pub async fn list_delivery_attempts(
             http_status: d.http_status,
             error_message: d.error_message,
             attempted_at: DateTime::from_timestamp_millis(d.attempted_at_ts)
-                .unwrap_or_else(|| Utc::now()),
+                .unwrap_or_else(Utc::now),
             duration_ms: d.duration_ms,
         })
         .collect();

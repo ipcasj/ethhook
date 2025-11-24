@@ -54,10 +54,8 @@ impl Config {
 
             clickhouse_url: env::var("CLICKHOUSE_URL")
                 .unwrap_or_else(|_| "http://localhost:8123".to_string()),
-            clickhouse_user: env::var("CLICKHOUSE_USER")
-                .unwrap_or_else(|_| "default".to_string()),
-            clickhouse_password: env::var("CLICKHOUSE_PASSWORD")
-                .unwrap_or_else(|_| "".to_string()),
+            clickhouse_user: env::var("CLICKHOUSE_USER").unwrap_or_else(|_| "default".to_string()),
+            clickhouse_password: env::var("CLICKHOUSE_PASSWORD").unwrap_or_else(|_| "".to_string()),
             clickhouse_database: env::var("CLICKHOUSE_DATABASE")
                 .unwrap_or_else(|_| "ethhook".to_string()),
 

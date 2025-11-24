@@ -21,11 +21,13 @@
 use anyhow::{Context, Result};
 use ethhook_domain::event::BlockchainEvent;
 use futures_util::{SinkExt, StreamExt};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tokio::sync::{broadcast, mpsc};
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message, MaybeTlsStream, WebSocketStream};
+use tokio_tungstenite::{
+    MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message,
+};
 use tracing::{debug, error, info, warn};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
@@ -33,10 +35,8 @@ type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 /// Chain configuration for WebSocket connection
 #[derive(Debug, Clone)]
 pub struct ChainConfig {
-    pub chain_id: u64,
     pub name: String,
     pub rpc_ws: String,
-    pub rpc_http: String,
 }
 
 /// Start WebSocket ingestors for all configured chains
@@ -57,11 +57,9 @@ pub async fn start_ingestor(
     for chain in chains {
         let tx = event_tx.clone();
         let shutdown = shutdown_rx.resubscribe();
-        
-        let task = tokio::spawn(async move {
-            ingest_chain(chain, tx, shutdown).await
-        });
-        
+
+        let task = tokio::spawn(async move { ingest_chain(chain, tx, shutdown).await });
+
         tasks.push(task);
     }
 
@@ -130,7 +128,7 @@ async fn ingest_chain(
                 let backoff = Duration::from_secs(backoff_secs);
 
                 warn!("[{}] Reconnecting in {:?}", chain.name, backoff);
-                
+
                 // Safety Rule #4: Timeout on sleep (in case of shutdown during backoff)
                 tokio::select! {
                     _ = tokio::time::sleep(backoff) => {}
@@ -158,7 +156,7 @@ async fn connect_and_ingest(
     // Safety Rule #4: 30s timeout for connection
     let mut client = tokio::time::timeout(
         Duration::from_secs(30),
-        WebSocketClient::connect(&chain.rpc_ws, chain.chain_id, &chain.name),
+        WebSocketClient::connect(&chain.rpc_ws, &chain.name),
     )
     .await
     .context("Connection timeout")?
@@ -220,7 +218,6 @@ async fn connect_and_ingest(
 /// WebSocket client for a single chain
 struct WebSocketClient {
     stream: WsStream,
-    chain_id: u64,
     chain_name: String,
     subscription_id: Option<String>,
 }
@@ -229,7 +226,7 @@ impl WebSocketClient {
     /// Connect and subscribe to new block headers
     ///
     /// Safety: No .unwrap(), returns Result
-    async fn connect(ws_url: &str, chain_id: u64, chain_name: &str) -> Result<Self> {
+    async fn connect(ws_url: &str, chain_name: &str) -> Result<Self> {
         info!("[{}] Connecting to {}", chain_name, ws_url);
 
         // Connect to WebSocket
@@ -239,7 +236,6 @@ impl WebSocketClient {
 
         let mut client = Self {
             stream,
-            chain_id,
             chain_name: chain_name.to_string(),
             subscription_id: None,
         };
@@ -270,16 +266,16 @@ impl WebSocketClient {
         // Wait for subscription response
         if let Some(msg) = self.stream.next().await {
             let msg = msg.context("Failed to receive subscription response")?;
-            
+
             if let Message::Text(text) = msg {
-                let response: Value = serde_json::from_str(&text)
-                    .context("Failed to parse subscription response")?;
+                let response: Value =
+                    serde_json::from_str(&text).context("Failed to parse subscription response")?;
 
                 if let Some(sub_id) = response.get("result").and_then(|r| r.as_str()) {
                     self.subscription_id = Some(sub_id.to_string());
                     info!("[{}] Subscribed with ID: {}", self.chain_name, sub_id);
                 } else if let Some(error) = response.get("error") {
-                    return Err(anyhow::anyhow!("Subscription error: {}", error));
+                    return Err(anyhow::anyhow!("Subscription error: {error}"));
                 }
             }
         }
@@ -296,12 +292,15 @@ impl WebSocketClient {
     /// Returns Vec of events (empty vec if no events in block)
     async fn next_event(&mut self) -> Result<Option<Vec<BlockchainEvent>>> {
         // Read next WebSocket message
-        let msg = self.stream.next().await
+        let msg = self
+            .stream
+            .next()
+            .await
             .ok_or_else(|| anyhow::anyhow!("WebSocket stream ended"))??;
 
         if let Message::Text(text) = msg {
-            let message: Value = serde_json::from_str(&text)
-                .context("Failed to parse WebSocket message")?;
+            let message: Value =
+                serde_json::from_str(&text).context("Failed to parse WebSocket message")?;
 
             // Check if this is a subscription notification
             if message.get("method").and_then(|m| m.as_str()) == Some("eth_subscription") {
@@ -352,48 +351,33 @@ fn load_chain_configs() -> Result<Vec<ChainConfig>> {
         "development" => {
             // Development: Sepolia testnet only
             vec![ChainConfig {
-                chain_id: 11155111,
                 name: "Sepolia".to_string(),
                 rpc_ws: std::env::var("SEPOLIA_WSS")
                     .context("SEPOLIA_WSS environment variable required")?,
-                rpc_http: std::env::var("SEPOLIA_HTTP")
-                    .context("SEPOLIA_HTTP environment variable required")?,
             }]
         }
         _ => {
             // Production: Ethereum, Arbitrum, Optimism, Base
             vec![
                 ChainConfig {
-                    chain_id: 1,
                     name: "Ethereum".to_string(),
                     rpc_ws: std::env::var("ETHEREUM_WSS")
                         .context("ETHEREUM_WSS environment variable required")?,
-                    rpc_http: std::env::var("ETHEREUM_HTTP")
-                        .context("ETHEREUM_HTTP environment variable required")?,
                 },
                 ChainConfig {
-                    chain_id: 42161,
                     name: "Arbitrum".to_string(),
                     rpc_ws: std::env::var("ARBITRUM_WSS")
                         .context("ARBITRUM_WSS environment variable required")?,
-                    rpc_http: std::env::var("ARBITRUM_HTTP")
-                        .context("ARBITRUM_HTTP environment variable required")?,
                 },
                 ChainConfig {
-                    chain_id: 10,
                     name: "Optimism".to_string(),
                     rpc_ws: std::env::var("OPTIMISM_WSS")
                         .context("OPTIMISM_WSS environment variable required")?,
-                    rpc_http: std::env::var("OPTIMISM_HTTP")
-                        .context("OPTIMISM_HTTP environment variable required")?,
                 },
                 ChainConfig {
-                    chain_id: 8453,
                     name: "Base".to_string(),
                     rpc_ws: std::env::var("BASE_WSS")
                         .context("BASE_WSS environment variable required")?,
-                    rpc_http: std::env::var("BASE_HTTP")
-                        .context("BASE_HTTP environment variable required")?,
                 },
             ]
         }

@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use prometheus::{
-    register_counter_vec, register_gauge, register_histogram_vec, CounterVec, Gauge, HistogramVec,
+    CounterVec, Gauge, HistogramVec, register_counter_vec, register_gauge, register_histogram_vec,
 };
 
 lazy_static! {
@@ -94,42 +94,4 @@ lazy_static! {
         "Idle database connections in pool"
     )
     .expect("Failed to create DB_POOL_IDLE metric");
-}
-
-/// Record event received from blockchain
-pub fn record_event_received(chain: &str) {
-    EVENTS_RECEIVED.with_label_values(&[chain]).inc();
-}
-
-/// Record event processing result
-pub fn record_event_processed(matched: bool) {
-    let status = if matched { "matched" } else { "no_match" };
-    EVENTS_PROCESSED.with_label_values(&[status]).inc();
-}
-
-/// Record delivery attempt
-pub fn record_delivery_attempt(success: bool) {
-    let status = if success { "success" } else { "failure" };
-    DELIVERIES_ATTEMPTED.with_label_values(&[status]).inc();
-}
-
-/// Record end-to-end latency
-pub fn record_e2e_latency(chain: &str, latency_seconds: f64) {
-    E2E_LATENCY.with_label_values(&[chain]).observe(latency_seconds);
-}
-
-/// Get Prometheus metrics in text format
-pub fn get_metrics() -> String {
-    use prometheus::TextEncoder;
-    
-    let encoder = TextEncoder::new();
-    let metric_families = prometheus::gather();
-    
-    match encoder.encode_to_string(&metric_families) {
-        Ok(metrics) => metrics,
-        Err(e) => {
-            tracing::error!("Failed to encode metrics: {}", e);
-            String::new()
-        }
-    }
 }

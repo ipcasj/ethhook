@@ -109,18 +109,35 @@ pub async fn create_application(
         )
     })?;
 
-    let id = app.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(&s).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
-    )))?;
-    
-    let user_id = Uuid::parse_str(&app.user_id).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
-    ))?;
+    let id = app
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(&s).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid UUID format".to_string(),
+                    }),
+                )
+            })
+        })?;
+
+    let user_id = Uuid::parse_str(&app.user_id).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Invalid user ID format".to_string(),
+            }),
+        )
+    })?;
 
     Ok((
         StatusCode::CREATED,
@@ -183,7 +200,7 @@ pub async fn list_applications(
             })
         })
         .collect();
-    
+
     let total = applications.len() as i64;
 
     Ok(Json(ApplicationListResponse {
@@ -228,18 +245,35 @@ pub async fn get_application(
         )
     })?;
 
-    let id = app.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
-    )))?;
-    
-    let user_id = Uuid::parse_str(app.user_id.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
-    ))?;
+    let id = app
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid UUID format".to_string(),
+                    }),
+                )
+            })
+        })?;
+
+    let user_id = Uuid::parse_str(app.user_id.as_str()).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Invalid user ID format".to_string(),
+            }),
+        )
+    })?;
 
     Ok(Json(ApplicationResponse {
         id,
@@ -348,16 +382,24 @@ pub async fn update_application(
             }),
         )
     })?;
-    
-    let id = Uuid::parse_str(&app.0).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid ID format".to_string() }),
-    ))?;
-    
-    let user_id = Uuid::parse_str(&app.1).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
-    ))?;
+
+    let id = Uuid::parse_str(&app.0).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Invalid ID format".to_string(),
+            }),
+        )
+    })?;
+
+    let user_id = Uuid::parse_str(&app.1).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Invalid user ID format".to_string(),
+            }),
+        )
+    })?;
 
     Ok(Json(ApplicationResponse {
         id,
@@ -449,18 +491,35 @@ pub async fn regenerate_api_key(
         )
     })?;
 
-    let id = app.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
-    )))?;
-    
-    let user_id = Uuid::parse_str(app.user_id.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid user ID format".to_string() }),
-    ))?;
+    let id = app
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid UUID format".to_string(),
+                    }),
+                )
+            })
+        })?;
+
+    let user_id = Uuid::parse_str(app.user_id.as_str()).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Invalid user ID format".to_string(),
+            }),
+        )
+    })?;
 
     Ok(Json(ApplicationResponse {
         id,

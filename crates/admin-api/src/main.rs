@@ -67,7 +67,7 @@ async fn main() -> Result<()> {
 
     // Initialize ClickHouse client
     let clickhouse = ethhook_common::ClickHouseClient::from_env()
-        .map_err(|e| anyhow::anyhow!("Failed to initialize ClickHouse client: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to initialize ClickHouse client: {e}"))?;
     info!("ClickHouse client initialized");
 
     // Spawn background task for SSE stats broadcasting
@@ -106,7 +106,11 @@ async fn main() -> Result<()> {
 }
 
 /// Create the application router with all routes and middleware
-fn create_router(pool: sqlx::SqlitePool, clickhouse: ethhook_common::ClickHouseClient, config: Config) -> Router {
+fn create_router(
+    pool: sqlx::SqlitePool,
+    clickhouse: ethhook_common::ClickHouseClient,
+    config: Config,
+) -> Router {
     // Build CORS layer based on configuration
     let cors = if config.cors_allowed_origins.contains(&"*".to_string()) {
         // Allow all origins in development
@@ -134,7 +138,11 @@ fn create_router(pool: sqlx::SqlitePool, clickhouse: ethhook_common::ClickHouseC
             .allow_credentials(true)
     };
 
-    let state = AppState { pool, clickhouse, config };
+    let state = AppState {
+        pool,
+        clickhouse,
+        config,
+    };
 
     // Public routes (no authentication required)
     let public_routes = Router::new()

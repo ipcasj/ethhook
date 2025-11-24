@@ -11,10 +11,12 @@ pub struct ClickHouseClient {
 impl ClickHouseClient {
     /// Create a new ClickHouse client from environment variables
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error>> {
-        let url = std::env::var("CLICKHOUSE_URL").unwrap_or_else(|_| "http://localhost:8123".to_string());
+        let url =
+            std::env::var("CLICKHOUSE_URL").unwrap_or_else(|_| "http://localhost:8123".to_string());
         let user = std::env::var("CLICKHOUSE_USER").unwrap_or_else(|_| "default".to_string());
         let password = std::env::var("CLICKHOUSE_PASSWORD").unwrap_or_else(|_| "".to_string());
-        let database = std::env::var("CLICKHOUSE_DATABASE").unwrap_or_else(|_| "ethhook".to_string());
+        let database =
+            std::env::var("CLICKHOUSE_DATABASE").unwrap_or_else(|_| "ethhook".to_string());
 
         let client = Client::default()
             .with_url(&url)

@@ -39,20 +39,8 @@ serial_test = "3.0"
 tokio-tungstenite = "0.21"
 futures-util = "0.3"
 
-# Integration tests (database + Redis + HTTP components)
+# Integration tests (database + HTTP components)
 [[test]]
 name = "integration_tests"
 path = "integration_tests.rs"
-harness = true
-
-# Real E2E tests (full service pipeline)
-[[test]]
-name = "e2e_tests"
-path = "e2e_tests.rs"
-harness = true
-
-# Modern E2E system test (streamlined, fast)
-[[test]]
-name = "e2e_system_test"
-path = "e2e_system_test.rs"
 harness = true

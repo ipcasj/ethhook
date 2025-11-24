@@ -1,10 +1,10 @@
 /*!
  * Configuration Database Module
- * 
+ *
  * SQLite-based config storage with in-memory caching for hot path.
- * 
+ *
  * ## Architecture
- * 
+ *
  * ```
  * SQLite File (config.db)
  *     ↓
@@ -12,9 +12,9 @@
  *     ↓
  * Hot Path (zero DB queries)
  * ```
- * 
+ *
  * ## Why SQLite?
- * 
+ *
  * - Zero deployment (no server process)
  * - 100K reads/sec (faster than PostgreSQL for small data)
  * - 10MB file for all config data
@@ -31,17 +31,14 @@ use tokio::sync::broadcast;
 use tracing::{debug, error, info};
 
 /// Global endpoint cache - populated at startup, refreshed every 10s
-/// 
+///
 /// Hot path: ZERO database queries (all lookups are O(1) in-memory)
 pub static ENDPOINT_CACHE: Lazy<DashMap<String, Vec<Endpoint>>> = Lazy::new(DashMap::new);
 
 /// Initialize config database and start cache refresh loop
-/// 
+///
 /// Safety Rule #4: 30s timeout for database operations
-pub async fn init_config_db(
-    db_path: &str,
-    mut shutdown_rx: broadcast::Receiver<()>,
-) -> Result<()> {
+pub async fn init_config_db(db_path: &str, mut shutdown_rx: broadcast::Receiver<()>) -> Result<()> {
     info!("Initializing config database: {}", db_path);
 
     // Connect to SQLite
@@ -83,7 +80,7 @@ pub async fn init_config_db(
 }
 
 /// Refresh endpoint cache from database
-/// 
+///
 /// Loads all active endpoints and rebuilds in-memory index by contract_address
 async fn refresh_endpoint_cache(db: &SqlitePool) -> Result<()> {
     debug!("Refreshing endpoint cache");
@@ -98,23 +95,23 @@ async fn refresh_endpoint_cache(db: &SqlitePool) -> Result<()> {
                     last_successful_delivery_at, consecutive_failures,
                     created_at, updated_at
              FROM endpoints 
-             WHERE is_active = 1 AND health_status != 'failed'"
+             WHERE is_active = 1 AND health_status != 'failed'",
         )
-        .fetch_all(db)
+        .fetch_all(db),
     )
     .await
     .context("Query timeout")?
     .context("Failed to fetch endpoints")?;
 
     // Build new cache index
-    let mut new_cache: std::collections::HashMap<String, Vec<Endpoint>> = 
+    let mut new_cache: std::collections::HashMap<String, Vec<Endpoint>> =
         std::collections::HashMap::new();
 
     for endpoint in endpoints {
         if let Some(ref address) = endpoint.contract_address {
             new_cache
                 .entry(address.to_lowercase())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(endpoint);
         }
     }
@@ -125,30 +122,11 @@ async fn refresh_endpoint_cache(db: &SqlitePool) -> Result<()> {
         ENDPOINT_CACHE.insert(address, endpoints);
     }
 
-    info!("Endpoint cache refreshed: {} contracts", ENDPOINT_CACHE.len());
+    info!(
+        "Endpoint cache refreshed: {} contracts",
+        ENDPOINT_CACHE.len()
+    );
     Ok(())
-}
-
-/// Get matching endpoints for a contract address
-/// 
-/// Hot path: O(1) lookup, no database query
-pub fn get_matching_endpoints(contract_address: &str) -> Option<Vec<Endpoint>> {
-    let address = contract_address.to_lowercase();
-    ENDPOINT_CACHE.get(&address).map(|e| e.value().clone())
-}
-
-/// Get cache statistics for monitoring
-pub fn get_cache_stats() -> CacheStats {
-    CacheStats {
-        contract_count: ENDPOINT_CACHE.len(),
-        endpoint_count: ENDPOINT_CACHE.iter().map(|e| e.value().len()).sum(),
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct CacheStats {
-    pub contract_count: usize,
-    pub endpoint_count: usize,
 }
 
 #[cfg(test)]

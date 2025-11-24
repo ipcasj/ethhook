@@ -57,12 +57,13 @@ where
             return Err(ApiKeyError::InactiveApplication);
         }
 
-        let application_id = app.application_id
+        let application_id = app
+            .application_id
             .ok_or(ApiKeyError::InternalError)
             .and_then(|id| Uuid::parse_str(id.as_str()).map_err(|_| ApiKeyError::InternalError))?;
-        
-        let user_id = Uuid::parse_str(app.user_id.as_str())
-            .map_err(|_| ApiKeyError::InternalError)?;
+
+        let user_id =
+            Uuid::parse_str(app.user_id.as_str()).map_err(|_| ApiKeyError::InternalError)?;
 
         Ok(ApiKeyAuth {
             application_id,

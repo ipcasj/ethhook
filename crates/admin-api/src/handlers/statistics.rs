@@ -1,15 +1,15 @@
 // Statistics handlers with ClickHouse integration
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
 };
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::auth::AuthUser;
 use crate::AppState;
+use crate::auth::AuthUser;
 
 #[derive(Debug, Serialize)]
 pub struct DashboardStatistics {
@@ -32,7 +32,9 @@ pub struct TimeseriesPoint {
 
 #[derive(Debug, Deserialize)]
 pub struct TimeseriesQuery {
+    #[allow(dead_code)]
     pub start_time: Option<String>,
+    #[allow(dead_code)]
     pub end_time: Option<String>,
     pub interval: Option<String>, // 'hour', 'day', 'week'
 }
@@ -73,15 +75,13 @@ pub async fn get_dashboard_statistics(
     // Get events today
     let events_today_query = format!(
         "SELECT count() as total FROM events 
-         WHERE user_id = '{}' AND toUnixTimestamp64Milli(ingested_at) >= {}",
-        user_id, today_start_ts
+         WHERE user_id = '{user_id}' AND toUnixTimestamp64Milli(ingested_at) >= {today_start_ts}"
     );
 
     // Get deliveries today
     let deliveries_today_query = format!(
         "SELECT count() as total FROM delivery_attempts 
-         WHERE user_id = '{}' AND toUnixTimestamp64Milli(attempted_at) >= {}",
-        user_id, today_start_ts
+         WHERE user_id = '{user_id}' AND toUnixTimestamp64Milli(attempted_at) >= {today_start_ts}"
     );
 
     // Get success rate (all time)
@@ -90,8 +90,7 @@ pub async fn get_dashboard_statistics(
          countIf(status = 'success') as successful,
          count() as total
          FROM delivery_attempts 
-         WHERE user_id = '{}'",
-        user_id
+         WHERE user_id = '{user_id}'"
     );
 
     // Get active endpoints count from SQLite
@@ -106,16 +105,12 @@ pub async fn get_dashboard_statistics(
     .unwrap_or(0);
 
     // Total events
-    let total_events_query = format!(
-        "SELECT count() as total FROM events WHERE user_id = '{}'",
-        user_id
-    );
+    let total_events_query =
+        format!("SELECT count() as total FROM events WHERE user_id = '{user_id}'");
 
     // Total deliveries
-    let total_deliveries_query = format!(
-        "SELECT count() as total FROM delivery_attempts WHERE user_id = '{}'",
-        user_id
-    );
+    let total_deliveries_query =
+        format!("SELECT count() as total FROM delivery_attempts WHERE user_id = '{user_id}'");
 
     #[derive(Debug, clickhouse::Row, Deserialize)]
     struct CountRow {
@@ -208,7 +203,10 @@ pub async fn get_timeseries_statistics(
          AND ingested_at <= toDateTime64({}, 3)
          GROUP BY time_bucket
          ORDER BY time_bucket",
-        interval_func, user_id, start_time.timestamp_millis(), end_time.timestamp_millis()
+        interval_func,
+        user_id,
+        start_time.timestamp_millis(),
+        end_time.timestamp_millis()
     );
 
     let deliveries_query = format!(
@@ -223,7 +221,10 @@ pub async fn get_timeseries_statistics(
          AND attempted_at <= toDateTime64({}, 3)
          GROUP BY time_bucket
          ORDER BY time_bucket",
-        interval_func, user_id, start_time.timestamp_millis(), end_time.timestamp_millis()
+        interval_func,
+        user_id,
+        start_time.timestamp_millis(),
+        end_time.timestamp_millis()
     );
 
     #[derive(Debug, Serialize, clickhouse::Row, Deserialize)]
@@ -272,10 +273,9 @@ pub async fn get_chain_distribution(
          chain_id,
          count() as event_count
          FROM events
-         WHERE user_id = '{}'
+         WHERE user_id = '{user_id}'
          GROUP BY chain_id
-         ORDER BY event_count DESC",
-        user_id
+         ORDER BY event_count DESC"
     );
 
     #[derive(Debug, clickhouse::Row, Deserialize)]
@@ -352,11 +352,10 @@ pub async fn get_application_statistics(
     let stats_query = format!(
         "SELECT 
          count() as total_events,
-         (SELECT count() FROM delivery_attempts WHERE application_id = '{}') as total_deliveries,
-         (SELECT countIf(status = 'success') FROM delivery_attempts WHERE application_id = '{}') as successful_deliveries
+         (SELECT count() FROM delivery_attempts WHERE application_id = '{app_id_str}') as total_deliveries,
+         (SELECT countIf(status = 'success') FROM delivery_attempts WHERE application_id = '{app_id_str}') as successful_deliveries
          FROM events
-         WHERE application_id = '{}'",
-        app_id_str, app_id_str, app_id_str
+         WHERE application_id = '{app_id_str}'"
     );
 
     #[derive(Debug, clickhouse::Row, Deserialize)]
@@ -435,7 +434,10 @@ pub async fn get_application_timeseries(
          AND ingested_at <= toDateTime64({}, 3)
          GROUP BY time_bucket
          ORDER BY time_bucket",
-        interval_func, app_id_str, start_time.timestamp_millis(), end_time.timestamp_millis()
+        interval_func,
+        app_id_str,
+        start_time.timestamp_millis(),
+        end_time.timestamp_millis()
     );
 
     #[derive(Debug, Serialize, clickhouse::Row, Deserialize)]
@@ -484,14 +486,13 @@ pub async fn get_endpoint_statistics(
 
     let stats_query = format!(
         "SELECT 
-         (SELECT count() FROM events WHERE endpoint_id = '{}') as total_events,
+         (SELECT count() FROM events WHERE endpoint_id = '{endpoint_id_str}') as total_events,
          count() as total_deliveries,
          countIf(status = 'success') as successful_deliveries,
          countIf(status = 'failed') as failed_deliveries,
          avg(duration_ms) as avg_delivery_time_ms
          FROM delivery_attempts
-         WHERE endpoint_id = '{}'",
-        endpoint_id_str, endpoint_id_str
+         WHERE endpoint_id = '{endpoint_id_str}'"
     );
 
     #[derive(Debug, clickhouse::Row, Deserialize)]
@@ -579,7 +580,10 @@ pub async fn get_endpoint_timeseries(
          AND attempted_at <= toDateTime64({}, 3)
          GROUP BY time_bucket
          ORDER BY time_bucket",
-        interval_func, endpoint_id_str, start_time.timestamp_millis(), end_time.timestamp_millis()
+        interval_func,
+        endpoint_id_str,
+        start_time.timestamp_millis(),
+        end_time.timestamp_millis()
     );
 
     #[derive(Debug, Serialize, clickhouse::Row, Deserialize)]
@@ -632,10 +636,9 @@ pub async fn get_endpoint_deliveries(
          id, event_id, attempt_number, status, http_status,
          toUnixTimestamp64Milli(attempted_at) as attempted_at_ts, duration_ms
          FROM delivery_attempts
-         WHERE endpoint_id = '{}'
+         WHERE endpoint_id = '{endpoint_id_str}'
          ORDER BY attempted_at DESC
-         LIMIT 100",
-        endpoint_id_str
+         LIMIT 100"
     );
 
     #[derive(Debug, Serialize, clickhouse::Row, Deserialize)]
@@ -695,13 +698,12 @@ pub async fn get_application_endpoints_performance(
 
         let stats_query = format!(
             "SELECT 
-             (SELECT count() FROM events WHERE endpoint_id = '{}') as total_events,
+             (SELECT count() FROM events WHERE endpoint_id = '{endpoint_id_str}') as total_events,
              count() as total_deliveries,
              countIf(status = 'success') as successful_deliveries,
              avg(duration_ms) as avg_delivery_time_ms
              FROM delivery_attempts
-             WHERE endpoint_id = '{}'",
-            endpoint_id_str, endpoint_id_str
+             WHERE endpoint_id = '{endpoint_id_str}'"
         );
 
         #[derive(Debug, clickhouse::Row, Deserialize)]

@@ -144,7 +144,7 @@ pub async fn create_endpoint(
 
     // Generate HMAC secret
     let hmac_secret = generate_hmac_secret();
-    
+
     // Serialize JSON arrays to strings for SQLite storage
     let chain_ids_json = serialize_json(&payload.chain_ids);
     let contract_addresses_json = serialize_json(&payload.contract_addresses);
@@ -184,18 +184,35 @@ pub async fn create_endpoint(
         )
     })?;
 
-    let id = endpoint.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
-    )))?;
-    
-    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid application_id UUID format".to_string() }),
-    ))?;
+    let id = endpoint
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid UUID format".to_string(),
+                    }),
+                )
+            })
+        })?;
+
+    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Invalid application_id UUID format".to_string(),
+            }),
+        )
+    })?;
 
     Ok((
         StatusCode::CREATED,
@@ -295,7 +312,7 @@ pub async fn list_endpoints(
             })
         })
         .collect();
-    
+
     let total = endpoints.len() as i64;
 
     Ok(Json(EndpointListResponse { endpoints, total }))
@@ -354,7 +371,7 @@ pub async fn list_all_user_endpoints(
             })
         })
         .collect();
-    
+
     let total = endpoints.len() as i64;
 
     Ok(Json(EndpointListResponse { endpoints, total }))
@@ -401,18 +418,35 @@ pub async fn get_endpoint(
         )
     })?;
 
-    let id = endpoint.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
-    )))?;
-    
-    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid application_id UUID format".to_string() }),
-    ))?;
+    let id = endpoint
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid UUID format".to_string(),
+                    }),
+                )
+            })
+        })?;
+
+    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Invalid application_id UUID format".to_string(),
+            }),
+        )
+    })?;
 
     Ok(Json(EndpointResponse {
         id,
@@ -747,18 +781,35 @@ pub async fn regenerate_hmac_secret(
         )
     })?;
 
-    let id = endpoint.id.ok_or_else(|| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Database returned null ID".to_string() }),
-    )).and_then(|s| Uuid::parse_str(s.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid UUID format".to_string() }),
-    )))?;
-    
-    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse { error: "Invalid application_id UUID format".to_string() }),
-    ))?;
+    let id = endpoint
+        .id
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "Database returned null ID".to_string(),
+                }),
+            )
+        })
+        .and_then(|s| {
+            Uuid::parse_str(s.as_str()).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        error: "Invalid UUID format".to_string(),
+                    }),
+                )
+            })
+        })?;
+
+    let application_id = Uuid::parse_str(endpoint.application_id.as_str()).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse {
+                error: "Invalid application_id UUID format".to_string(),
+            }),
+        )
+    })?;
 
     Ok(Json(EndpointResponse {
         id,

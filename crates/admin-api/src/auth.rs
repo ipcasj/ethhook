@@ -82,9 +82,6 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
 /// Extractor for authenticated user
 pub struct AuthUser {
     pub user_id: Uuid,
-    #[allow(dead_code)]
-    pub email: String,
-    pub is_admin: bool,
 }
 
 impl<S> FromRequestParts<S> for AuthUser
@@ -117,8 +114,6 @@ where
 
         Ok(AuthUser {
             user_id: claims.sub,
-            email: claims.email,
-            is_admin: claims.is_admin,
         })
     }
 }

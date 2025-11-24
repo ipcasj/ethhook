@@ -1,23 +1,23 @@
+use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
-use std::time::{Duration, Instant};
 
 /// Safety Rule #2: Runtime health monitoring
-/// 
+///
 /// Monitors tokio runtime for deadlocks and performance issues.
 /// Based on lessons from Cloudflare Nov 18, 2025 outage and Discord deadlocks.
-/// 
+///
 /// Key checks:
 /// 1. Tasks are making progress (not stuck in infinite loops)
 /// 2. Channel send/receive operations complete (not deadlocked)
 /// 3. Runtime metrics are healthy
 pub async fn monitor_runtime_health(mut shutdown_rx: broadcast::Receiver<()>) {
     info!("Starting runtime health monitor");
-    
+
     let check_interval = Duration::from_secs(10);
     let mut last_check = Instant::now();
     let mut consecutive_warnings = 0;
-    
+
     loop {
         tokio::select! {
             _ = shutdown_rx.recv() => {
@@ -26,7 +26,7 @@ pub async fn monitor_runtime_health(mut shutdown_rx: broadcast::Receiver<()>) {
             }
             _ = tokio::time::sleep(check_interval) => {
                 let elapsed = last_check.elapsed();
-                
+
                 // Safety check: Sleep should take ~10s, not 30s
                 // If sleep took way longer, runtime might be overloaded
                 if elapsed > Duration::from_secs(15) {
@@ -37,14 +37,14 @@ pub async fn monitor_runtime_health(mut shutdown_rx: broadcast::Receiver<()>) {
                         elapsed.as_secs(),
                         consecutive_warnings
                     );
-                    
+
                     // After 3 consecutive warnings, something is seriously wrong
                     if consecutive_warnings >= 3 {
                         error!(
                             "CRITICAL: Runtime appears stuck or severely overloaded. {} consecutive delays.",
                             consecutive_warnings
                         );
-                        
+
                         // TODO: Trigger graceful degradation
                         // - Stop accepting new events
                         // - Drain channels
@@ -57,9 +57,9 @@ pub async fn monitor_runtime_health(mut shutdown_rx: broadcast::Receiver<()>) {
                         consecutive_warnings = 0;
                     }
                 }
-                
+
                 last_check = Instant::now();
-                
+
                 // TODO: Add more health checks
                 // - Check tokio runtime metrics (if available)
                 // - Monitor channel buffer utilization
@@ -68,21 +68,6 @@ pub async fn monitor_runtime_health(mut shutdown_rx: broadcast::Receiver<()>) {
             }
         }
     }
-    
+
     info!("Runtime health monitor shutdown complete");
-}
-
-/// Returns current runtime metrics for monitoring
-pub fn get_runtime_metrics() -> RuntimeMetrics {
-    // TODO: Implement when tokio-metrics is added
-    RuntimeMetrics {
-        active_tasks: 0,
-        task_spawn_failures: 0,
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct RuntimeMetrics {
-    pub active_tasks: usize,
-    pub task_spawn_failures: u64,
 }
