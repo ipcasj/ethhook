@@ -232,13 +232,27 @@ jobs:
       - name: Verify API health
         if: steps.check-config.outputs.skip == 'false'
         run: |
-          sleep 5
-          HEALTH_CHECK=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:3001/health || echo "failed")
-          if [ "$HEALTH_CHECK" = "failed" ]; then
-            echo "❌ API health check failed"
+          echo "Waiting for services to be fully ready..."
+          sleep 10
+          
+          # Check admin API health (port 3000)
+          echo "Checking admin API..."
+          ADMIN_API_HEALTH=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:3000/health || echo "failed")
+          if [ "$ADMIN_API_HEALTH" = "failed" ]; then
+            echo "❌ Admin API health check failed (port 3000)"
+            ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "docker logs ethhook-admin-api --tail=50"
             exit 1
           else
-            echo "✅ API is healthy: $HEALTH_CHECK"
+            echo "✅ Admin API is healthy: $ADMIN_API_HEALTH"
+          fi
+          
+          # Check pipeline health (port 8080)
+          echo "Checking pipeline service..."
+          PIPELINE_HEALTH=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:8080/health || echo "failed")
+          if [ "$PIPELINE_HEALTH" = "failed" ]; then
+            echo "⚠️  Pipeline health check failed (port 8080) - may still be starting"
+          else
+            echo "✅ Pipeline is healthy: $PIPELINE_HEALTH"
           fi
 
       - name: Cleanup old Docker images
