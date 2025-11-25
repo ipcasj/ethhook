@@ -303,12 +303,11 @@ impl WebSocketClient {
                 serde_json::from_str(&text).context("Failed to parse WebSocket message")?;
 
             // Check if this is a subscription notification
-            if message.get("method").and_then(|m| m.as_str()) == Some("eth_subscription") {
-                if let Some(params) = message.get("params") {
-                    if let Some(result) = params.get("result") {
-                        return self.process_block_header(result).await;
-                    }
-                }
+            if message.get("method").and_then(|m| m.as_str()) == Some("eth_subscription")
+                && let Some(params) = message.get("params")
+                && let Some(result) = params.get("result")
+            {
+                return self.process_block_header(result).await;
             }
         }
 

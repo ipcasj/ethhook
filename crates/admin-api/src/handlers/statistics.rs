@@ -12,6 +12,7 @@ use crate::AppState;
 use crate::auth::AuthUser;
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 pub struct DashboardStatistics {
     pub events_today: u64,
     pub deliveries_today: u64,
@@ -22,6 +23,7 @@ pub struct DashboardStatistics {
 }
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 pub struct TimeseriesPoint {
     pub timestamp: DateTime<Utc>,
     pub events: u64,
@@ -40,6 +42,7 @@ pub struct TimeseriesQuery {
 }
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 pub struct ChainDistribution {
     pub chain_id: u32,
     pub chain_name: String,
@@ -49,6 +52,7 @@ pub struct ChainDistribution {
 }
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 pub struct EndpointPerformance {
     pub endpoint_id: String,
     pub endpoint_name: String,
