@@ -66,25 +66,39 @@ jobs:
 
       - name: Configure environment variables on server
         if: steps.check-config.outputs.skip == 'false'
-        env:
-          CLICKHOUSE_PASS: ${{ secrets.CLICKHOUSE_PASSWORD }}
-          JWT_SEC: ${{ secrets.JWT_SECRET }}
-          ETH_WS: ${{ secrets.ETHEREUM_WS_URL }}
-          ARB_WS: ${{ secrets.ARBITRUM_WS_URL }}
-          OP_WS: ${{ secrets.OPTIMISM_WS_URL }}
-          BASE_WS: ${{ secrets.BASE_WS_URL }}
-          SEP_WS: ${{ secrets.SEPOLIA_WS_URL }}
         run: |
-          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "cd ~/ethhook && cat > .env" << EOF
-          CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASS}
-          JWT_SECRET=${JWT_SEC}
-          ETHEREUM_WS_URL=${ETH_WS}
-          ARBITRUM_WS_URL=${ARB_WS}
-          OPTIMISM_WS_URL=${OP_WS}
-          BASE_WS_URL=${BASE_WS}
-          SEPOLIA_WS_URL=${SEP_WS}
+          # Create production .env from local template
+          cp .env.production /tmp/prod.env
+          
+          # Add secrets that aren't in version control
+          echo "" >> /tmp/prod.env
+          echo "# Production Secrets (from GitHub Secrets)" >> /tmp/prod.env
+          echo "CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}" >> /tmp/prod.env
+          
+          # Verify file
+          echo "📝 Production .env file ($(wc -l < /tmp/prod.env) lines)"
+          
+          # Copy to server
+          scp /tmp/prod.env ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}:~/ethhook/.env
+          
+          # Verify on server
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
+            cd ~/ethhook
+            
+            if [ -f .env ]; then
+              echo "✅ .env file exists ($(wc -l < .env) lines)"
+              echo "Key variables:"
+              grep -E "^(DATABASE_URL|CLICKHOUSE_PASSWORD|JWT_SECRET|ETHEREUM_WS_URL)=" .env | sed 's/=.*/=***/'
+            else
+              echo "❌ .env file not found!"
+              exit 1
+            fi
           EOF
-          echo "✅ Environment variables configured"
+          
+          # Cleanup
+          rm /tmp/prod.env
+          
+          echo "✅ Production environment configured"
 
       - name: Pull latest images on server
         if: steps.check-config.outputs.skip == 'false'
@@ -107,24 +121,30 @@ jobs:
           ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             cd ~/ethhook
             
-            # Verify .env file exists
+            # Verify .env file exists and has content
             if [ -f .env ]; then
-              echo "✅ .env file exists"
+              echo "✅ .env file exists ($(wc -l < .env) lines)"
               echo "Environment variables configured:"
-              grep -E "^(CLICKHOUSE_PASSWORD|JWT_SECRET|ETHEREUM_WS_URL)=" .env | sed 's/=.*/=***/'
+              grep -E "^[A-Z_]+=" .env | sed 's/=.*/=***/'
             else
               echo "❌ .env file not found!"
               exit 1
             fi
             
-            # Stop services gracefully
-            docker compose -f docker-compose.prod.yml stop pipeline admin-api ui demo-webhook-receiver || true
+            # Stop all services gracefully
+            echo "Stopping existing services..."
+            docker compose -f docker-compose.prod.yml down || true
             
-            # Remove old containers
-            docker compose -f docker-compose.prod.yml rm -f pipeline admin-api ui demo-webhook-receiver || true
+            # Start ClickHouse first (it's a dependency)
+            echo "Starting ClickHouse database..."
+            docker compose -f docker-compose.prod.yml up -d clickhouse
             
-            # Start updated services (with verbose output)
-            echo "Starting services..."
+            # Wait for ClickHouse to be healthy
+            echo "Waiting for ClickHouse to be healthy..."
+            sleep 10
+            
+            # Start application services
+            echo "Starting application services..."
             docker compose -f docker-compose.prod.yml up -d pipeline admin-api ui demo-webhook-receiver
             
             echo "✅ Services start command completed"
