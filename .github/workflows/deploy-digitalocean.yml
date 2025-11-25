@@ -206,18 +206,40 @@ jobs:
             echo "Waiting for ClickHouse to be healthy..."
             sleep 10
             
-            # Start application services
+            # Verify images are available
+            echo "Checking available images..."
+            docker images | grep ethhook
+            
+            # Start application services with verbose output
             echo "Starting application services..."
-            docker compose -f docker-compose.prod.yml up -d pipeline admin-api ui demo-webhook-receiver
+            if docker compose -f docker-compose.prod.yml up -d pipeline admin-api ui demo-webhook-receiver; then
+              echo "✅ Docker compose up completed"
+            else
+              echo "❌ Docker compose up failed!"
+              echo "=== Docker Compose Logs ==="
+              docker compose -f docker-compose.prod.yml logs
+              exit 1
+            fi
             
             # Check what was started
             echo ""
-            echo "=== Checking started containers ==="
+            echo "=== All Containers ==="
+            docker ps -a
+            
+            echo ""
+            echo "=== EthHook Containers ==="
             docker ps -a --filter "name=ethhook"
             
             echo ""
             echo "=== Docker Compose Services Status ==="
-            docker compose -f docker-compose.prod.yml ps
+            docker compose -f docker-compose.prod.yml ps -a
+            
+            # If admin-api isn't running, show its logs
+            if ! docker ps | grep -q "ethhook-admin-api"; then
+              echo ""
+              echo "⚠️  Admin API not running - checking logs..."
+              docker logs ethhook-admin-api 2>&1 || echo "No admin-api container found"
+            fi
             
             echo "✅ Services start command completed"
           EOF
