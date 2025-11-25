@@ -16,8 +16,10 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates/common crates/common
 COPY crates/config crates/config
 COPY crates/domain crates/domain
+COPY crates/validate-env crates/validate-env
 COPY crates/admin-api crates/admin-api
 COPY crates/pipeline crates/pipeline
+COPY tests tests
 
 # Copy migrations
 COPY migrations migrations
