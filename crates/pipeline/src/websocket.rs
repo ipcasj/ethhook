@@ -303,7 +303,9 @@ impl WebSocketClient {
                 serde_json::from_str(&text).context("Failed to parse WebSocket message")?;
 
             // Check if this is a subscription notification
-            // Note: Using nested if statements instead of let chains for stable Rust compatibility
+            // Note: Using nested if statements instead of let chains for stable Rust compatibility.
+            // Clippy suggests collapsing these, but that requires unstable let chains (RFC #53667).
+            #[allow(clippy::collapsible_if)]
             if message.get("method").and_then(|m| m.as_str()) == Some("eth_subscription") {
                 if let Some(params) = message.get("params") {
                     if let Some(result) = params.get("result") {
