@@ -456,7 +456,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GH_PAT }}
 
       - name: Extract metadata
@@ -472,8 +472,8 @@ jobs:
           file: ${{ matrix.dockerfile }}
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/ethhook-${{ matrix.name }}:latest
-            ghcr.io/${{ github.repository_owner }}/ethhook-${{ matrix.name }}:${{ steps.meta.outputs.sha_short }}
+            ghcr.io/${{ github.actor }}/ethhook-${{ matrix.name }}:latest
+            ghcr.io/${{ github.actor }}/ethhook-${{ matrix.name }}:${{ steps.meta.outputs.sha_short }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
           build-args: |
