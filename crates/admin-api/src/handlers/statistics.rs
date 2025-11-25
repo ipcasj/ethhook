@@ -718,6 +718,10 @@ pub async fn get_application_endpoints_performance(
             avg_delivery_time_ms: f64,
         }
 
+        // Allow collapsible_if: Clippy suggests `if let ... && let ...` syntax,
+        // but that requires unstable Rust features (let chains RFC #53667).
+        // Using nested if statements for stable Rust compatibility.
+        #[allow(clippy::collapsible_if)]
         if let Ok(stats) = client.query(&stats_query).fetch_all::<StatsRow>().await {
             if let Some(s) = stats.first() {
                 let success_rate = if s.total_deliveries > 0 {
