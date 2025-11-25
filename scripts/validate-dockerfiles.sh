@@ -44,10 +44,7 @@ for dockerfile in crates/*/Dockerfile; do
         fi
     done <<< "$WORKSPACE_MEMBERS"
     
-    # Check if tests are copied (if it's a workspace member)
-    if [ -n "$TEST_MEMBER" ] && [ -z "$COPIED_TESTS" ]; then
-        MISSING="$MISSING\n  - $TEST_MEMBER"
-    fi
+    # Note: tests directory is optional in Dockerfiles (excluded by .dockerignore for production)
     
     if [ -n "$MISSING" ]; then
         echo -e "${RED}✗ Missing workspace members:${NC}$MISSING"

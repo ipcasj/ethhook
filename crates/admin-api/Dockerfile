@@ -17,8 +17,10 @@ COPY crates/domain crates/domain
 COPY crates/validate-env crates/validate-env
 COPY crates/admin-api crates/admin-api
 COPY crates/pipeline crates/pipeline
-COPY tests tests
 COPY migrations migrations
+
+# Remove tests from workspace for Docker build (excluded by .dockerignore)
+RUN sed -i '/"tests",/d' Cargo.toml
 
 # Build the application (SQLite doesn't need offline mode)
 ENV DATABASE_URL=sqlite:config.db

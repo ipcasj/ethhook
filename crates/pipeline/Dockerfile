@@ -19,13 +19,15 @@ COPY crates/domain crates/domain
 COPY crates/validate-env crates/validate-env
 COPY crates/admin-api crates/admin-api
 COPY crates/pipeline crates/pipeline
-COPY tests tests
 
 # Copy migrations
 COPY migrations migrations
 
+# Remove tests from workspace for Docker build (excluded by .dockerignore)
+RUN sed -i '/"tests",/d' Cargo.toml
+
 # Build release binary
-ENV DATABASE_URL=sqlite:config.db
+ENV DATABASE_URL=sqlite:pipeline.db
 RUN cargo build --release --bin pipeline
 
 # Runtime stage
