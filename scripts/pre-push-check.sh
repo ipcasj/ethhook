@@ -171,7 +171,69 @@ echo -e "${YELLOW}Note: Skipping E2E tests (requires running services)${NC}"
 echo -e "${YELLOW}Run manually: cd ui && npm run test:e2e -- 00-smoke.spec.ts${NC}"
 
 # ============================================================================
-# 9. Git Status Check
+# 9. SQLX Offline Mode Check
+# ============================================================================
+print_section "SQLX Offline Mode Check"
+
+echo "Verifying SQLX offline mode compilation..."
+if SQLX_OFFLINE=true cargo check --workspace --quiet 2>/dev/null; then
+    print_status 0 "SQLX offline mode works (Docker builds will succeed)"
+else
+    print_status 1 "SQLX offline mode failed"
+    echo -e "${RED}This will cause Docker builds to fail in CI!${NC}"
+    echo -e "${YELLOW}Fix: Run 'cargo sqlx prepare' to regenerate .sqlx cache${NC}"
+fi
+
+# Verify .sqlx directory exists
+if [ -d ".sqlx" ]; then
+    CACHE_COUNT=$(find .sqlx -name "*.json" | wc -l)
+    print_status 0 ".sqlx cache directory exists ($CACHE_COUNT queries cached)"
+else
+    print_status 1 ".sqlx cache directory missing"
+    echo -e "${YELLOW}Run 'cargo sqlx prepare' to create it${NC}"
+fi
+
+# ============================================================================
+# 10. Dockerfile Validation
+# ============================================================================
+print_section "Dockerfile Validation"
+
+echo "Validating Dockerfile workspace members..."
+if [ -f "scripts/validate-dockerfiles.sh" ]; then
+    if ./scripts/validate-dockerfiles.sh >/dev/null 2>&1; then
+        print_status 0 "Dockerfiles have all required workspace members"
+    else
+        print_status 1 "Dockerfile validation failed"
+        echo -e "${YELLOW}Run './scripts/validate-dockerfiles.sh' for details${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠ scripts/validate-dockerfiles.sh not found (skipping)${NC}"
+fi
+
+# Check if Dockerfiles have SQLX_OFFLINE set
+ADMIN_API_OFFLINE=$(grep -c "SQLX_OFFLINE=true" crates/admin-api/Dockerfile || echo "0")
+PIPELINE_OFFLINE=$(grep -c "SQLX_OFFLINE=true" crates/pipeline/Dockerfile || echo "0")
+
+if [ "$ADMIN_API_OFFLINE" -gt 0 ] && [ "$PIPELINE_OFFLINE" -gt 0 ]; then
+    print_status 0 "Dockerfiles have SQLX_OFFLINE=true configured"
+else
+    print_status 1 "Dockerfiles missing SQLX_OFFLINE=true"
+    echo -e "${YELLOW}Docker builds will fail without SQLX_OFFLINE=true${NC}"
+fi
+
+# Check if Dockerfiles copy .sqlx directory
+ADMIN_API_SQLX=$(grep -c "COPY .sqlx" crates/admin-api/Dockerfile || echo "0")
+PIPELINE_SQLX=$(grep -c "COPY .sqlx" crates/pipeline/Dockerfile || echo "0")
+
+if [ "$ADMIN_API_SQLX" -gt 0 ] && [ "$PIPELINE_SQLX" -gt 0 ]; then
+    print_status 0 "Dockerfiles copy .sqlx cache directory"
+else
+    print_status 1 "Dockerfiles don't copy .sqlx directory"
+    echo -e "${YELLOW}Add 'COPY .sqlx .sqlx' to Dockerfiles${NC}"
+fi
+
+# ============================================================================
+# 11. Git Status Check
 # ============================================================================
 print_section "Git Status"
 
@@ -190,7 +252,7 @@ CURRENT_BRANCH=$(git branch --show-current)
 echo -e "Current branch: ${BLUE}${CURRENT_BRANCH}${NC}"
 
 # ============================================================================
-# 10. Final Summary
+# 12. Final Summary
 # ============================================================================
 print_section "Summary"
 

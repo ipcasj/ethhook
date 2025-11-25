@@ -718,24 +718,24 @@ pub async fn get_application_endpoints_performance(
             avg_delivery_time_ms: f64,
         }
 
-        if let Ok(stats) = client.query(&stats_query).fetch_all::<StatsRow>().await
-            && let Some(s) = stats.first()
-        {
-            let success_rate = if s.total_deliveries > 0 {
-                (s.successful_deliveries as f64 / s.total_deliveries as f64) * 100.0
-            } else {
-                0.0
-            };
+        if let Ok(stats) = client.query(&stats_query).fetch_all::<StatsRow>().await {
+            if let Some(s) = stats.first() {
+                let success_rate = if s.total_deliveries > 0 {
+                    (s.successful_deliveries as f64 / s.total_deliveries as f64) * 100.0
+                } else {
+                    0.0
+                };
 
-            performances.push(serde_json::json!({
-                "endpoint_id": endpoint_id_str,
-                "endpoint_name": endpoint.name,
-                "total_events": s.total_events,
-                "total_deliveries": s.total_deliveries,
-                "successful_deliveries": s.successful_deliveries,
-                "success_rate": success_rate,
-                "avg_delivery_time_ms": s.avg_delivery_time_ms,
-            }));
+                performances.push(serde_json::json!({
+                    "endpoint_id": endpoint_id_str,
+                    "endpoint_name": endpoint.name,
+                    "total_events": s.total_events,
+                    "total_deliveries": s.total_deliveries,
+                    "successful_deliveries": s.successful_deliveries,
+                    "success_rate": success_rate,
+                    "avg_delivery_time_ms": s.avg_delivery_time_ms,
+                }));
+            }
         }
     }
 

@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy workspace files (workspace requires all members)
 COPY Cargo.toml Cargo.lock ./
+COPY .sqlx .sqlx
 COPY crates/common crates/common
 COPY crates/config crates/config
 COPY crates/domain crates/domain
@@ -23,8 +24,8 @@ COPY migrations migrations
 # Remove tests from workspace for Docker build (excluded by .dockerignore)
 RUN sed -i '/"tests",/d' Cargo.toml
 
-# Build the application (SQLite doesn't need offline mode)
-ENV DATABASE_URL=sqlite:config.db
+# Build the application with SQLX offline mode (uses cached query metadata)
+ENV SQLX_OFFLINE=true
 RUN cargo build --release --bin ethhook-admin-api
 
 # Runtime stage

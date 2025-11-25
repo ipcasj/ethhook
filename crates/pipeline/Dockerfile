@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 # Copy workspace manifests
 COPY Cargo.toml Cargo.lock ./
+COPY .sqlx .sqlx
 
 # Copy all crate source directories (workspace requires all members)
 COPY crates/common crates/common
@@ -27,8 +28,8 @@ COPY migrations migrations
 # Remove tests from workspace for Docker build (excluded by .dockerignore)
 RUN sed -i '/"tests",/d' Cargo.toml
 
-# Build release binary
-ENV DATABASE_URL=sqlite:pipeline.db
+# Build release binary with SQLX offline mode (uses cached query metadata)
+ENV SQLX_OFFLINE=true
 RUN cargo build --release --bin pipeline
 
 # Runtime stage
