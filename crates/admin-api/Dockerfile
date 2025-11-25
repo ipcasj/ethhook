@@ -9,12 +9,13 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace files
+# Copy workspace files (workspace requires all members)
 COPY Cargo.toml Cargo.lock ./
 COPY crates/common crates/common
 COPY crates/config crates/config
 COPY crates/domain crates/domain
 COPY crates/admin-api crates/admin-api
+COPY crates/pipeline crates/pipeline
 COPY migrations migrations
 
 # Build the application (SQLite doesn't need offline mode)
