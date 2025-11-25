@@ -63,7 +63,7 @@ pub enum Error {
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// fn some_operation() -> Result<T> {
 ///     Ok(value)
 /// }

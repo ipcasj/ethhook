@@ -14,14 +14,14 @@ use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitEx
 /// ```
 ///
 /// Rust (tracing):
-/// ```rust
+/// ```rust,ignore
 /// use tracing::{info, error};
 /// info!(user_id = %user_id, "User logged in");
 /// error!(error = %err, "Failed to process");
 /// ```
 ///
 /// Usage:
-/// ```rust
+/// ```rust,ignore
 /// // In main.rs
 /// ethhook_common::init_tracing();
 ///

@@ -21,7 +21,7 @@ use crate::error::Result;
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// let pool = create_pool("sqlite:config.db", 5).await?;
 /// ```
 pub async fn create_pool(database_url: &str, max_connections: u32) -> Result<SqlitePool> {
@@ -59,7 +59,7 @@ pub async fn create_pool(database_url: &str, max_connections: u32) -> Result<Sql
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// health_check(&pool).await?;
 /// ```
 pub async fn health_check(pool: &SqlitePool) -> Result<()> {

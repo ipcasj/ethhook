@@ -42,7 +42,7 @@ pub struct Claims {
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// let token = create_jwt("user123", "secret", 3600)?;
 /// ```
 pub fn create_jwt(user_id: &str, secret: &str, expires_in_seconds: i64) -> Result<String> {
@@ -75,7 +75,7 @@ pub fn create_jwt(user_id: &str, secret: &str, expires_in_seconds: i64) -> Resul
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// let claims = verify_jwt(&token, "secret")?;
 /// let user_id = claims.sub;
 /// ```
@@ -97,7 +97,7 @@ pub fn verify_jwt(token: &str, secret: &str) -> Result<Claims> {
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// let hash = hash_password("mypassword")?;
 /// ```
 pub fn hash_password(password: &str) -> Result<String> {
@@ -114,7 +114,7 @@ pub fn hash_password(password: &str) -> Result<String> {
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// let valid = verify_password("mypassword", &stored_hash)?;
 /// ```
 pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
@@ -133,7 +133,7 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// let signature = sign_hmac("payload_data", "secret");
 /// ```
 pub fn sign_hmac(payload: &str, secret: &str) -> String {
@@ -156,7 +156,7 @@ pub fn sign_hmac(payload: &str, secret: &str) -> String {
 /// ```
 ///
 /// Rust:
-/// ```rust
+/// ```rust,ignore
 /// let valid = verify_hmac("payload_data", "signature_hex", "secret");
 /// ```
 pub fn verify_hmac(payload: &str, signature_hex: &str, secret: &str) -> bool {

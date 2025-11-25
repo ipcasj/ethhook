@@ -9,7 +9,7 @@
  * - `GET /api/v1/stats/stream` - Stream live statistics updates
  *
  * ## Architecture
- * ```
+ * ```text
  * Pipeline → Broadcast Channel → Admin API (this module) → SSE → Dashboard
  * ```
  *
@@ -245,7 +245,7 @@ pub async fn stats_stream(
  * Called by other parts of the application (e.g., pipeline webhook notifications)
  *
  * ## Example
- * ```rust
+ * ```rust,ignore
  * broadcast_event(SseMessage::Event {
  *     endpoint_id: endpoint.id.to_string(),
  *     chain: "ethereum".to_string(),

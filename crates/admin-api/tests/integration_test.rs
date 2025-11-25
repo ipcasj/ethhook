@@ -8,8 +8,8 @@
  * 4. Endpoint CRUD operations
  * 5. API key validation
  *
- * Run with: cargo test -p ethhook-admin-api --test integration_test -- --ignored
- * (Requires SQLite database and Redis running)
+ * Run with: cargo test -p ethhook-admin-api --test integration_test
+ * Uses in-memory SQLite database for fast, isolated testing
  */
 
 use axum::{
@@ -57,7 +57,6 @@ async fn get_json_response(response: axum::response::Response) -> Value {
 }
 
 #[tokio::test]
-#[ignore] // Requires SQLite database
 async fn test_user_registration_success() {
     let pool = create_test_pool().await;
     let test_email = "test_register@example.com";
@@ -100,7 +99,6 @@ async fn test_user_registration_success() {
 }
 
 #[tokio::test]
-#[ignore] // Requires SQLite
 async fn test_user_registration_duplicate_email() {
     let pool = create_test_pool().await;
     let test_email = "test_duplicate@example.com";
@@ -150,7 +148,6 @@ async fn test_user_registration_duplicate_email() {
 }
 
 #[tokio::test]
-#[ignore] // Requires SQLite
 async fn test_user_login_success() {
     let pool = create_test_pool().await;
     let test_email = "test_login@example.com";
@@ -210,7 +207,6 @@ async fn test_user_login_success() {
 }
 
 #[tokio::test]
-#[ignore] // Requires SQLite
 async fn test_user_login_invalid_password() {
     let pool = create_test_pool().await;
     let test_email = "test_invalid_pw@example.com";
@@ -262,7 +258,6 @@ async fn test_user_login_invalid_password() {
 }
 
 #[tokio::test]
-#[ignore] // Requires SQLite
 async fn test_get_user_profile_authenticated() {
     let pool = create_test_pool().await;
     let test_email = "test_profile@example.com";
@@ -317,7 +312,6 @@ async fn test_get_user_profile_authenticated() {
 }
 
 #[tokio::test]
-#[ignore] // Requires SQLite
 async fn test_get_user_profile_unauthenticated() {
     let pool = create_test_pool().await;
     let app = ethhook_admin_api::create_test_router(pool);
@@ -338,7 +332,6 @@ async fn test_get_user_profile_unauthenticated() {
 }
 
 #[tokio::test]
-#[ignore] // Requires SQLite
 async fn test_complete_application_workflow() {
     let pool = create_test_pool().await;
     let test_email = "test_app_workflow@example.com";
@@ -482,7 +475,6 @@ async fn test_complete_application_workflow() {
 }
 
 #[tokio::test]
-#[ignore] // Requires SQLite
 async fn test_jwt_validation() {
     let pool = create_test_pool().await;
     let app = ethhook_admin_api::create_test_router(pool);

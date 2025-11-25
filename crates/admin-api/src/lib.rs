@@ -59,7 +59,7 @@
  * ## Authentication
  *
  * Protected endpoints require JWT authentication:
- * ```
+ * ```text
  * Authorization: Bearer <jwt_token>
  * ```
  *
