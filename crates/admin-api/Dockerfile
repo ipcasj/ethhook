@@ -11,7 +11,6 @@ RUN apt-get update && apt-get install -y \
 
 # Copy workspace files
 COPY Cargo.toml Cargo.lock ./
-COPY .cargo .cargo
 COPY crates/common crates/common
 COPY crates/config crates/config
 COPY crates/domain crates/domain
