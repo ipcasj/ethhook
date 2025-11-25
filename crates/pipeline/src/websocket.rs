@@ -307,6 +307,7 @@ impl WebSocketClient {
             // Clippy suggests collapsing these, but that requires unstable let chains (RFC #53667).
             #[allow(clippy::collapsible_if)]
             if message.get("method").and_then(|m| m.as_str()) == Some("eth_subscription") {
+                #[allow(clippy::collapsible_if)]
                 if let Some(params) = message.get("params") {
                     if let Some(result) = params.get("result") {
                         return self.process_block_header(result).await;
