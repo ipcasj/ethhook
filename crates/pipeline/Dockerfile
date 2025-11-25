@@ -3,10 +3,11 @@ FROM rust:1.83-slim as builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Install build dependencies (including g++ for ClickHouse cityhash)
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy workspace manifests
