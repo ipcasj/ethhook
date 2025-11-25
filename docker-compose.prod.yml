@@ -38,7 +38,7 @@ services:
     container_name: ethhook-pipeline
     environment:
       - RUST_LOG=info
-      - CONFIG_DB_PATH=sqlite:/data/config.db
+      - CONFIG_DB_PATH=sqlite:///data/config.db
       - CLICKHOUSE_URL=http://clickhouse:8123
       - CLICKHOUSE_USER=ethhook
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
@@ -78,7 +78,7 @@ services:
     container_name: ethhook-admin-api
     environment:
       - RUST_LOG=info
-      - DATABASE_URL=sqlite:/data/config.db
+      - DATABASE_URL=sqlite:///data/config.db
       - DATABASE_MAX_CONNECTIONS=5
       - CLICKHOUSE_URL=http://clickhouse:8123
       - CLICKHOUSE_USER=ethhook
