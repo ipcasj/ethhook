@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y \
 # Copy workspace manifests
 COPY Cargo.toml Cargo.lock ./
 
-# Copy all crate source directories
+# Copy all crate source directories (workspace requires all members)
 COPY crates/common crates/common
 COPY crates/config crates/config
 COPY crates/domain crates/domain
+COPY crates/admin-api crates/admin-api
 COPY crates/pipeline crates/pipeline
 
 # Copy migrations
