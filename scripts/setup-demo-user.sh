@@ -8,9 +8,16 @@ DEMO_EMAIL="${DEMO_EMAIL:-demo@ethhook.com}"
 DEMO_PASSWORD="${DEMO_PASSWORD:-Demo1234!}"
 DEMO_NAME="${DEMO_NAME:-Demo User}"
 
-# Password hash for "Demo1234!" (bcrypt cost 12)
-# Generated with: echo -n "Demo1234!" | openssl passwd -6 -stdin
-DEMO_PASSWORD_HASH='$2b$12$LKJ9XvN5Bq3Y4ZQxJzK.PuY8h2RbVw3mN5T7c6K8L9v4K5J6H7I8J'
+# Generate password hash using Python bcrypt (same library used by admin-api)
+if command -v python3 &> /dev/null; then
+    DEMO_PASSWORD_HASH=$(python3 -c "import bcrypt; print(bcrypt.hashpw(b'$DEMO_PASSWORD', bcrypt.gensalt(12)).decode())" 2>/dev/null || echo "")
+fi
+
+# Fallback to pre-generated hash if Python/bcrypt not available
+if [ -z "$DEMO_PASSWORD_HASH" ]; then
+    # Pre-generated hash for "Demo1234!" (bcrypt cost 12)
+    DEMO_PASSWORD_HASH='$2b$12$djQlrApNZCkvKGQrnoLq6egynO65lOZcyYze9I/YO18CCMEgGJlci'
+fi
 
 echo "🎯 Setting Up Demo User for EthHook"
 echo "===================================="
@@ -59,8 +66,8 @@ if [ "$USER_EXISTS" -gt 0 ]; then
 else
     echo "Creating demo user..."
     
-    # Generate a deterministic UUID for the demo user
-    USER_ID="demo-user-$(echo -n $DEMO_EMAIL | md5sum | cut -c1-32 | sed 's/\(........\)\(....\)\(....\)\(....\)/\1-\2-\3-\4-/')"
+    # Generate a proper UUID for the demo user (deterministic based on email)
+    USER_ID=$(echo -n $DEMO_EMAIL | md5sum | cut -c1-32 | sed 's/\(........\)\(....\)\(....\)\(....\)\(....\)/\1-\2-\3-\4-\5/')
     
     execute_sql "
     INSERT INTO users (id, email, password_hash, full_name, email_verified, subscription_tier, subscription_status, created_at, updated_at)
@@ -91,7 +98,7 @@ if [ "$APP_EXISTS" -gt 0 ]; then
 else
     echo "Creating demo application..."
     
-    APP_ID="demo-app-$(echo -n $USER_ID | md5sum | cut -c1-32 | sed 's/\(........\)\(....\)\(....\)\(....\)/\1-\2-\3-\4-/')"
+    APP_ID=$(echo -n "demo-app-$USER_ID" | md5sum | cut -c1-32 | sed 's/\(........\)\(....\)\(....\)\(....\)\(....\)/\1-\2-\3-\4-\5/')
     WEBHOOK_SECRET=$(openssl rand -hex 32)
     
     execute_sql "
