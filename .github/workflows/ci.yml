@@ -495,6 +495,7 @@ jobs:
           build-args: |
             BUILDKIT_INLINE_CACHE=1
             NEXT_PUBLIC_API_URL=http://104.248.15.178:3000/api/v1
+            NEXT_PUBLIC_WS_URL=ws://104.248.15.178:3000
 
   summary:
     name: CI Summary
