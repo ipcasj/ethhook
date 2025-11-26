@@ -465,7 +465,8 @@ jobs:
           echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
           echo "date=$(date -u +'%Y%m%d')" >> $GITHUB_OUTPUT
 
-      - name: Build and push ${{ matrix.name }}
+      - name: Build and push ${{ matrix.name }} (non-UI)
+        if: matrix.name != 'ui'
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
@@ -478,6 +479,22 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+
+      - name: Build and push UI
+        if: matrix.name == 'ui'
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.actor }}/ethhook-${{ matrix.name }}:latest
+            ghcr.io/${{ github.actor }}/ethhook-${{ matrix.name }}:${{ steps.meta.outputs.sha_short }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+            NEXT_PUBLIC_API_URL=http://104.248.15.178:3000/api/v1
 
   summary:
     name: CI Summary

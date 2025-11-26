@@ -114,6 +114,8 @@ services:
     build:
       context: ./ui
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://104.248.15.178:3000/api/v1
     container_name: ethhook-ui
     ports:
       - "3002:3000"
