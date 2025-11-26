@@ -2,7 +2,7 @@
 -- Optimized for time-series data and high-volume writes
 
 -- Events table: stores all blockchain events
-CREATE TABLE IF NOT EXISTS events (
+CREATE TABLE IF NOT EXISTS ethhook.events (
     id UUID DEFAULT generateUUIDv4(),
     endpoint_id UUID,
     application_id UUID,
@@ -24,7 +24,7 @@ TTL ingested_at + INTERVAL 90 DAY
 SETTINGS index_granularity = 8192;
 
 -- Delivery attempts table: tracks webhook delivery attempts
-CREATE TABLE IF NOT EXISTS delivery_attempts (
+CREATE TABLE IF NOT EXISTS ethhook.delivery_attempts (
     id UUID DEFAULT generateUUIDv4(),
     event_id UUID,
     endpoint_id UUID,
