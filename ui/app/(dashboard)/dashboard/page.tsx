@@ -430,7 +430,7 @@ export default function DashboardPage() {
                     {chainData.distributions?.map((entry, index) => {
                       const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
                       return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                    })}}
+                    })}
                   </Pie>
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '11px' }}
