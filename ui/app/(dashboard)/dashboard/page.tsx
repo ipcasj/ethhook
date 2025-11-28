@@ -8,7 +8,7 @@ import { CompactMetricCard } from '@/components/ui/compact-metric-card';
 import { CompactEventTable } from '@/components/ui/compact-event-table';
 import { InfoBanner } from '@/components/ui/info-banner';
 import { InsightCard } from '@/components/ui/insight-card';
-import { useWebSocket, WsStatsMessage } from '@/hooks/useWebSocket';
+// import { useWebSocket, WsStatsMessage } from '@/hooks/useWebSocket'; // Disabled - backend uses SSE
 import { api } from '@/lib/api-client';
 import { DashboardStats, Event, User } from '@/lib/types';
 import { Activity, Box, Webhook, CheckCircle, Plus, TrendingUp, Zap, Clock, BarChart3 } from 'lucide-react';
@@ -62,22 +62,12 @@ export default function DashboardPage() {
     refetchInterval: 30000, // Refresh every 30 seconds as fallback
   });
 
-  // Subscribe to real-time stats via WebSocket
-  const { messages: statsMessages } = useWebSocket('/ws/stats');
+  // WebSocket disabled - backend uses SSE at /stats/stream instead
+  // TODO: Implement SSE support for real-time stats
+  // const { messages: statsMessages } = useWebSocket('/ws/stats');
   
-  // Get latest stats from WebSocket (if available)
-  const latestWsStats = statsMessages
-    .filter((m): m is WsStatsMessage => m.type === 'stats')
-    .at(-1);
-
-  // Merge WebSocket stats with REST stats (WebSocket takes priority)
-  const mergedStats: DashboardStats | undefined = stats ? {
-    ...stats,
-    events_total: latestWsStats?.events_total ?? stats.events_total,
-    events_today: latestWsStats?.events_24h ?? stats.events_today,
-    success_rate: latestWsStats?.success_rate ?? stats.success_rate,
-    active_endpoints: latestWsStats?.active_endpoints ?? stats.active_endpoints,
-  } : undefined;
+  // Use REST API stats directly (no WebSocket merge)
+  const mergedStats: DashboardStats | undefined = stats;
 
   const { data: recentEvents, isLoading: eventsLoading } = useQuery<{ events: Event[] }>({
     queryKey: ['recent-events'],

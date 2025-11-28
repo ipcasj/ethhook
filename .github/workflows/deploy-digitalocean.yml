@@ -70,67 +70,67 @@ jobs:
           # Create production .env file
           cat > /tmp/prod.env << 'PRODENV'
           # ETHHOOK PRODUCTION CONFIGURATION
-          
+
           # Database
           DATABASE_URL=sqlite:/data/config.db
           DATABASE_MAX_CONNECTIONS=20
           DATABASE_MIN_CONNECTIONS=5
-          
+
           # Environment
           ENVIRONMENT=production
-          
+
           # Ethereum RPC (Mainnet)
           ETHEREUM_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/xGCBQXSFxK8qbIwCcSaJW
           ETHEREUM_WS_URL=wss://eth-mainnet.g.alchemy.com/v2/xGCBQXSFxK8qbIwCcSaJW
-          
+
           # L2 Chains
           ARBITRUM_RPC_URL=https://arb-mainnet.g.alchemy.com/v2/ddFFnbN_vc-tyIXEsIgzN
           ARBITRUM_WS_URL=wss://arb-mainnet.g.alchemy.com/v2/ddFFnbN_vc-tyIXEsIgzN
-          
+
           OPTIMISM_RPC_URL=https://opt-mainnet.g.alchemy.com/v2/2wYIA1B8CW11Q9s9QSBUq
           OPTIMISM_WS_URL=wss://opt-mainnet.g.alchemy.com/v2/2wYIA1B8CW11Q9s9QSBUq
-          
+
           BASE_RPC_URL=https://base-mainnet.g.alchemy.com/v2/Q5Todg2C3lLAHDaYBmS8a
           BASE_WS_URL=wss://base-mainnet.g.alchemy.com/v2/Q5Todg2C3lLAHDaYBmS8a
-          
+
           # Security
           JWT_SECRET=o6MANa5PpM3GDXgwqxrOdaymq0PhMxKzFXjbdOJCy4
           JWT_EXPIRATION_HOURS=24
-          
+
           # Service Configuration
           WORKER_COUNT=50
           RUST_LOG=info,ethhook=info,sqlx=warn
-          
+
           # API
           API_HOST=0.0.0.0
           API_PORT=3000
-          
+
           # Webhooks
           WEBHOOK_TIMEOUT_SECONDS=30
           WEBHOOK_MAX_RETRIES=5
           WEBHOOK_WORKER_THREADS=50
-          
+
           # CORS
           CORS_ALLOWED_ORIGINS=*
-          
+
           # Metrics
           PROMETHEUS_METRICS_PORT=9090
-          
+
           # Grafana
           GRAFANA_PASSWORD=admin
           PRODENV
-          
+
           # Add secret from GitHub Secrets
           echo "" >> /tmp/prod.env
           echo "# Secrets" >> /tmp/prod.env
           echo "CLICKHOUSE_PASSWORD=${{ secrets.CLICKHOUSE_PASSWORD }}" >> /tmp/prod.env
-          
+
           # Verify file
           echo "📝 Production .env file created ($(wc -l < /tmp/prod.env) lines)"
-          
+
           # Copy to server
           scp /tmp/prod.env ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }}:~/ethhook/.env
-          
+
           # Verify on server
           ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             cd ~/ethhook
@@ -144,10 +144,10 @@ jobs:
               exit 1
             fi
           EOF
-          
+
           # Cleanup
           rm /tmp/prod.env
-          
+
           echo "✅ Production environment configured"
 
       - name: Build and push Docker images
@@ -155,12 +155,12 @@ jobs:
         run: |
           # Login to GitHub Container Registry
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-          
+
           # Build and push images
           echo "Building and pushing Docker images..."
           docker compose -f docker-compose.prod.yml build pipeline admin-api ui demo-webhook-receiver
           docker compose -f docker-compose.prod.yml push pipeline admin-api ui demo-webhook-receiver
-          
+
           echo "✅ Docker images built and pushed"
 
       - name: Pull latest images on server
@@ -278,7 +278,7 @@ jobs:
         run: |
           echo "Waiting for services to be fully ready..."
           sleep 10
-          
+
           # Check admin API health (port 3000)
           echo "Checking admin API..."
           ADMIN_API_HEALTH=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:3000/health || echo "failed")
@@ -289,7 +289,7 @@ jobs:
           else
             echo "✅ Admin API is healthy: $ADMIN_API_HEALTH"
           fi
-          
+
           # Check pipeline health (port 8080)
           echo "Checking pipeline service..."
           PIPELINE_HEALTH=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:8080/health || echo "failed")
