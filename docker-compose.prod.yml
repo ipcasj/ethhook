@@ -55,7 +55,7 @@ services:
       - "8080:8080"
       - "9090:9090"
     volumes:
-      - pipeline_data:/data
+      - admin_data:/data
     networks:
       - ethhook-network
     depends_on:
@@ -211,7 +211,6 @@ networks:
 
 volumes:
   clickhouse_data: # ClickHouse database for events/deliveries
-  pipeline_data: # SQLite database for pipeline config
-  admin_data: # SQLite database for admin-api config
+  admin_data: # Shared SQLite database for config (used by both admin-api and pipeline)
   # prometheus_data:
   # grafana_data:
