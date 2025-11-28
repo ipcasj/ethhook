@@ -259,7 +259,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-lg font-bold text-slate-900">
                 {timeseriesLoading ? '...' : 
-                  timeseriesData?.data_points.length 
+                  timeseriesData?.data_points?.length 
                     ? Math.max(...timeseriesData.data_points.map(p => p.event_count)).toLocaleString()
                     : '0'
                 }
@@ -275,7 +275,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-lg font-bold text-slate-900">
                 {timeseriesLoading ? '...' : 
-                  timeseriesData?.data_points.length 
+                  timeseriesData?.data_points?.length 
                     ? `${((timeseriesData.data_points.reduce((sum, p) => sum + p.delivery_count, 0) / timeseriesData.data_points.reduce((sum, p) => sum + p.event_count, 0)) * 100 || 0).toFixed(0)}%`
                     : '0%'
                 }
@@ -291,7 +291,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-lg font-bold text-slate-900">
                 {timeseriesLoading ? '...' : 
-                  timeseriesData?.data_points.length 
+                  timeseriesData?.data_points?.length 
                     ? `${Math.max(...timeseriesData.data_points.map(p => p.success_rate)).toFixed(1)}%`
                     : '0%'
                 }
@@ -307,7 +307,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-lg font-bold text-slate-900">
                 {timeseriesLoading ? '...' : 
-                  timeseriesData?.data_points.filter(p => p.avg_latency_ms !== null).length
+                  timeseriesData?.data_points?.filter(p => p.avg_latency_ms !== null).length
                     ? `${Math.min(...timeseriesData.data_points.filter(p => p.avg_latency_ms !== null).map(p => p.avg_latency_ms as number)).toFixed(0)}ms`
                     : '—'
                 }
@@ -323,14 +323,14 @@ export default function DashboardPage() {
               </div>
               <div className="text-sm font-bold text-slate-900 truncate">
                 {chainLoading ? '...' : 
-                  chainData?.distributions.length
+                  chainData?.distributions?.length
                     ? chainData.distributions.reduce((max, d) => d.event_count > max.event_count ? d : max).chain_name
                     : '—'
                 }
               </div>
               <div className="text-xs text-slate-600">
                 {chainLoading ? '' : 
-                  chainData?.distributions.length
+                  chainData?.distributions?.length
                     ? `${chainData.distributions.reduce((max, d) => d.event_count > max.event_count ? d : max).percentage.toFixed(0)}%`
                     : 'no data'
                 }
@@ -353,7 +353,7 @@ export default function DashboardPage() {
               <div className="h-[120px] flex items-center justify-center text-slate-400 text-xs">
                 Loading chart...
               </div>
-            ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
+            ) : timeseriesData && timeseriesData.data_points && timeseriesData.data_points.length > 0 ? (
               <ResponsiveContainer width="100%" height={120}>
                 <AreaChart data={timeseriesData.data_points} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                   <defs>
@@ -410,7 +410,7 @@ export default function DashboardPage() {
               <div className="h-[120px] flex items-center justify-center text-slate-400 text-xs">
                 Loading chart...
               </div>
-            ) : chainData && chainData.distributions.length > 0 ? (
+            ) : chainData && chainData.distributions && chainData.distributions.length > 0 ? (
               <ResponsiveContainer width="100%" height={120}>
                 <PieChart>
                   <Pie
@@ -427,10 +427,10 @@ export default function DashboardPage() {
                     fill="#8884d8"
                     dataKey="event_count"
                   >
-                    {chainData.distributions.map((entry, index) => {
+                    {chainData.distributions?.map((entry, index) => {
                       const colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
                       return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                    })}
+                    })}}
                   </Pie>
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '11px' }}
