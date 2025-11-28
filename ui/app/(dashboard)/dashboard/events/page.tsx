@@ -296,7 +296,7 @@ export default function EventsPage() {
               <div className="h-[120px] flex items-center justify-center text-slate-400 text-xs">
                 Loading...
               </div>
-            ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
+            ) : timeseriesData && timeseriesData.data_points && timeseriesData.data_points.length > 0 ? (
               <ResponsiveContainer width="100%" height={120}>
                 <AreaChart data={timeseriesData.data_points} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                   <defs>
@@ -354,7 +354,7 @@ export default function EventsPage() {
               <div className="h-[120px] flex items-center justify-center text-slate-400 text-xs">
                 Loading...
               </div>
-            ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
+            ) : timeseriesData && timeseriesData.data_points && timeseriesData.data_points.length > 0 ? (
               <ResponsiveContainer width="100%" height={120}>
                 <AreaChart data={timeseriesData.data_points} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                   <defs>
@@ -412,7 +412,7 @@ export default function EventsPage() {
               <div className="h-[120px] flex items-center justify-center text-slate-400 text-xs">
                 Loading...
               </div>
-            ) : timeseriesData && timeseriesData.data_points.length > 0 ? (
+            ) : timeseriesData && timeseriesData.data_points && timeseriesData.data_points.length > 0 ? (
               <ResponsiveContainer width="100%" height={120}>
                 <AreaChart data={timeseriesData.data_points} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
                   <defs>
