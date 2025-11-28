@@ -356,34 +356,49 @@ fn load_chain_configs() -> Result<Vec<ChainConfig>> {
             // Development: Sepolia testnet only
             vec![ChainConfig {
                 name: "Sepolia".to_string(),
-                rpc_ws: std::env::var("SEPOLIA_WSS")
-                    .context("SEPOLIA_WSS environment variable required")?,
+                rpc_ws: std::env::var("SEPOLIA_WS_URL")
+                    .or_else(|_| std::env::var("SEPOLIA_WSS"))
+                    .context("SEPOLIA_WS_URL or SEPOLIA_WSS environment variable required")?,
             }]
         }
         _ => {
             // Production: Ethereum, Arbitrum, Optimism, Base
-            vec![
-                ChainConfig {
+            let mut chains = Vec::new();
+            
+            // Try each chain, skip if not configured (allows partial deployment)
+            if let Ok(url) = std::env::var("ETHEREUM_WS_URL").or_else(|_| std::env::var("ETHEREUM_WSS")) {
+                chains.push(ChainConfig {
                     name: "Ethereum".to_string(),
-                    rpc_ws: std::env::var("ETHEREUM_WSS")
-                        .context("ETHEREUM_WSS environment variable required")?,
-                },
-                ChainConfig {
+                    rpc_ws: url,
+                });
+            }
+            
+            if let Ok(url) = std::env::var("ARBITRUM_WS_URL").or_else(|_| std::env::var("ARBITRUM_WSS")) {
+                chains.push(ChainConfig {
                     name: "Arbitrum".to_string(),
-                    rpc_ws: std::env::var("ARBITRUM_WSS")
-                        .context("ARBITRUM_WSS environment variable required")?,
-                },
-                ChainConfig {
+                    rpc_ws: url,
+                });
+            }
+            
+            if let Ok(url) = std::env::var("OPTIMISM_WS_URL").or_else(|_| std::env::var("OPTIMISM_WSS")) {
+                chains.push(ChainConfig {
                     name: "Optimism".to_string(),
-                    rpc_ws: std::env::var("OPTIMISM_WSS")
-                        .context("OPTIMISM_WSS environment variable required")?,
-                },
-                ChainConfig {
+                    rpc_ws: url,
+                });
+            }
+            
+            if let Ok(url) = std::env::var("BASE_WS_URL").or_else(|_| std::env::var("BASE_WSS")) {
+                chains.push(ChainConfig {
                     name: "Base".to_string(),
-                    rpc_ws: std::env::var("BASE_WSS")
-                        .context("BASE_WSS environment variable required")?,
-                },
-            ]
+                    rpc_ws: url,
+                });
+            }
+            
+            if chains.is_empty() {
+                warn!("No blockchain RPC WebSocket URLs configured. Set ETHEREUM_WS_URL, ARBITRUM_WS_URL, OPTIMISM_WS_URL, or BASE_WS_URL");
+            }
+            
+            chains
         }
     };
 
