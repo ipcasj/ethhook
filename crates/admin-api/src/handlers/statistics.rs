@@ -116,12 +116,12 @@ pub async fn get_dashboard_statistics(
     let total_deliveries_query =
         format!("SELECT count() as total FROM delivery_attempts WHERE user_id = '{user_id}'");
 
-    #[derive(Debug, clickhouse::Row, Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct CountRow {
         total: u64,
     }
 
-    #[derive(Debug, clickhouse::Row, Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct SuccessRateRow {
         successful: u64,
         total: u64,
@@ -282,7 +282,7 @@ pub async fn get_chain_distribution(
          ORDER BY event_count DESC"
     );
 
-    #[derive(Debug, clickhouse::Row, Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct ChainRow {
         chain_id: u32,
         event_count: u64,
@@ -362,7 +362,7 @@ pub async fn get_application_statistics(
          WHERE application_id = '{app_id_str}'"
     );
 
-    #[derive(Debug, clickhouse::Row, Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct AppStatsRow {
         total_events: u64,
         total_deliveries: u64,
@@ -499,7 +499,7 @@ pub async fn get_endpoint_statistics(
          WHERE endpoint_id = '{endpoint_id_str}'"
     );
 
-    #[derive(Debug, clickhouse::Row, Deserialize)]
+    #[derive(Debug, Deserialize)]
     struct EndpointStatsRow {
         total_events: u64,
         total_deliveries: u64,
@@ -710,7 +710,7 @@ pub async fn get_application_endpoints_performance(
              WHERE endpoint_id = '{endpoint_id_str}'"
         );
 
-        #[derive(Debug, clickhouse::Row, Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct StatsRow {
             total_events: u64,
             total_deliveries: u64,
