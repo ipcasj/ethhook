@@ -4,6 +4,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{error, info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod batch;
 mod config_db;
 mod health;
 mod metrics;
@@ -53,7 +54,7 @@ async fn main() -> Result<()> {
 
     // Safety Rule #3: Message passing over shared state
     // Create channels for event flow (no shared mutexes across await)
-    let (event_tx, _event_rx) = mpsc::channel::<BlockchainEvent>(EVENT_CHANNEL_SIZE);
+    let (event_tx, event_rx) = mpsc::channel::<BlockchainEvent>(EVENT_CHANNEL_SIZE);
     let (_delivery_tx, _delivery_rx) = mpsc::channel::<DeliveryJob>(DELIVERY_CHANNEL_SIZE);
 
     info!(
@@ -75,8 +76,11 @@ async fn main() -> Result<()> {
         shutdown_tx.subscribe(),
     ));
 
-    // TODO: Start batch processor (Days 5-7) - CRITICAL for performance
-    // let batch_handle = tokio::spawn(batch::start_processor(event_rx, delivery_tx, shutdown_tx.subscribe()));
+    // Start batch processor (Days 5-7) - CRITICAL for performance
+    let batch_handle = tokio::spawn(batch::start_processor(
+        event_rx,
+        shutdown_tx.subscribe(),
+    ));
 
     // TODO: Start HTTP delivery workers (Days 8-10)
     // let delivery_handle = tokio::spawn(delivery::start_workers(delivery_rx, shutdown_tx.subscribe()));
@@ -114,6 +118,10 @@ async fn main() -> Result<()> {
 
     if let Err(e) = ws_handle.await {
         error!("WebSocket ingestor task failed: {}", e);
+    }
+
+    if let Err(e) = batch_handle.await {
+        error!("Batch processor task failed: {}", e);
     }
 
     info!("Pipeline service shutdown complete");
