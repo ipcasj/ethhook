@@ -421,14 +421,28 @@ impl WebSocketClient {
                         .unwrap_or("0x")
                         .to_string();
                     
-                    // Skip events with extremely large data (ClickHouse can't handle them)
-                    const MAX_DATA_SIZE: usize = 1 * 1024 * 1024; // 1MB limit
+                    // Skip events with large data (ClickHouse has issues with large binaries)
+                    const MAX_DATA_SIZE: usize = 100 * 1024; // 100KB limit - conservative
                     if data.len() > MAX_DATA_SIZE {
                         warn!(
-                            "[{}] Skipping event with large data field: {} bytes (tx: {})",
+                            "[{}] Skipping event with large data: {} bytes (tx: {}, log: {})",
                             self.chain_name,
                             data.len(),
-                            tx_hash
+                            tx_hash,
+                            log_index
+                        );
+                        continue;
+                    }
+                    
+                    // Also check total topics size
+                    let topics_size: usize = topics.iter().map(|t| t.len()).sum();
+                    if topics_size > MAX_DATA_SIZE {
+                        warn!(
+                            "[{}] Skipping event with large topics: {} bytes (tx: {}, log: {})",
+                            self.chain_name,
+                            topics_size,
+                            tx_hash,
+                            log_index
                         );
                         continue;
                     }
