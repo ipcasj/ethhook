@@ -16,14 +16,23 @@ pub async fn start_processor(
     let clickhouse_url = std::env::var("CLICKHOUSE_URL")
         .unwrap_or_else(|_| "http://clickhouse:8123".to_string());
     
-    let clickhouse_db = std::env::var("CLICKHOUSE_DB")
+    let clickhouse_db = std::env::var("CLICKHOUSE_DATABASE")
+        .or_else(|_| std::env::var("CLICKHOUSE_DB"))
         .unwrap_or_else(|_| "ethhook".to_string());
     
-    info!("Connecting to ClickHouse: {}/{}", clickhouse_url, clickhouse_db);
+    let clickhouse_user = std::env::var("CLICKHOUSE_USER")
+        .unwrap_or_else(|_| "default".to_string());
+    
+    let clickhouse_password = std::env::var("CLICKHOUSE_PASSWORD")
+        .unwrap_or_else(|_| String::new());
+    
+    info!("Connecting to ClickHouse: {}/{} (user: {})", clickhouse_url, clickhouse_db, clickhouse_user);
 
     let client = Client::default()
         .with_url(&clickhouse_url)
-        .with_database(&clickhouse_db);
+        .with_database(&clickhouse_db)
+        .with_user(&clickhouse_user)
+        .with_password(&clickhouse_password);
 
     let mut batch = Vec::with_capacity(BATCH_SIZE);
     let mut shutdown_rx = shutdown;
