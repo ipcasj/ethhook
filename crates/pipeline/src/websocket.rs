@@ -415,23 +415,22 @@ impl WebSocketClient {
                         })
                         .unwrap_or_default();
                     
-                    let mut data = log
+                    let data = log
                         .get("data")
                         .and_then(|d| d.as_str())
                         .unwrap_or("0x")
                         .to_string();
                     
-                    // Truncate data if too large (ClickHouse default limit: 1GB, we use 10MB)
-                    const MAX_DATA_SIZE: usize = 10 * 1024 * 1024; // 10MB
+                    // Skip events with extremely large data (ClickHouse can't handle them)
+                    const MAX_DATA_SIZE: usize = 1 * 1024 * 1024; // 1MB limit
                     if data.len() > MAX_DATA_SIZE {
                         warn!(
-                            "[{}] Truncating large data field: {} bytes -> {} bytes (tx: {})",
+                            "[{}] Skipping event with large data field: {} bytes (tx: {})",
                             self.chain_name,
                             data.len(),
-                            MAX_DATA_SIZE,
                             tx_hash
                         );
-                        data.truncate(MAX_DATA_SIZE);
+                        continue;
                     }
                     
                     // Lookup endpoint metadata from cache
