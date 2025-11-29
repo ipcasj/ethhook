@@ -7,6 +7,10 @@ use uuid::Uuid;
 #[cfg_attr(feature = "clickhouse", derive(clickhouse::Row))]
 pub struct BlockchainEvent {
     pub id: Uuid,
+    pub endpoint_id: Option<Uuid>,
+    pub application_id: Option<Uuid>,
+    pub user_id: Option<Uuid>,
+    pub chain_id: u32,
     pub block_number: i64,
     pub block_hash: String,
     pub transaction_hash: String,

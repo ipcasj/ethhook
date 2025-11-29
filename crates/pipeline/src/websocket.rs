@@ -32,7 +32,7 @@ use tokio_tungstenite::{
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use crate::config_db::ENDPOINT_CACHE;
+use crate::config_db::{ENDPOINT_CACHE, APPLICATION_CACHE};
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -415,15 +415,46 @@ impl WebSocketClient {
                         })
                         .unwrap_or_default();
                     
-                    let data = log
+                    let mut data = log
                         .get("data")
                         .and_then(|d| d.as_str())
                         .unwrap_or("0x")
                         .to_string();
                     
+                    // Truncate data if too large (ClickHouse default limit: 1GB, we use 10MB)
+                    const MAX_DATA_SIZE: usize = 10 * 1024 * 1024; // 10MB
+                    if data.len() > MAX_DATA_SIZE {
+                        warn!(
+                            "[{}] Truncating large data field: {} bytes -> {} bytes (tx: {})",
+                            self.chain_name,
+                            data.len(),
+                            MAX_DATA_SIZE,
+                            tx_hash
+                        );
+                        data.truncate(MAX_DATA_SIZE);
+                    }
+                    
+                    // Lookup endpoint metadata from cache
+                    let (endpoint_id, application_id, user_id) = ENDPOINT_CACHE
+                        .get(&contract_address)
+                        .and_then(|endpoints| {
+                            endpoints.first().map(|endpoint| {
+                                let user_id = APPLICATION_CACHE
+                                    .get(&endpoint.application_id)
+                                    .map(|entry| *entry.value());
+                                (endpoint.id, endpoint.application_id, user_id)
+                            })
+                        })
+                        .map(|(endpoint_id, app_id, user_id)| (Some(endpoint_id), Some(app_id), user_id))
+                        .unwrap_or((None, None, None));
+                    
                     // Create BlockchainEvent
                     let event = BlockchainEvent {
                         id: Uuid::new_v4(),
+                        endpoint_id,
+                        application_id,
+                        user_id,
+                        chain_id: self.chain_id as u32,
                         block_number: block_number as i64,
                         block_hash: block_hash.clone(),
                         transaction_hash: tx_hash.clone(),

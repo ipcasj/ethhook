@@ -25,15 +25,19 @@ use anyhow::{Context, Result};
 use dashmap::DashMap;
 use ethhook_domain::endpoint::Endpoint;
 use once_cell::sync::Lazy;
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, Row};
 use std::time::Duration;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info};
+use uuid::Uuid;
 
 /// Global endpoint cache - populated at startup, refreshed every 10s
 ///
 /// Hot path: ZERO database queries (all lookups are O(1) in-memory)
 pub static ENDPOINT_CACHE: Lazy<DashMap<String, Vec<Endpoint>>> = Lazy::new(DashMap::new);
+
+/// Global application cache - maps application_id -> user_id
+pub static APPLICATION_CACHE: Lazy<DashMap<Uuid, Uuid>> = Lazy::new(DashMap::new);
 
 /// Initialize config database and start cache refresh loop
 ///
@@ -56,6 +60,7 @@ pub async fn init_config_db(db_path: &str, mut shutdown_rx: broadcast::Receiver<
 
     // Initial cache load
     refresh_endpoint_cache(&db).await?;
+    refresh_application_cache(&db).await?;
 
     // Start background refresh task
     tokio::spawn(async move {
@@ -66,6 +71,9 @@ pub async fn init_config_db(db_path: &str, mut shutdown_rx: broadcast::Receiver<
                 _ = interval.tick() => {
                     if let Err(e) = refresh_endpoint_cache(&db).await {
                         error!("Failed to refresh endpoint cache: {}", e);
+                    }
+                    if let Err(e) = refresh_application_cache(&db).await {
+                        error!("Failed to refresh application cache: {}", e);
                     }
                 }
                 _ = shutdown_rx.recv() => {
@@ -126,5 +134,39 @@ async fn refresh_endpoint_cache(db: &SqlitePool) -> Result<()> {
         "Endpoint cache refreshed: {} contracts",
         ENDPOINT_CACHE.len()
     );
+    Ok(())
+}
+
+/// Refresh application cache from database
+///
+/// Loads all active applications and builds map: application_id -> user_id
+async fn refresh_application_cache(db: &SqlitePool) -> Result<()> {
+    debug!("Refreshing application cache");
+
+    // Query applications (manual UUID parsing for SQLite TEXT format)
+    let rows = tokio::time::timeout(
+        Duration::from_secs(30),
+        sqlx::query("SELECT id, user_id FROM applications WHERE is_active = 1")
+            .fetch_all(db),
+    )
+    .await
+    .context("Query timeout")?
+    .context("Failed to fetch applications")?;
+
+    // Parse UUIDs from SQLite TEXT format (lowercase hex without dashes)
+    APPLICATION_CACHE.clear();
+    for row in rows {
+        let id_str: String = row.get("id");
+        let user_id_str: String = row.get("user_id");
+        
+        // Parse hex strings to UUIDs (SQLite stores as lowercase hex without dashes)
+        if let (Ok(app_id), Ok(user_id)) = (Uuid::parse_str(&id_str), Uuid::parse_str(&user_id_str)) {
+            APPLICATION_CACHE.insert(app_id, user_id);
+        } else {
+            debug!("Skipping invalid UUID: id={}, user_id={}", id_str, user_id_str);
+        }
+    }
+
+    info!("Application cache refreshed: {} applications", APPLICATION_CACHE.len());
     Ok(())
 }
