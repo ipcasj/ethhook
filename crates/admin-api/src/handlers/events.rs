@@ -126,7 +126,7 @@ pub async fn list_events(
     };
 
     // Fetch events
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, clickhouse::Row, Deserialize)]
     struct EventRow {
         id: String,
         endpoint_id: String,
@@ -150,7 +150,7 @@ pub async fn list_events(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Get total count
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, clickhouse::Row, Deserialize)]
     struct CountRow {
         total: u64,
     }
@@ -209,7 +209,7 @@ pub async fn get_event(
          LIMIT 1"
     );
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, clickhouse::Row, Deserialize)]
     struct EventRow {
         id: String,
         endpoint_id: String,
@@ -287,7 +287,7 @@ pub async fn list_delivery_attempts(
         "SELECT count() as total FROM delivery_attempts WHERE user_id = '{user_id}' {status_filter}"
     );
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, clickhouse::Row, Deserialize)]
     struct DeliveryRow {
         id: String,
         event_id: String,
@@ -306,7 +306,7 @@ pub async fn list_delivery_attempts(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, clickhouse::Row, Deserialize)]
     struct CountRow {
         total: u64,
     }
