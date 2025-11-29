@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "sqlx", derive(sqlx::FromRow))]
+#[cfg_attr(feature = "clickhouse", derive(clickhouse::Row))]
 pub struct BlockchainEvent {
     pub id: Uuid,
     pub block_number: i64,

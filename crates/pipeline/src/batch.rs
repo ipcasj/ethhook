@@ -2,7 +2,7 @@ use anyhow::Result;
 use clickhouse::Client;
 use ethhook_domain::event::BlockchainEvent;
 use tokio::sync::{broadcast, mpsc};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 const BATCH_SIZE: usize = 100;
 const BATCH_TIMEOUT_SECS: u64 = 5;

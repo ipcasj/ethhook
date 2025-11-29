@@ -71,7 +71,7 @@ uuid = { version = "1.6", features = ["serde", "v4"] }
 
 # Local dependencies
 ethhook-common = { path = "../common" }
-ethhook-domain = { path = "../domain" }
+ethhook-domain = { path = "../domain", features = ["clickhouse"] }
 ethhook-config = { path = "../config" }
 
 [dev-dependencies]
