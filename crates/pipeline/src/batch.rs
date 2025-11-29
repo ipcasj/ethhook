@@ -82,20 +82,68 @@ pub async fn start_processor(
     Ok(())
 }
 
-async fn flush_batch(client: &Client, batch: &mut Vec<BlockchainEvent>) -> Result<()> {
+async fn flush_batch(_client: &Client, batch: &mut Vec<BlockchainEvent>) -> Result<()> {
     let count = batch.len();
     
     info!("Flushing batch of {} events to ClickHouse", count);
 
-    // Insert batch into ClickHouse
-    let mut insert = client.insert("events")?;
+    // Use JSONEachRow format instead of binary to avoid Vec<String> serialization corruption
+    // Convert ClickHouse timestamps to string format
+    use serde_json::json;
     
+    let mut json_lines = Vec::new();
     for event in batch.drain(..) {
-        insert.write(&event).await?;
+        // Manually construct JSON to control timestamp formatting
+        let json_obj = json!({
+            "id": event.id.to_string(),
+            "endpoint_id": event.endpoint_id.map(|u| u.to_string()),
+            "application_id": event.application_id.map(|u| u.to_string()),
+            "user_id": event.user_id.map(|u| u.to_string()),
+            "chain_id": event.chain_id,
+            "block_number": event.block_number,
+            "block_hash": event.block_hash,
+            "transaction_hash": event.transaction_hash,
+            "log_index": event.log_index,
+            "contract_address": event.contract_address,
+            "topics": event.topics,
+            "data": event.data,
+            "ingested_at": event.ingested_at.format("%Y-%m-%d %H:%M:%S%.3f").to_string(),
+            "processed_at": event.processed_at.map(|dt| dt.format("%Y-%m-%d %H:%M:%S%.3f").to_string()),
+        });
+        json_lines.push(serde_json::to_string(&json_obj)?);
     }
     
-    insert.end().await?;
+    let json_data = json_lines.join("\n");
     
-    info!("Successfully inserted {} events", count);
+    // Execute raw HTTP request with JSON format
+    let clickhouse_url = std::env::var("CLICKHOUSE_URL")
+        .unwrap_or_else(|_| "http://clickhouse:8123".to_string());
+    let clickhouse_db = std::env::var("CLICKHOUSE_DATABASE")
+        .or_else(|_| std::env::var("CLICKHOUSE_DB"))
+        .unwrap_or_else(|_| "ethhook".to_string());
+    let clickhouse_user = std::env::var("CLICKHOUSE_USER")
+        .unwrap_or_else(|_| "default".to_string());
+    let clickhouse_password = std::env::var("CLICKHOUSE_PASSWORD")
+        .unwrap_or_else(|_| String::new());
+    
+    let http_client = reqwest::Client::new();
+    let insert_url = format!(
+        "{}/?database={}&query=INSERT%20INTO%20events%20FORMAT%20JSONEachRow",
+        clickhouse_url, clickhouse_db
+    );
+    
+    let response = http_client
+        .post(&insert_url)
+        .basic_auth(&clickhouse_user, Some(&clickhouse_password))
+        .body(json_data)
+        .send()
+        .await?;
+    
+    if !response.status().is_success() {
+        let error_text = response.text().await?;
+        anyhow::bail!("ClickHouse insert failed: {}", error_text);
+    }
+    
+    info!("Successfully inserted {} events using JSONEachRow format", count);
     Ok(())
 }
