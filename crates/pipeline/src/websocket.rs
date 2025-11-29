@@ -19,6 +19,7 @@
  */
 
 use anyhow::{Context, Result};
+use chrono::Utc;
 use ethhook_domain::event::BlockchainEvent;
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
@@ -29,6 +30,9 @@ use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async, tungstenite::protocol::Message,
 };
 use tracing::{debug, error, info, warn};
+use uuid::Uuid;
+
+use crate::config_db::ENDPOINT_CACHE;
 
 type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
@@ -37,6 +41,21 @@ type WsStream = WebSocketStream<MaybeTlsStream<TcpStream>>;
 pub struct ChainConfig {
     pub name: String,
     pub rpc_ws: String,
+    pub chain_id: i32,
+}
+
+impl ChainConfig {
+    /// Get chain ID from chain name
+    pub fn chain_id_from_name(name: &str) -> i32 {
+        match name {
+            "Ethereum" => 1,
+            "Sepolia" => 11155111,
+            "Arbitrum" => 42161,
+            "Optimism" => 10,
+            "Base" => 8453,
+            _ => 0,
+        }
+    }
 }
 
 /// Start WebSocket ingestors for all configured chains
@@ -156,7 +175,7 @@ async fn connect_and_ingest(
     // Safety Rule #4: 30s timeout for connection
     let mut client = tokio::time::timeout(
         Duration::from_secs(30),
-        WebSocketClient::connect(&chain.rpc_ws, &chain.name),
+        WebSocketClient::connect(&chain.rpc_ws, &chain.name, chain.chain_id),
     )
     .await
     .context("Connection timeout")?
@@ -219,14 +238,16 @@ async fn connect_and_ingest(
 struct WebSocketClient {
     stream: WsStream,
     chain_name: String,
+    chain_id: i32,
     subscription_id: Option<String>,
+    request_id: u64,
 }
 
 impl WebSocketClient {
     /// Connect and subscribe to new block headers
     ///
     /// Safety: No .unwrap(), returns Result
-    async fn connect(ws_url: &str, chain_name: &str) -> Result<Self> {
+    async fn connect(ws_url: &str, chain_name: &str, chain_id: i32) -> Result<Self> {
         info!("[{}] Connecting to {}", chain_name, ws_url);
 
         // Connect to WebSocket
@@ -237,7 +258,9 @@ impl WebSocketClient {
         let mut client = Self {
             stream,
             chain_name: chain_name.to_string(),
+            chain_id,
             subscription_id: None,
+            request_id: 1,
         };
 
         // Subscribe to new block headers
@@ -320,7 +343,7 @@ impl WebSocketClient {
     }
 
     /// Process block header and fetch transaction receipts
-    async fn process_block_header(&self, header: &Value) -> Result<Option<Vec<BlockchainEvent>>> {
+    async fn process_block_header(&mut self, header: &Value) -> Result<Option<Vec<BlockchainEvent>>> {
         // Extract block number and hash
         let block_number = header
             .get("number")
@@ -339,9 +362,159 @@ impl WebSocketClient {
             self.chain_name, block_number, block_hash
         );
 
-        // TODO: Fetch transaction receipts and extract events
-        // For now, return empty vec (will implement in next step)
-        Ok(Some(Vec::new()))
+        // Fetch block receipts via JSON-RPC
+        let receipts = match self.fetch_block_receipts(&block_hash).await {
+            Ok(receipts) => receipts,
+            Err(e) => {
+                warn!("[{}] Failed to fetch receipts for block {}: {}", 
+                    self.chain_name, block_number, e);
+                return Ok(Some(Vec::new()));
+            }
+        };
+
+        // Extract events from receipts
+        let mut events = Vec::new();
+        
+        for receipt in receipts.as_array().unwrap_or(&vec![]) {
+            let tx_hash = receipt
+                .get("transactionHash")
+                .and_then(|h| h.as_str())
+                .unwrap_or("")
+                .to_string();
+                
+            let logs = receipt.get("logs").and_then(|l| l.as_array());
+            
+            if let Some(logs) = logs {
+                for log in logs {
+                    // Extract log fields
+                    let contract_address = log
+                        .get("address")
+                        .and_then(|a| a.as_str())
+                        .unwrap_or("")
+                        .to_lowercase();
+                    
+                    // Check if this contract is monitored
+                    if !ENDPOINT_CACHE.contains_key(&contract_address) {
+                        continue;
+                    }
+                    
+                    let log_index = log
+                        .get("logIndex")
+                        .and_then(|i| i.as_str())
+                        .and_then(|s| i32::from_str_radix(s.trim_start_matches("0x"), 16).ok())
+                        .unwrap_or(0);
+                    
+                    let topics: Vec<String> = log
+                        .get("topics")
+                        .and_then(|t| t.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str())
+                                .map(|s| s.to_string())
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    
+                    let data = log
+                        .get("data")
+                        .and_then(|d| d.as_str())
+                        .unwrap_or("0x")
+                        .to_string();
+                    
+                    // Create BlockchainEvent
+                    let event = BlockchainEvent {
+                        id: Uuid::new_v4(),
+                        block_number: block_number as i64,
+                        block_hash: block_hash.clone(),
+                        transaction_hash: tx_hash.clone(),
+                        log_index,
+                        contract_address,
+                        topics,
+                        data,
+                        ingested_at: Utc::now(),
+                        processed_at: None,
+                    };
+                    
+                    events.push(event);
+                }
+            }
+        }
+        
+        if !events.is_empty() {
+            info!(
+                "[{}] Extracted {} events from block #{}",
+                self.chain_name,
+                events.len(),
+                block_number
+            );
+        }
+        
+        Ok(Some(events))
+    }
+
+    /// Fetch block receipts via JSON-RPC over WebSocket
+    async fn fetch_block_receipts(&mut self, block_hash: &str) -> Result<Value> {
+        let request_id = self.request_id;
+        self.request_id += 1;
+        
+        let request = json!({
+            "jsonrpc": "2.0",
+            "method": "eth_getBlockReceipts",
+            "params": [block_hash],
+            "id": request_id
+        });
+        
+        // Send request
+        self.stream
+            .send(Message::Text(request.to_string()))
+            .await
+            .context("Failed to send eth_getBlockReceipts request")?;
+        
+        // Wait for response (with timeout)
+        let response = tokio::time::timeout(
+            Duration::from_secs(10),
+            self.read_rpc_response(request_id)
+        )
+        .await
+        .context("Timeout waiting for eth_getBlockReceipts response")??;
+        
+        Ok(response)
+    }
+
+    /// Read JSON-RPC response matching the request ID
+    async fn read_rpc_response(&mut self, expected_id: u64) -> Result<Value> {
+        // Read messages until we get a response with matching ID
+        loop {
+            let msg = self
+                .stream
+                .next()
+                .await
+                .ok_or_else(|| anyhow::anyhow!("WebSocket stream ended"))??;
+            
+            if let Message::Text(text) = msg {
+                let response: Value = serde_json::from_str(&text)
+                    .context("Failed to parse JSON-RPC response")?;
+                
+                // Check if this is our response (matching ID)
+                if let Some(id) = response.get("id").and_then(|i| i.as_u64()) {
+                    if id == expected_id {
+                        // Check for error
+                        if let Some(error) = response.get("error") {
+                            return Err(anyhow::anyhow!("RPC error: {}", error));
+                        }
+                        
+                        // Return result
+                        return response
+                            .get("result")
+                            .cloned()
+                            .ok_or_else(|| anyhow::anyhow!("Missing result in response"));
+                    }
+                }
+                
+                // This might be a subscription notification - ignore and continue
+                debug!("[{}] Ignoring non-matching response", self.chain_name);
+            }
+        }
     }
 }
 
@@ -354,8 +527,10 @@ fn load_chain_configs() -> Result<Vec<ChainConfig>> {
     let chains = match environment.as_str() {
         "development" => {
             // Development: Sepolia testnet only
+            let name = "Sepolia".to_string();
             vec![ChainConfig {
-                name: "Sepolia".to_string(),
+                chain_id: ChainConfig::chain_id_from_name(&name),
+                name,
                 rpc_ws: std::env::var("SEPOLIA_WS_URL")
                     .or_else(|_| std::env::var("SEPOLIA_WSS"))
                     .context("SEPOLIA_WS_URL or SEPOLIA_WSS environment variable required")?,
@@ -367,29 +542,37 @@ fn load_chain_configs() -> Result<Vec<ChainConfig>> {
             
             // Try each chain, skip if not configured (allows partial deployment)
             if let Ok(url) = std::env::var("ETHEREUM_WS_URL").or_else(|_| std::env::var("ETHEREUM_WSS")) {
+                let name = "Ethereum".to_string();
                 chains.push(ChainConfig {
-                    name: "Ethereum".to_string(),
+                    chain_id: ChainConfig::chain_id_from_name(&name),
+                    name,
                     rpc_ws: url,
                 });
             }
             
             if let Ok(url) = std::env::var("ARBITRUM_WS_URL").or_else(|_| std::env::var("ARBITRUM_WSS")) {
+                let name = "Arbitrum".to_string();
                 chains.push(ChainConfig {
-                    name: "Arbitrum".to_string(),
+                    chain_id: ChainConfig::chain_id_from_name(&name),
+                    name,
                     rpc_ws: url,
                 });
             }
             
             if let Ok(url) = std::env::var("OPTIMISM_WS_URL").or_else(|_| std::env::var("OPTIMISM_WSS")) {
+                let name = "Optimism".to_string();
                 chains.push(ChainConfig {
-                    name: "Optimism".to_string(),
+                    chain_id: ChainConfig::chain_id_from_name(&name),
+                    name,
                     rpc_ws: url,
                 });
             }
             
             if let Ok(url) = std::env::var("BASE_WS_URL").or_else(|_| std::env::var("BASE_WSS")) {
+                let name = "Base".to_string();
                 chains.push(ChainConfig {
-                    name: "Base".to_string(),
+                    chain_id: ChainConfig::chain_id_from_name(&name),
+                    name,
                     rpc_ws: url,
                 });
             }
