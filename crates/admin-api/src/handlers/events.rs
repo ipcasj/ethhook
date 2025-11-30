@@ -147,7 +147,10 @@ pub async fn list_events(
         .query(&events_query)
         .fetch_all()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            tracing::error!("Failed to fetch events from ClickHouse: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     // Get total count
     #[derive(Debug, clickhouse::Row, Deserialize)]
@@ -159,7 +162,10 @@ pub async fn list_events(
         .query(&count_query)
         .fetch_all()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            tracing::error!("Failed to fetch event count from ClickHouse: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     let total = count.first().map(|c| c.total).unwrap_or(0);
 
@@ -230,7 +236,10 @@ pub async fn get_event(
         .query(&query)
         .fetch_all()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            tracing::error!("Failed to fetch event by ID from ClickHouse: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     let event = events.into_iter().next().ok_or(StatusCode::NOT_FOUND)?;
 
@@ -304,7 +313,10 @@ pub async fn list_delivery_attempts(
         .query(&deliveries_query)
         .fetch_all()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            tracing::error!("Failed to fetch deliveries from ClickHouse: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     #[derive(Debug, clickhouse::Row, Deserialize)]
     struct CountRow {
@@ -315,7 +327,10 @@ pub async fn list_delivery_attempts(
         .query(&count_query)
         .fetch_all()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            tracing::error!("Failed to fetch delivery count from ClickHouse: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     let total = count.first().map(|c| c.total).unwrap_or(0);
 
