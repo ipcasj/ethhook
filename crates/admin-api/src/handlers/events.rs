@@ -95,7 +95,8 @@ pub async fn list_events(
         let endpoint_id_str = endpoint_id.to_string();
         (
             format!(
-                "SELECT id, endpoint_id, application_id, chain_id, block_number, 
+                "SELECT toString(id) as id, toString(endpoint_id) as endpoint_id, 
+                 toString(application_id) as application_id, chain_id, block_number, 
                  block_hash, transaction_hash, log_index, contract_address, 
                  topics, data, toUnixTimestamp64Milli(ingested_at) as ingested_at_ts,
                  toUnixTimestamp64Milli(processed_at) as processed_at_ts
@@ -112,7 +113,8 @@ pub async fn list_events(
     } else {
         (
             format!(
-                "SELECT id, endpoint_id, application_id, chain_id, block_number, 
+                "SELECT toString(id) as id, toString(endpoint_id) as endpoint_id, 
+                 toString(application_id) as application_id, chain_id, block_number, 
                  block_hash, transaction_hash, log_index, contract_address, 
                  topics, data, toUnixTimestamp64Milli(ingested_at) as ingested_at_ts,
                  toUnixTimestamp64Milli(processed_at) as processed_at_ts
@@ -206,7 +208,8 @@ pub async fn get_event(
     let event_id_str = event_id.to_string();
 
     let query = format!(
-        "SELECT id, endpoint_id, application_id, chain_id, block_number, 
+        "SELECT toString(id) as id, toString(endpoint_id) as endpoint_id, 
+         toString(application_id) as application_id, chain_id, block_number, 
          block_hash, transaction_hash, log_index, contract_address, 
          topics, data, toUnixTimestamp64Milli(ingested_at) as ingested_at_ts,
          toUnixTimestamp64Milli(processed_at) as processed_at_ts
@@ -284,7 +287,8 @@ pub async fn list_delivery_attempts(
     };
 
     let deliveries_query = format!(
-        "SELECT id, event_id, endpoint_id, attempt_number, status, http_status,
+        "SELECT toString(id) as id, toString(event_id) as event_id, 
+         toString(endpoint_id) as endpoint_id, attempt_number, status, http_status,
          error_message, toUnixTimestamp64Milli(attempted_at) as attempted_at_ts, duration_ms
          FROM delivery_attempts 
          WHERE user_id = '{user_id}' {status_filter}
