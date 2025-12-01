@@ -35,8 +35,8 @@ pkg_check_modules(LIBEVENT REQUIRED libevent>=2.1)
 # libwebsockets
 pkg_check_modules(LIBWEBSOCKETS REQUIRED libwebsockets>=4.0)
 
-# hiredis
-pkg_check_modules(HIREDIS REQUIRED hiredis>=1.0)
+# hiredis (Ubuntu 22.04 has 0.14.1, which is sufficient)
+pkg_check_modules(HIREDIS REQUIRED hiredis>=0.14)
 
 # yyjson (single-header library, included in source)
 # Download if not present
