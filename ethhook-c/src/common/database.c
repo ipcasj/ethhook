@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "ethhook/common.h"
 #include <sqlite3.h>
 #include <stdlib.h>

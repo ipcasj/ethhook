@@ -4,6 +4,7 @@
  * High-performance HTTP client with batching and connection pooling.
  */
 
+#define _GNU_SOURCE
 #include "ethhook/clickhouse.h"
 #include "ethhook/common.h"
 #include <curl/curl.h>
