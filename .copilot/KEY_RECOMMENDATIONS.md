@@ -1,13 +1,16 @@
 # Key Recommendations from Codebase Audit
+
 **Source**: CODEBASE_AUDIT_REPORT.md  
 **Date**: October 4, 2025
 
 ## HIGH PRIORITY (Before Production)
 
 ### 1. Add Circuit Breaker Unit Tests (30 min)
+
 **File**: `crates/event-ingestor/src/ingestion.rs`
 
 Tests needed for `ChainHealth`:
+
 - State transitions (Closed → Open → Half-Open)
 - Exponential backoff calculation
 - Backoff capping at max_delay
@@ -29,9 +32,11 @@ fn test_circuit_breaker_opens_after_three_failures() {
 ```
 
 ### 2. Add Integration Tests (1 hour)
+
 **File**: `crates/event-ingestor/tests/integration_tests.rs`
 
 Tests needed:
+
 - Full pipeline: WebSocket → Dedup → Publish
 - Reconnection logic with mock WebSocket
 - Graceful shutdown coordination
@@ -41,9 +46,11 @@ Tests needed:
 ## MEDIUM PRIORITY (Performance Optimization)
 
 ### 3. Reduce String Clones in Publisher (20 min)
+
 **File**: `crates/event-ingestor/src/publisher.rs:138-143`
 
 **Current** (clones 4-5 strings per event):
+
 ```rust
 ("block_hash", event.block_hash.clone()),
 ("tx_hash", event.transaction_hash.clone()),
@@ -52,6 +59,7 @@ Tests needed:
 ```
 
 **Improvement**: Use borrows or consume event
+
 ```rust
 // Option 1: Borrow
 redis::cmd("XADD")
@@ -64,14 +72,17 @@ pub async fn publish(self, event: ProcessedEvent) -> Result<String>
 **Impact**: 30-40% reduction in allocations at high throughput (10k+ events/sec)
 
 ### 4. Wrap ChainConfig in Arc (15 min)
+
 **File**: `crates/event-ingestor/src/ingestion.rs:179`
 
 **Current**:
+
 ```rust
 let chain_config = chain.clone(); // Clones ~200 bytes
 ```
 
 **Improvement**:
+
 ```rust
 // In IngestorConfig
 pub struct IngestorConfig {
@@ -87,6 +98,7 @@ let chain_config = Arc::clone(chain);  // Just clones pointer (8 bytes)
 ## LOW PRIORITY (Nice to Have)
 
 ### 5. Add Drop Implementations (15 min)
+
 **File**: `crates/event-ingestor/src/client.rs`
 
 ```rust
@@ -100,13 +112,17 @@ impl Drop for WebSocketClient {
 **Benefit**: Aids debugging connection lifecycle
 
 ### 6. Document Public Structs (15 min)
+
 Add `///` doc comments to:
+
 - `ChainHealth`
 - `CircuitState`
 - Public fields in `ProcessedEvent`
 
 ### 7. Add Metrics Endpoint Auth (30 min)
+
 **Options**:
+
 1. Network-level (firewall, VPC)
 2. Basic auth header
 3. Bind to localhost only
@@ -130,11 +146,12 @@ Add `///` doc comments to:
 ## Implementation Order
 
 **Next session**:
+
 1. Circuit breaker unit tests (HIGH)
 2. Reduce string clones (MEDIUM)
 3. Integration tests (HIGH)
 
 **Future sessions**:
-4. Arc<ChainConfig> optimization
+4. `Arc<ChainConfig>` optimization
 5. Drop implementations
 6. Documentation improvements

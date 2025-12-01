@@ -1,0 +1,12 @@
+# Example configuration for EthHook services
+
+# Database connection
+database_url="ethhook.db"
+
+# Redis connection
+redis_host="localhost"
+redis_port=6379
+# redis_password=""
+
+# Logging
+# log_level="info"

@@ -9,19 +9,22 @@
 ## 🎉 What We Accomplished Today
 
 ### ✅ Phase 1: Package Structure (30 min)
+
 - Created `crates/event-ingestor/` with comprehensive dependencies
 - Set up Cargo.toml with tokio, tokio-tungstenite, redis, etc.
 - Created module structure (8 files)
 - Added to workspace configuration
 
 ### ✅ Phase 2: WebSocket Client (1.5 hours)
+
 - Implemented `WebSocketClient` with persistent WebSocket connections
 - Added `eth_subscribe("newHeads")` for real-time block notifications
 - Subscription handshake and message parsing
 - Auto-reconnect foundation
 - **Key Innovation**: Real-time updates (< 100ms) vs HTTP polling (2-5s)
 
-### ✅ Phase 3: Event Log Extraction (1.5 hours) 
+### ✅ Phase 3: Event Log Extraction (1.5 hours)
+
 - Implemented `eth_getBlockByNumber` to fetch full block data
 - Added `eth_getTransactionReceipt` to extract event logs
 - Parse logs and convert to `ProcessedEvent` format
@@ -42,7 +45,7 @@
 
 ### File Breakdown
 
-```
+```text
 crates/event-ingestor/
 ├── Cargo.toml (60 lines) - Dependencies & configuration
 ├── src/
@@ -62,6 +65,7 @@ crates/event-ingestor/
 ### 1. Real-Time WebSocket Connection
 
 **Problem**: HTTP polling is expensive and slow
+
 ```java
 // ❌ Traditional approach
 while (true) {
@@ -72,6 +76,7 @@ while (true) {
 ```
 
 **Our Solution**: WebSocket streaming
+
 ```rust
 // ✅ Our approach
 let mut client = WebSocketClient::connect(ws_url).await?;
@@ -121,6 +126,7 @@ Step 4: CONVERT LOGS TO ProcessedEvent
 ```
 
 **Real Example**: USDC Transfer Event
+
 ```json
 {
   "contract_address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -160,6 +166,7 @@ for chain in [Ethereum, Arbitrum, Optimism, Base] {
 ```
 
 **Key Benefits**:
+
 - ✅ Each chain is independent (if Ethereum fails, others continue)
 - ✅ Lightweight (tokio tasks use ~2KB memory each vs threads ~2MB)
 - ✅ Auto-reconnect with exponential backoff
@@ -172,6 +179,7 @@ for chain in [Ethereum, Arbitrum, Optimism, Base] {
 ### Test Scripts Created
 
 **1. Quick Test** (`scripts/quick_test.sh`)
+
 ```bash
 ./scripts/quick_test.sh
 # ✅ Checks compilation
@@ -181,6 +189,7 @@ for chain in [Ethereum, Arbitrum, Optimism, Base] {
 ```
 
 **2. Comprehensive Test Suite** (`scripts/test_event_ingestor.sh`)
+
 ```bash
 # Unit tests
 ./scripts/test_event_ingestor.sh --unit
@@ -254,6 +263,7 @@ fn test_redis_url_without_password() {
 **Goal**: Prevent duplicate webhooks during chain reorganizations
 
 **Problem**: Blockchains can reorganize (reorgs)
+
 ```text
 Block 100 → Block 101 → Block 102  (original)
                   ↓
@@ -263,6 +273,7 @@ Block 100 → Block 101 → Block 102  (original)
 If we don't deduplicate, users get duplicate webhooks!
 
 **Solution**: Redis SET with unique event IDs
+
 ```rust
 // Generate unique ID
 let event_id = format!("event:{}:{}:{}", 
@@ -282,6 +293,7 @@ redis.set_ex(&event_id, "1", 86400).await?;
 ```
 
 **Tasks**:
+
 - Implement `Deduplicator` struct with Redis connection
 - Add `is_duplicate(&event_id)` method
 - Integrate into ingestion pipeline
@@ -295,12 +307,14 @@ redis.set_ex(&event_id, "1", 86400).await?;
 **Goal**: Publish events to Redis Streams for Message Processor
 
 **Why Redis Streams?**
+
 - ✅ 100,000 events/sec throughput
 - ✅ Consumer groups for load balancing
 - ✅ Persistent (survives restarts)
 - ✅ Cheaper than Kafka ($15/mo vs $50/mo)
 
 **Implementation**:
+
 ```rust
 // Publish event to Redis Stream
 redis.xadd(
@@ -319,6 +333,7 @@ redis.xadd(
 ```
 
 **Tasks**:
+
 - Add Redis client to `ChainIngestionManager`
 - Implement `publish_event()` method
 - Add retry logic (3 attempts with backoff)
@@ -332,6 +347,7 @@ redis.xadd(
 **Goal**: Handle RPC provider failures gracefully
 
 **Problem**: RPC providers go down sometimes
+
 ```text
 Without circuit breaker:
 Alchemy down → Try → Fail → Try → Fail → Try → Fail → ...
@@ -343,6 +359,7 @@ Alchemy down → Wait 1s → Fail → Wait 2s → Fail → Wait 4s → ...
 ```
 
 **Implementation**:
+
 ```rust
 struct CircuitBreaker {
     failures: AtomicU32,
@@ -371,6 +388,7 @@ impl CircuitBreaker {
 ```
 
 **Tasks**:
+
 - Implement `CircuitBreaker` struct
 - Integrate into WebSocket connection logic
 - Add health check endpoint (HTTP :8080/health)
@@ -384,6 +402,7 @@ impl CircuitBreaker {
 **Goal**: Production-ready monitoring and test coverage
 
 **Prometheus Metrics**:
+
 ```rust
 // Events received from blockchain
 events_ingested_total{chain="ethereum"} 1,234,567
@@ -399,6 +418,7 @@ websocket_reconnects_total{chain="ethereum"} 2
 ```
 
 **Integration Tests**:
+
 ```rust
 #[tokio::test]
 async fn test_end_to_end_ingestion() {
@@ -411,6 +431,7 @@ async fn test_end_to_end_ingestion() {
 ```
 
 **Tasks**:
+
 - Implement Prometheus metrics server (:9090/metrics)
 - Add 4 key metrics (listed above)
 - Write 5 integration tests
@@ -424,6 +445,7 @@ async fn test_end_to_end_ingestion() {
 After Phase 7, we'll have:
 
 ### ✅ Core Functionality
+
 - [x] Real-time WebSocket connections (4 chains)
 - [x] Event log extraction and parsing
 - [ ] Deduplication (Phase 4)
@@ -431,24 +453,28 @@ After Phase 7, we'll have:
 - [ ] Circuit breaker (Phase 6)
 
 ### ✅ Reliability
+
 - [x] Auto-reconnect with exponential backoff
 - [x] Graceful shutdown
 - [ ] Circuit breaker for failures
 - [x] Error logging and context
 
 ### ✅ Monitoring
+
 - [x] Structured logging (tracing)
 - [ ] Prometheus metrics (Phase 7)
 - [ ] Health check endpoint (Phase 6)
 - [x] Statistics tracking
 
 ### ✅ Testing
+
 - [x] Unit tests (7 passing)
 - [ ] Integration tests (Phase 7)
 - [ ] Load tests (Week 3)
 - [x] Test scripts
 
 ### ✅ Documentation
+
 - [x] Architecture review
 - [x] Code comments
 - [x] README (SETUP_GUIDE.md)
@@ -459,10 +485,12 @@ After Phase 7, we'll have:
 ## 💰 Cost Analysis
 
 ### Development Environment (Local)
+
 - **Cost**: $0
 - **Time**: ~8 hours to complete all 7 phases
 
 ### Production Deployment (DigitalOcean)
+
 - **Event Ingestor Droplet**: $6/month (1GB RAM, 25GB SSD)
 - **Managed Redis**: $15/month (1GB RAM, persistent storage)
 - **Bandwidth**: Included (1TB)
@@ -470,6 +498,7 @@ After Phase 7, we'll have:
 - **Total**: **$21/month**
 
 ### Competitive Comparison
+
 | Feature | EthHook (Ours) | Alchemy Notify | Moralis Streams |
 |---------|----------------|----------------|-----------------|
 | **Price** | $21/mo infrastructure | $49/mo | $49/mo |
@@ -482,15 +511,17 @@ After Phase 7, we'll have:
 
 ## 🎯 Next Session Plan
 
-### Immediate (This Session Remaining):
+### Immediate (This Session Remaining)
 
 **Option 1**: Continue with Phase 4-7 (4.5 hours)
+
 - Complete Redis deduplication
 - Add Redis Stream publishing
 - Implement circuit breaker
 - Add metrics and integration tests
 
 **Option 2**: Test current implementation (1 hour)
+
 - Create `.env` file with Alchemy API keys
 - Run event ingestor locally
 - Verify WebSocket connections work
@@ -498,15 +529,17 @@ After Phase 7, we'll have:
 - Debug any issues
 
 **Option 3**: Build & Deploy (2 hours)
+
 - Build Docker image
 - Test in Docker locally
 - Push to GitHub
 - Deploy to DigitalOcean
 - Smoke test in production
 
-### Week 2 Focus:
+### Week 2 Focus
 
 **Message Processor Service** (16 hours)
+
 - Read from Redis Streams
 - Filter events by user subscriptions
 - Match events to webhook URLs
@@ -514,6 +547,7 @@ After Phase 7, we'll have:
 - Transform data (ABI decoding)
 
 **Webhook Delivery Service** (12 hours)
+
 - Pop from delivery queue
 - HTTP POST to customer webhooks
 - HMAC signature generation
@@ -527,6 +561,7 @@ After Phase 7, we'll have:
 Based on your requirements ("production ready test coverage", "test build on environment", "push to GitHub"), I recommend:
 
 **Hybrid Approach** (6 hours total):
+
 1. **Complete Phases 4-5** (3 hours) - Deduplication + Redis Streams
    - Gets us to 71% complete (5/7 phases)
    - Core functionality complete
@@ -546,6 +581,7 @@ Based on your requirements ("production ready test coverage", "test build on env
    - Document deployment process
 
 This gets you:
+
 - ✅ Production-ready core (5/7 phases)
 - ✅ Integration tests
 - ✅ Deployable Docker image

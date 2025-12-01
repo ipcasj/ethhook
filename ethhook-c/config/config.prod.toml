@@ -1,0 +1,108 @@
+# EthHook C - Production Configuration
+# Based on Rust implementation settings
+
+[database]
+# SQLite for metadata (users, applications, endpoints)
+url = "sqlite:///data/config.db"
+max_connections = 20
+min_connections = 5
+
+[clickhouse]
+# ClickHouse for time-series data (events, deliveries)
+url = "http://clickhouse:8123"
+database = "ethhook"
+user = "ethhook"
+password = "${CLICKHOUSE_PASSWORD}"
+pool_size = 10
+timeout_ms = 30000
+enable_compression = true
+batch_size = 1000           # Auto-flush after 1000 rows
+batch_timeout_ms = 1000     # Auto-flush after 1 second
+
+[redis]
+# Redis for inter-service messaging
+url = "redis://redis:6379"
+pool_size = 10
+stream_name = "ethhook:events"
+consumer_group = "processors"
+consumer_name = "processor-1"
+
+[chains]
+# Ethereum Mainnet
+[[chains.ethereum]]
+chain_id = 1
+name = "Ethereum"
+rpc_ws = "${ETH_RPC_WS}"
+rpc_http = "${ETH_RPC_HTTP}"
+block_time_ms = 12000
+explorer_url = "https://etherscan.io"
+
+# Arbitrum One
+[[chains.arbitrum]]
+chain_id = 42161
+name = "Arbitrum"
+rpc_ws = "${ARBITRUM_RPC_WS}"
+rpc_http = "${ARBITRUM_RPC_HTTP}"
+block_time_ms = 300
+explorer_url = "https://arbiscan.io"
+
+# Optimism
+[[chains.optimism]]
+chain_id = 10
+name = "Optimism"
+rpc_ws = "${OPTIMISM_RPC_WS}"
+rpc_http = "${OPTIMISM_RPC_HTTP}"
+block_time_ms = 2000
+explorer_url = "https://optimistic.etherscan.io"
+
+# Base
+[[chains.base]]
+chain_id = 8453
+name = "Base"
+rpc_ws = "${BASE_RPC_WS}"
+rpc_http = "${BASE_RPC_HTTP}"
+block_time_ms = 2000
+explorer_url = "https://basescan.org"
+
+# Sepolia Testnet
+[[chains.sepolia]]
+chain_id = 11155111
+name = "Sepolia"
+rpc_ws = "${SEPOLIA_RPC_WS}"
+rpc_http = "${SEPOLIA_RPC_HTTP}"
+block_time_ms = 12000
+explorer_url = "https://sepolia.etherscan.io"
+
+[api]
+# Admin API server
+host = "0.0.0.0"
+port = 3000
+jwt_secret = "${JWT_SECRET}"
+jwt_expiration_hours = 168  # 7 days
+rate_limit_per_minute = 100
+
+[webhook]
+# Webhook delivery settings
+max_retries = 5
+initial_retry_delay_ms = 1000
+max_retry_delay_ms = 60000
+timeout_ms = 30000
+circuit_breaker_threshold = 5
+circuit_breaker_timeout_ms = 30000
+connection_pool_size = 100   # Reuse HTTP connections
+
+[observability]
+# Logging and metrics
+log_level = "info"           # debug, info, warn, error
+log_format = "json"          # json or text
+enable_metrics = true
+metrics_port = 9090
+health_check_port = 8080
+
+[performance]
+# Performance tuning
+worker_threads = 0           # 0 = auto-detect (num_cpus)
+event_buffer_size = 10000
+delivery_batch_size = 100
+enable_io_uring = true       # Linux only
+enable_compression = true    # ClickHouse compression

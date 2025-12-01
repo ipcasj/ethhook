@@ -1,0 +1,45 @@
+# Multi-stage build for EthHook Message Processor
+FROM alpine:3.19 AS builder
+
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git \
+    pkgconfig \
+    libevent-dev \
+    hiredis-dev \
+    jansson-dev \
+    openssl-dev \
+    sqlite-dev
+
+WORKDIR /build
+
+COPY CMakeLists.txt .
+COPY include/ include/
+COPY src/ src/
+
+RUN mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j$(nproc) ethhook-processor
+
+FROM alpine:3.19
+
+RUN apk add --no-cache \
+    libevent \
+    hiredis \
+    jansson \
+    openssl \
+    sqlite-libs
+
+RUN addgroup -g 1000 ethhook && \
+    adduser -D -u 1000 -G ethhook ethhook
+
+WORKDIR /app
+
+COPY --from=builder /build/build/ethhook-processor /app/
+COPY config/processor.toml /app/config.toml
+
+USER ethhook
+
+ENTRYPOINT ["/app/ethhook-processor"]
+CMD ["/app/config.toml"]

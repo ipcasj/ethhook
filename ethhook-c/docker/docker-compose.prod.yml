@@ -1,0 +1,188 @@
+version: "3.8"
+
+services:
+  # =============================================================================
+  # DATA LAYER (ClickHouse + Redis)
+  # =============================================================================
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: ethhook-clickhouse
+    environment:
+      - CLICKHOUSE_DB=ethhook
+      - CLICKHOUSE_USER=ethhook
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-changeme}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ports:
+      - "8123:8123" # HTTP interface
+      - "9000:9000" # Native interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"
+
+  redis:
+    image: redis:7-alpine
+    container_name: ethhook-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "1.0"
+
+  # =============================================================================
+  # APPLICATION SERVICES
+  # =============================================================================
+
+  ingestor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ingestor
+    container_name: ethhook-ingestor
+    environment:
+      - CONFIG_PATH=/app/config/config.prod.toml
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-changeme}
+      - ETH_RPC_WS=${ETH_RPC_WS}
+      - ARBITRUM_RPC_WS=${ARBITRUM_RPC_WS}
+      - OPTIMISM_RPC_WS=${OPTIMISM_RPC_WS}
+      - BASE_RPC_WS=${BASE_RPC_WS}
+      - SEPOLIA_RPC_WS=${SEPOLIA_RPC_WS}
+      - ETH_RPC_HTTP=${ETH_RPC_HTTP}
+      - ARBITRUM_RPC_HTTP=${ARBITRUM_RPC_HTTP}
+      - OPTIMISM_RPC_HTTP=${OPTIMISM_RPC_HTTP}
+      - BASE_RPC_HTTP=${BASE_RPC_HTTP}
+      - SEPOLIA_RPC_HTTP=${SEPOLIA_RPC_HTTP}
+    volumes:
+      - shared_data:/data
+      - ../config:/app/config:ro
+    networks:
+      - ethhook-network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "2.0"
+
+  processor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.processor
+    container_name: ethhook-processor
+    environment:
+      - CONFIG_PATH=/app/config/config.prod.toml
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-changeme}
+    volumes:
+      - shared_data:/data
+      - ../config:/app/config:ro
+    networks:
+      - ethhook-network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+  delivery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.delivery
+    container_name: ethhook-delivery
+    environment:
+      - CONFIG_PATH=/app/config/config.prod.toml
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-changeme}
+    volumes:
+      - shared_data:/data
+      - ../config:/app/config:ro
+    networks:
+      - ethhook-network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+  admin-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.admin-api
+    container_name: ethhook-admin-api
+    environment:
+      - CONFIG_PATH=/app/config/config.prod.toml
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-changeme}
+      - JWT_SECRET=${JWT_SECRET}
+    ports:
+      - "3000:3000"
+      - "8080:8080" # Health check
+      - "9090:9090" # Metrics
+    volumes:
+      - shared_data:/data
+      - ../config:/app/config:ro
+    networks:
+      - ethhook-network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+
+networks:
+  ethhook-network:
+    driver: bridge
+
+volumes:
+  clickhouse_data:
+  redis_data:
+  shared_data:

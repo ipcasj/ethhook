@@ -1,0 +1,56 @@
+# Multi-stage build for EthHook Event Ingestor
+FROM alpine:3.19 AS builder
+
+# Install build dependencies
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    git \
+    pkgconfig \
+    libevent-dev \
+    libwebsockets-dev \
+    hiredis-dev \
+    jansson-dev \
+    openssl-dev \
+    sqlite-dev
+
+WORKDIR /build
+
+# Copy source
+COPY CMakeLists.txt .
+COPY include/ include/
+COPY src/ src/
+
+# Build
+RUN mkdir build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j$(nproc) ethhook-ingestor
+
+# Runtime stage
+FROM alpine:3.19
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    libevent \
+    libwebsockets \
+    hiredis \
+    jansson \
+    openssl \
+    sqlite-libs
+
+# Create user
+RUN addgroup -g 1000 ethhook && \
+    adduser -D -u 1000 -G ethhook ethhook
+
+WORKDIR /app
+
+# Copy binary
+COPY --from=builder /build/build/ethhook-ingestor /app/
+
+# Copy config
+COPY config/ingestor.toml /app/config.toml
+
+USER ethhook
+
+ENTRYPOINT ["/app/ethhook-ingestor"]
+CMD ["/app/config.toml"]

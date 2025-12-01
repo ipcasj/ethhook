@@ -1,0 +1,98 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ethhook-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ingestor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ingestor
+    environment:
+      - DATABASE_URL=/data/ethhook.db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+
+  processor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.processor
+    environment:
+      - DATABASE_URL=/data/ethhook.db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+
+  delivery:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.delivery
+    environment:
+      - DATABASE_URL=/data/ethhook.db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - sqlite-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+
+  admin-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.admin-api
+    environment:
+      - DATABASE_URL=/data/ethhook.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - PORT=3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - sqlite-data:/data
+    networks:
+      - ethhook-network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  ethhook-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  sqlite-data:
