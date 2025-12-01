@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-#include <jansson.h>
+#include "yyjson.h"
 #include <unistd.h>
 
 struct delivery_ctx {

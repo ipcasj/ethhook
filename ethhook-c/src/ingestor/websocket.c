@@ -1,6 +1,6 @@
 #include "ethhook/ingestor.h"
 #include <libwebsockets.h>
-#include <jansson.h>
+#include "yyjson.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -24,21 +24,24 @@ static int ws_callback(struct lws *wsi, enum lws_callback_reasons reason,
             
             // Send subscription request
             {
-                json_t *sub_request = json_object();
-                json_object_set_new(sub_request, "jsonrpc", json_string("2.0"));
-                json_object_set_new(sub_request, "id", json_integer(1));
-                json_object_set_new(sub_request, "method", json_string("eth_subscribe"));
+                yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+                yyjson_mut_val *sub_request = yyjson_mut_obj(doc);
+                yyjson_mut_doc_set_root(doc, sub_request);
                 
-                json_t *params = json_array();
-                json_array_append_new(params, json_string("logs"));
-                json_array_append_new(params, json_object()); // Empty filter (all logs)
-                json_object_set_new(sub_request, "params", params);
+                yyjson_mut_obj_add_str(doc, sub_request, "jsonrpc", "2.0");
+                yyjson_mut_obj_add_int(doc, sub_request, "id", 1);
+                yyjson_mut_obj_add_str(doc, sub_request, "method", "eth_subscribe");
                 
-                char *json_str = json_dumps(sub_request, JSON_COMPACT);
-                json_decref(sub_request);
+                yyjson_mut_val *params = yyjson_mut_arr(doc);
+                yyjson_mut_arr_add_str(doc, params, "logs");
+                yyjson_mut_arr_add_val(params, yyjson_mut_obj(doc)); // Empty filter
+                yyjson_mut_obj_add_val(doc, sub_request, "params", params);
+                
+                size_t json_len;
+                char *json_str = yyjson_mut_write(doc, 0, &json_len);
+                yyjson_mut_doc_free(doc);
                 
                 if (json_str) {
-                    size_t json_len = strlen(json_str);
                     unsigned char buf[LWS_PRE + json_len];
                     memcpy(&buf[LWS_PRE], json_str, json_len);
                     lws_write(wsi, &buf[LWS_PRE], json_len, LWS_WRITE_TEXT);
@@ -61,35 +64,37 @@ static int ws_callback(struct lws *wsi, enum lws_callback_reasons reason,
                     session->buffer[session->buffer_len] = '\0';
                     
                     // Parse JSON
-                    json_error_t error;
-                    json_t *root = json_loads(session->buffer, 0, &error);
+                    yyjson_doc *doc = yyjson_read(session->buffer, session->buffer_len, 0);
                     
-                    if (root) {
+                    if (doc) {
+                        yyjson_val *root = yyjson_doc_get_root(doc);
+                        
                         // Check if this is a subscription confirmation
-                        json_t *result = json_object_get(root, "result");
-                        if (result && json_is_string(result)) {
+                        yyjson_val *result = yyjson_obj_get(root, "result");
+                        if (result && yyjson_is_str(result)) {
                             if (!session->subscribed) {
                                 session->subscribed = true;
                                 LOG_INFO("Subscription confirmed for chain %lu: %s",
-                                        session->conn->chain_id, json_string_value(result));
+                                        session->conn->chain_id, yyjson_get_str(result));
                             }
                         }
                         
                         // Check if this is an event notification
-                        json_t *method = json_object_get(root, "method");
-                        json_t *params = json_object_get(root, "params");
+                        yyjson_val *method = yyjson_obj_get(root, "method");
+                        yyjson_val *params = yyjson_obj_get(root, "params");
                         
-                        if (method && json_is_string(method) && 
-                            strcmp(json_string_value(method), "eth_subscription") == 0 &&
-                            params && json_is_object(params)) {
+                        if (method && yyjson_is_str(method) && 
+                            strcmp(yyjson_get_str(method), "eth_subscription") == 0 &&
+                            params && yyjson_is_obj(params)) {
                             
-                            json_t *result_obj = json_object_get(params, "result");
-                            if (result_obj && json_is_object(result_obj)) {
+                            yyjson_val *result_obj = yyjson_obj_get(params, "result");
+                            if (result_obj && yyjson_is_obj(result_obj)) {
                                 atomic_fetch_add(&session->conn->events_received, 1);
                                 
                                 // TODO: Publish to Redis
                                 // For now, just log
-                                char *event_str = json_dumps(result_obj, JSON_COMPACT);
+                                size_t event_len;
+                                char *event_str = yyjson_val_write(result_obj, 0, &event_len);
                                 if (event_str) {
                                     LOG_DEBUG("Received event for chain %lu: %s",
                                             session->conn->chain_id, event_str);
@@ -103,10 +108,10 @@ static int ws_callback(struct lws *wsi, enum lws_callback_reasons reason,
                             }
                         }
                         
-                        json_decref(root);
+                        yyjson_doc_free(doc);
                     } else {
-                        LOG_ERROR("Failed to parse JSON from chain %lu: %s",
-                                session->conn->chain_id, error.text);
+                        LOG_ERROR("Failed to parse JSON from chain %lu",
+                                session->conn->chain_id);
                         atomic_fetch_add(&session->conn->errors, 1);
                     }
                     

@@ -38,8 +38,19 @@ pkg_check_modules(LIBWEBSOCKETS REQUIRED libwebsockets>=4.0)
 # hiredis
 pkg_check_modules(HIREDIS REQUIRED hiredis>=1.0)
 
-# jansson
-pkg_check_modules(JANSSON REQUIRED jansson>=2.13)
+# yyjson (single-header library, included in source)
+# Download if not present
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/include/yyjson.h")
+    message(STATUS "Downloading yyjson...")
+    file(DOWNLOAD
+        "https://raw.githubusercontent.com/ibireme/yyjson/master/src/yyjson.h"
+        "${CMAKE_SOURCE_DIR}/include/yyjson.h"
+        SHOW_PROGRESS)
+    file(DOWNLOAD
+        "https://raw.githubusercontent.com/ibireme/yyjson/master/src/yyjson.c"
+        "${CMAKE_SOURCE_DIR}/src/common/yyjson.c"
+        SHOW_PROGRESS)
+endif()
 
 # libcurl
 pkg_check_modules(LIBCURL REQUIRED libcurl>=7.68)
@@ -62,7 +73,6 @@ include_directories(
     ${LIBEVENT_INCLUDE_DIRS}
     ${LIBWEBSOCKETS_INCLUDE_DIRS}
     ${HIREDIS_INCLUDE_DIRS}
-    ${JANSSON_INCLUDE_DIRS}
     ${LIBCURL_INCLUDE_DIRS}
     ${LIBMICROHTTPD_INCLUDE_DIRS}
     ${LIBJWT_INCLUDE_DIRS}
@@ -92,11 +102,12 @@ add_library(ethhook-common STATIC
     src/common/circuit_breaker.c
     src/common/database.c
     src/common/clickhouse.c
+    src/common/yyjson.c
+    src/common/json.c
 )
 
 target_link_libraries(ethhook-common
     ${SQLite3_LIBRARIES}
-    ${JANSSON_LIBRARIES}
     ${LIBEVENT_LIBRARIES}
     ${LIBCURL_LIBRARIES}
     Threads::Threads
@@ -116,7 +127,6 @@ target_link_libraries(ethhook-ingestor
     ${LIBWEBSOCKETS_LIBRARIES}
     ${LIBEVENT_LIBRARIES}
     ${HIREDIS_LIBRARIES}
-    ${JANSSON_LIBRARIES}
     ${OpenSSL_LIBRARIES}
     Threads::Threads
 )
@@ -133,7 +143,6 @@ target_link_libraries(ethhook-processor
     ethhook-common
     ${HIREDIS_LIBRARIES}
     ${LIBEVENT_LIBRARIES}
-    ${JANSSON_LIBRARIES}
     Threads::Threads
 )
 
@@ -150,7 +159,6 @@ target_link_libraries(ethhook-delivery
     ${LIBCURL_LIBRARIES}
     ${HIREDIS_LIBRARIES}
     ${LIBEVENT_LIBRARIES}
-    ${JANSSON_LIBRARIES}
     Threads::Threads
 )
 
@@ -167,7 +175,6 @@ target_link_libraries(ethhook-admin-api
     ethhook-common
     ${LIBMICROHTTPD_LIBRARIES}
     ${LIBJWT_LIBRARIES}
-    ${JANSSON_LIBRARIES}
     ${OpenSSL_LIBRARIES}
     Threads::Threads
 )

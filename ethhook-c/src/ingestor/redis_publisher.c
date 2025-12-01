@@ -1,7 +1,7 @@
 #include "ethhook/ingestor.h"
 #include <hiredis/hiredis.h>
 #include <hiredis/adapters/libevent.h>
-#include <jansson.h>
+#include "yyjson.h"
 
 // TODO: Implement async Redis publisher using hiredis-libevent
 // This will publish events to Redis streams for the processor to consume

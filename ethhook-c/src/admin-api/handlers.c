@@ -1,7 +1,7 @@
 #include "ethhook/admin_api.h"
 #include "ethhook/clickhouse.h"
 #include <sqlite3.h>
-#include <jansson.h>
+#include "yyjson.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -30,14 +30,17 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
     }
     
     // TODO: Validate credentials and generate JWT token
-    json_t *result = json_object();
-    json_object_set_new(result, "token", json_string("dummy-jwt-token"));
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *result = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, result);
+    yyjson_mut_obj_add_str(doc, result, "token", "dummy-jwt-token");
     
-    char *json_str = json_dumps(result, JSON_COMPACT);
-    json_decref(result);
+    size_t json_len;
+    char *json_str = yyjson_mut_write(doc, 0, &json_len);
+    yyjson_mut_doc_free(doc);
     
     struct MHD_Response *response = MHD_create_response_from_buffer(
-        strlen(json_str), json_str, MHD_RESPMEM_MUST_FREE);
+        json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
@@ -86,35 +89,38 @@ int handle_users(struct MHD_Connection *connection, request_ctx_t *ctx,
         return ret;
     }
     
-    json_t *users_array = json_array();
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *users_array = yyjson_mut_arr(doc);
     
     while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
-        json_t *user = json_object();
+        yyjson_mut_val *user = yyjson_mut_obj(doc);
         
         const char *id = (const char *)sqlite3_column_text(stmt, 0);
         const char *email = (const char *)sqlite3_column_text(stmt, 1);
         int is_admin = sqlite3_column_int(stmt, 2);
         const char *created_at = (const char *)sqlite3_column_text(stmt, 3);
         
-        if (id) json_object_set_new(user, "id", json_string(id));
-        if (email) json_object_set_new(user, "email", json_string(email));
-        json_object_set_new(user, "is_admin", json_boolean(is_admin));
-        if (created_at) json_object_set_new(user, "created_at", json_string(created_at));
+        if (id) yyjson_mut_obj_add_str(doc, user, "id", id);
+        if (email) yyjson_mut_obj_add_str(doc, user, "email", email);
+        yyjson_mut_obj_add_bool(doc, user, "is_admin", is_admin);
+        if (created_at) yyjson_mut_obj_add_str(doc, user, "created_at", created_at);
         
-        json_array_append_new(users_array, user);
+        yyjson_mut_arr_append(users_array, user);
     }
     
     sqlite3_finalize(stmt);
     
-    json_t *result = json_object();
-    json_object_set_new(result, "users", users_array);
-    json_object_set_new(result, "total", json_integer(json_array_size(users_array)));
+    yyjson_mut_val *result = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, result);
+    yyjson_mut_obj_add_val(doc, result, "users", users_array);
+    yyjson_mut_obj_add_uint(doc, result, "total", yyjson_mut_arr_size(users_array));
     
-    char *json_str = json_dumps(result, JSON_COMPACT);
-    json_decref(result);
+    size_t json_len;
+    char *json_str = yyjson_mut_write(doc, 0, &json_len);
+    yyjson_mut_doc_free(doc);
     
     struct MHD_Response *response = MHD_create_response_from_buffer(
-        strlen(json_str), json_str, MHD_RESPMEM_MUST_FREE);
+        json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
@@ -138,16 +144,19 @@ int handle_applications(struct MHD_Connection *connection, request_ctx_t *ctx,
     }
     
     // Query applications
-    json_t *apps_array = json_array();
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *apps_array = yyjson_mut_arr(doc);
     
-    json_t *result = json_object();
-    json_object_set_new(result, "applications", apps_array);
+    yyjson_mut_val *result = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, result);
+    yyjson_mut_obj_add_val(doc, result, "applications", apps_array);
     
-    char *json_str = json_dumps(result, JSON_COMPACT);
-    json_decref(result);
+    size_t json_len;
+    char *json_str = yyjson_mut_write(doc, 0, &json_len);
+    yyjson_mut_doc_free(doc);
     
     struct MHD_Response *response = MHD_create_response_from_buffer(
-        strlen(json_str), json_str, MHD_RESPMEM_MUST_FREE);
+        json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
@@ -162,14 +171,17 @@ int handle_endpoints(struct MHD_Connection *connection, request_ctx_t *ctx,
     (void)upload_data_size;
     (void)method;
     
-    json_t *result = json_object();
-    json_object_set_new(result, "endpoints", json_array());
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *result = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, result);
+    yyjson_mut_obj_add_val(doc, result, "endpoints", yyjson_mut_arr(doc));
     
-    char *json_str = json_dumps(result, JSON_COMPACT);
-    json_decref(result);
+    size_t json_len;
+    char *json_str = yyjson_mut_write(doc, 0, &json_len);
+    yyjson_mut_doc_free(doc);
     
     struct MHD_Response *response = MHD_create_response_from_buffer(
-        strlen(json_str), json_str, MHD_RESPMEM_MUST_FREE);
+        json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
@@ -230,7 +242,8 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
     }
     
     // Parse JSONEachRow format into array
-    json_t *events_array = json_array();
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *events_array = yyjson_mut_arr(doc);
     char *line = response_body;
     char *next_line = NULL;
     
@@ -242,10 +255,15 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
         }
         
         if (*line) {
-            json_error_t error;
-            json_t *event = json_loads(line, 0, &error);
-            if (event) {
-                json_array_append_new(events_array, event);
+            yyjson_doc *line_doc = yyjson_read(line, strlen(line), 0);
+            if (line_doc) {
+                yyjson_val *event_val = yyjson_doc_get_root(line_doc);
+                if (event_val) {
+                    // Convert immutable to mutable
+                    yyjson_mut_val *event = yyjson_val_mut_copy(doc, event_val);
+                    yyjson_mut_arr_append(events_array, event);
+                }
+                yyjson_doc_free(line_doc);
             }
         }
         
@@ -255,17 +273,19 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
     free(response_body);
     
     // Build response
-    json_t *result = json_object();
-    json_object_set_new(result, "events", events_array);
-    json_object_set_new(result, "total", json_integer(json_array_size(events_array)));
-    json_object_set_new(result, "limit", json_integer(limit));
-    json_object_set_new(result, "offset", json_integer(offset));
+    yyjson_mut_val *result = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, result);
+    yyjson_mut_obj_add_val(doc, result, "events", events_array);
+    yyjson_mut_obj_add_uint(doc, result, "total", yyjson_mut_arr_size(events_array));
+    yyjson_mut_obj_add_int(doc, result, "limit", limit);
+    yyjson_mut_obj_add_int(doc, result, "offset", offset);
     
-    char *json_str = json_dumps(result, JSON_COMPACT);
-    json_decref(result);
+    size_t json_len;
+    char *json_str = yyjson_mut_write(doc, 0, &json_len);
+    yyjson_mut_doc_free(doc);
     
     struct MHD_Response *response = MHD_create_response_from_buffer(
-        strlen(json_str), json_str, MHD_RESPMEM_MUST_FREE);
+        json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
@@ -326,7 +346,8 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
     }
     
     // Parse JSONEachRow format into array
-    json_t *deliveries_array = json_array();
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *deliveries_array = yyjson_mut_arr(doc);
     char *line = response_body;
     char *next_line = NULL;
     
@@ -338,10 +359,15 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
         }
         
         if (*line) {
-            json_error_t error;
-            json_t *delivery = json_loads(line, 0, &error);
-            if (delivery) {
-                json_array_append_new(deliveries_array, delivery);
+            yyjson_doc *line_doc = yyjson_read(line, strlen(line), 0);
+            if (line_doc) {
+                yyjson_val *delivery_val = yyjson_doc_get_root(line_doc);
+                if (delivery_val) {
+                    // Convert immutable to mutable
+                    yyjson_mut_val *delivery = yyjson_val_mut_copy(doc, delivery_val);
+                    yyjson_mut_arr_append(deliveries_array, delivery);
+                }
+                yyjson_doc_free(line_doc);
             }
         }
         
@@ -351,17 +377,19 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
     free(response_body);
     
     // Build response
-    json_t *result = json_object();
-    json_object_set_new(result, "deliveries", deliveries_array);
-    json_object_set_new(result, "total", json_integer(json_array_size(deliveries_array)));
-    json_object_set_new(result, "limit", json_integer(limit));
-    json_object_set_new(result, "offset", json_integer(offset));
+    yyjson_mut_val *result = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, result);
+    yyjson_mut_obj_add_val(doc, result, "deliveries", deliveries_array);
+    yyjson_mut_obj_add_uint(doc, result, "total", yyjson_mut_arr_size(deliveries_array));
+    yyjson_mut_obj_add_int(doc, result, "limit", limit);
+    yyjson_mut_obj_add_int(doc, result, "offset", offset);
     
-    char *json_str = json_dumps(result, JSON_COMPACT);
-    json_decref(result);
+    size_t json_len;
+    char *json_str = yyjson_mut_write(doc, 0, &json_len);
+    yyjson_mut_doc_free(doc);
     
     struct MHD_Response *response = MHD_create_response_from_buffer(
-        strlen(json_str), json_str, MHD_RESPMEM_MUST_FREE);
+        json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);

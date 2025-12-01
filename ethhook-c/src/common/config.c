@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <jansson.h>
+#include "yyjson.h"
 
 // Simple TOML parser (basic implementation for key=value format)
 // In production, use tomlc99 library

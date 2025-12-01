@@ -1,5 +1,5 @@
 #include "ethhook/admin_api.h"
-#include <jansson.h>
+#include "yyjson.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -18,11 +18,14 @@ response_t *response_json(int status_code, const char *json) {
 }
 
 response_t *response_error(int status_code, const char *message) {
-    json_t *root = json_object();
-    json_object_set_new(root, "error", json_string(message));
+    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *root = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, root);
+    yyjson_mut_obj_add_str(doc, root, "error", message);
     
-    char *json_str = json_dumps(root, JSON_COMPACT);
-    json_decref(root);
+    size_t json_len;
+    char *json_str = yyjson_mut_write(doc, 0, &json_len);
+    yyjson_mut_doc_free(doc);
     
     if (!json_str) {
         return NULL;

@@ -3,7 +3,7 @@
 #include <hiredis/hiredis.h>
 #include <hiredis/adapters/libevent.h>
 #include <event2/event.h>
-#include <jansson.h>
+#include "yyjson.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,58 +22,59 @@ struct processor_ctx {
 };
 
 // Process a single event
-static void process_event(processor_ctx_t *proc_ctx, json_t *event_obj) {
+static void process_event(processor_ctx_t *proc_ctx, yyjson_val *event_obj) {
     // Extract event data
     event_t event = {0};
     
-    json_t *id = json_object_get(event_obj, "id");
-    json_t *chain_id = json_object_get(event_obj, "chain_id");
-    json_t *block_number = json_object_get(event_obj, "block_number");
-    json_t *block_hash = json_object_get(event_obj, "block_hash");
-    json_t *tx_hash = json_object_get(event_obj, "transaction_hash");
-    json_t *log_index = json_object_get(event_obj, "log_index");
-    json_t *address = json_object_get(event_obj, "contract_address");
-    json_t *topics = json_object_get(event_obj, "topics");
-    json_t *data = json_object_get(event_obj, "data");
+    yyjson_val *id = yyjson_obj_get(event_obj, "id");
+    yyjson_val *chain_id = yyjson_obj_get(event_obj, "chain_id");
+    yyjson_val *block_number = yyjson_obj_get(event_obj, "block_number");
+    yyjson_val *block_hash = yyjson_obj_get(event_obj, "block_hash");
+    yyjson_val *tx_hash = yyjson_obj_get(event_obj, "transaction_hash");
+    yyjson_val *log_index = yyjson_obj_get(event_obj, "log_index");
+    yyjson_val *address = yyjson_obj_get(event_obj, "contract_address");
+    yyjson_val *topics = yyjson_obj_get(event_obj, "topics");
+    yyjson_val *data = yyjson_obj_get(event_obj, "data");
     
-    if (id && json_is_string(id)) {
-        strncpy(event.event_id, json_string_value(id), sizeof(event.event_id) - 1);
+    if (id && yyjson_is_str(id)) {
+        strncpy(event.event_id, yyjson_get_str(id), sizeof(event.event_id) - 1);
     }
-    if (chain_id && json_is_integer(chain_id)) {
-        event.chain_id = json_integer_value(chain_id);
+    if (chain_id && yyjson_is_int(chain_id)) {
+        event.chain_id = yyjson_get_sint(chain_id);
     }
-    if (block_number && json_is_integer(block_number)) {
-        event.block_number = json_integer_value(block_number);
+    if (block_number && yyjson_is_int(block_number)) {
+        event.block_number = yyjson_get_sint(block_number);
     }
-    if (block_hash && json_is_string(block_hash)) {
-        strncpy(event.block_hash, json_string_value(block_hash), sizeof(event.block_hash) - 1);
+    if (block_hash && yyjson_is_str(block_hash)) {
+        strncpy(event.block_hash, yyjson_get_str(block_hash), sizeof(event.block_hash) - 1);
     }
-    if (tx_hash && json_is_string(tx_hash)) {
-        strncpy(event.transaction_hash, json_string_value(tx_hash), sizeof(event.transaction_hash) - 1);
+    if (tx_hash && yyjson_is_str(tx_hash)) {
+        strncpy(event.transaction_hash, yyjson_get_str(tx_hash), sizeof(event.transaction_hash) - 1);
     }
-    if (log_index && json_is_integer(log_index)) {
-        event.log_index = json_integer_value(log_index);
+    if (log_index && yyjson_is_int(log_index)) {
+        event.log_index = yyjson_get_sint(log_index);
     }
-    if (address && json_is_string(address)) {
-        strncpy(event.contract_address, json_string_value(address), sizeof(event.contract_address) - 1);
+    if (address && yyjson_is_str(address)) {
+        strncpy(event.contract_address, yyjson_get_str(address), sizeof(event.contract_address) - 1);
     }
     
     // Parse topics array
-    if (topics && json_is_array(topics)) {
-        event.num_topics = json_array_size(topics);
+    if (topics && yyjson_is_arr(topics)) {
+        event.num_topics = yyjson_arr_size(topics);
         if (event.num_topics > 0) {
             event.topics = calloc(event.num_topics, sizeof(char *));
-            for (size_t i = 0; i < event.num_topics; i++) {
-                json_t *topic = json_array_get(topics, i);
-                if (json_is_string(topic)) {
-                    event.topics[i] = strdup(json_string_value(topic));
+            size_t idx, max;
+            yyjson_val *topic;
+            yyjson_arr_foreach(topics, idx, max, topic) {
+                if (yyjson_is_str(topic)) {
+                    event.topics[idx] = strdup(yyjson_get_str(topic));
                 }
             }
         }
     }
     
-    if (data && json_is_string(data)) {
-        event.data = strdup(json_string_value(data));
+    if (data && yyjson_is_str(data)) {
+        event.data = strdup(yyjson_get_str(data));
     }
     
     // Find matching endpoints
@@ -111,16 +112,20 @@ static void process_event(processor_ctx_t *proc_ctx, json_t *event_obj) {
         
         // Publish matched events to delivery queue
         for (size_t i = 0; i < endpoint_count; i++) {
-            json_t *delivery = json_object();
-            json_object_set_new(delivery, "event_id", json_string(event.event_id));
-            json_object_set_new(delivery, "endpoint_id", json_string(endpoints[i]->endpoint_id));
-            json_object_set_new(delivery, "webhook_url", json_string(endpoints[i]->webhook_url));
+            yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+            yyjson_mut_val *delivery = yyjson_mut_obj(doc);
+            yyjson_mut_doc_set_root(doc, delivery);
+            
+            yyjson_mut_obj_add_str(doc, delivery, "event_id", event.event_id);
+            yyjson_mut_obj_add_str(doc, delivery, "endpoint_id", endpoints[i]->endpoint_id);
+            yyjson_mut_obj_add_str(doc, delivery, "webhook_url", endpoints[i]->webhook_url);
             if (endpoints[i]->webhook_secret) {
-                json_object_set_new(delivery, "webhook_secret", json_string(endpoints[i]->webhook_secret));
+                yyjson_mut_obj_add_str(doc, delivery, "webhook_secret", endpoints[i]->webhook_secret);
             }
             
-            char *delivery_json = json_dumps(delivery, JSON_COMPACT);
-            json_decref(delivery);
+            size_t json_len;
+            char *delivery_json = yyjson_mut_write(doc, 0, &json_len);
+            yyjson_mut_doc_free(doc);
             
             if (delivery_json) {
                 // Publish to Redis delivery queue
@@ -177,13 +182,15 @@ static void on_redis_message(redisAsyncContext *ctx, void *reply, void *privdata
                                         const char *event_json = fields->element[k + 1]->str;
                                         
                                         // Parse and process event
-                                        json_error_t error;
-                                        json_t *event_obj = json_loads(event_json, 0, &error);
-                                        if (event_obj) {
-                                            process_event(proc_ctx, event_obj);
-                                            json_decref(event_obj);
+                                        yyjson_doc *doc = yyjson_read(event_json, strlen(event_json), 0);
+                                        if (doc) {
+                                            yyjson_val *event_obj = yyjson_doc_get_root(doc);
+                                            if (event_obj) {
+                                                process_event(proc_ctx, event_obj);
+                                            }
+                                            yyjson_doc_free(doc);
                                         } else {
-                                            LOG_ERROR("Failed to parse event JSON: %s", error.text);
+                                            LOG_ERROR("Failed to parse event JSON");
                                         }
                                     }
                                 }
