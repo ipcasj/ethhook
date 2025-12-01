@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 199309L
 #include "ethhook/common.h"
 #include <time.h>
 #include <sys/time.h>
