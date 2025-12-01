@@ -58,8 +58,8 @@ pkg_check_modules(LIBCURL REQUIRED libcurl>=7.68)
 # libmicrohttpd
 pkg_check_modules(LIBMICROHTTPD REQUIRED libmicrohttpd>=0.9.70)
 
-# libjwt
-pkg_check_modules(LIBJWT REQUIRED libjwt>=1.12)
+# libjwt (Ubuntu 22.04 has 1.10.2, which is sufficient)
+pkg_check_modules(LIBJWT REQUIRED libjwt>=1.10)
 
 # OpenSSL (for crypto)
 find_package(OpenSSL REQUIRED)
