@@ -9,7 +9,7 @@
 extern sqlite3 *eth_db_get_handle(eth_db_t *db);
 
 int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
-                 const char *method, const char *upload_data, size_t *upload_data_size) {
+                 const char *method, const char *upload_data __attribute__((unused)), size_t *upload_data_size) {
     (void)ctx;
     
     if (strcmp(method, "POST") != 0) {
@@ -128,7 +128,7 @@ int handle_users(struct MHD_Connection *connection, request_ctx_t *ctx,
     return ret;
 }
 
-int handle_applications(struct MHD_Connection *connection, request_ctx_t *ctx,
+int handle_applications(struct MHD_Connection *connection, request_ctx_t *ctx __attribute__((unused)),
                         const char *method, const char *upload_data, size_t *upload_data_size) {
     (void)upload_data;
     (void)upload_data_size;
@@ -242,7 +242,6 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
     }
     
     char *response_body = result->data;
-    size_t response_len = result->data_len;
     
     // Parse JSONEachRow format into array
     yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
@@ -349,7 +348,6 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
     }
     
     char *response_body = result->data;
-    size_t response_len = result->data_len;
     
     // Parse JSONEachRow format into array
     yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
