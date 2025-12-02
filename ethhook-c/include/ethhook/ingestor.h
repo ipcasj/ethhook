@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include <event2/event.h>
+#include <pthread.h>
 
 // WebSocket connection state
 typedef struct {
