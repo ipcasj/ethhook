@@ -95,9 +95,9 @@ static void process_event(processor_ctx_t *proc_ctx, yyjson_val *event_obj) {
         ch_event.log_index = event.log_index;
         strncpy(ch_event.contract_address, event.contract_address, sizeof(ch_event.contract_address) - 1);
         ch_event.topics = event.topics;
-        ch_event.num_topics = event.num_topics;
+        ch_event.topics_count = event.topic_count;
         ch_event.data = event.data;
-        ch_event.ingested_at = time(NULL);
+        ch_event.ingested_at_ms = time(NULL) * 1000;
         
         // For each matched endpoint, add to ClickHouse batch
         for (size_t i = 0; i < endpoint_count; i++) {
@@ -246,7 +246,19 @@ eth_error_t processor_ctx_create(eth_config_t *config, processor_ctx_t **ctx) {
     }
     
     // Initialize ClickHouse client
-    err = clickhouse_client_create(config, &proc_ctx->ch_client);
+    clickhouse_config_t ch_config = {
+        .url = config->clickhouse_url,
+        .database = config->database,
+        .user = config->clickhouse_user,
+        .password = config->clickhouse_password,
+        .pool_size = 10,
+        .timeout_ms = 30000,
+        .enable_compression = true,
+        .batch_size = config->processor.batch_size > 0 ? config->processor.batch_size : 1000,
+        .batch_timeout_ms = 1000
+    };
+    
+    err = clickhouse_client_create(&ch_config, &proc_ctx->ch_client);
     if (err != ETH_OK) {
         LOG_ERROR("Failed to create ClickHouse client");
         eth_db_close(proc_ctx->db);
@@ -256,13 +268,10 @@ eth_error_t processor_ctx_create(eth_config_t *config, processor_ctx_t **ctx) {
     }
     
     // Create event batch
-    uint32_t batch_size = config->clickhouse.batch_size > 0 ? 
-                         config->clickhouse.batch_size : 1000;
-    uint32_t timeout_ms = config->clickhouse.batch_timeout_ms > 0 ?
-                         config->clickhouse.batch_timeout_ms : 1000;
+    size_t batch_capacity = ch_config.batch_size;
     
     err = clickhouse_batch_create(proc_ctx->ch_client, "events", 
-                                  batch_size, timeout_ms, &proc_ctx->event_batch);
+                                  batch_capacity, &proc_ctx->event_batch);
     if (err != ETH_OK) {
         LOG_ERROR("Failed to create event batch");
         clickhouse_client_destroy(proc_ctx->ch_client);
