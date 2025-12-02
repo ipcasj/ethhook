@@ -12,7 +12,7 @@ struct admin_api_ctx {
 };
 
 // Request router
-static int route_request(void *cls, struct MHD_Connection *connection,
+static enum MHD_Result route_request(void *cls, struct MHD_Connection *connection,
                         const char *url, const char *method,
                         const char *version, const char *upload_data,
                         size_t *upload_data_size, void **con_cls) {
@@ -110,7 +110,18 @@ eth_error_t admin_api_ctx_create(eth_config_t *config, admin_api_ctx_t **ctx) {
     }
     
     // Initialize ClickHouse client
-    err = clickhouse_client_create(config, &api_ctx->ch_client);
+    clickhouse_config_t ch_config = {
+        .url = config->database_url,
+        .database = "ethhook",
+        .user = NULL,
+        .password = NULL,
+        .pool_size = 10,
+        .timeout_ms = 30000,
+        .enable_compression = true,
+        .batch_size = 1000,
+        .batch_timeout_ms = 1000
+    };
+    err = clickhouse_client_create(&ch_config, &api_ctx->ch_client);
     if (err != ETH_OK) {
         LOG_ERROR("Failed to create ClickHouse client");
         eth_db_close(api_ctx->db);
