@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+#include <pthread.h>
 #include <libwebsockets.h>
 #include "ethhook/ingestor.h"
 #include <event2/event.h>
