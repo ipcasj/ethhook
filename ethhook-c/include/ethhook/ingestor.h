@@ -1,9 +1,9 @@
 #ifndef ETHHOOK_INGESTOR_H
 #define ETHHOOK_INGESTOR_H
 
+#include <pthread.h>
 #include "common.h"
 #include <event2/event.h>
-#include <pthread.h>
 
 // WebSocket connection state
 typedef struct {

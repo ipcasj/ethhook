@@ -142,12 +142,15 @@ static int ws_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
 static struct lws_protocols protocols[] = {
     {
-        "ethereum-json-rpc",
-        ws_callback,
-        sizeof(ws_session_data_t),
-        MAX_PAYLOAD_SIZE,
+        .name = "ethereum-json-rpc",
+        .callback = ws_callback,
+        .per_session_data_size = sizeof(ws_session_data_t),
+        .rx_buffer_size = MAX_PAYLOAD_SIZE,
+        .id = 0,
+        .user = NULL,
+        .tx_packet_size = 0
     },
-    { NULL, NULL, 0, 0 }
+    { NULL, NULL, 0, 0, 0, NULL, 0 }
 };
 
 eth_error_t ws_connection_init(ws_connection_t *conn, uint64_t chain_id,
