@@ -3,7 +3,10 @@
 
 #include <pthread.h>
 #include "common.h"
-#include <event2/event.h>
+
+// Forward declarations to avoid header conflicts with libwebsockets
+struct event_base;
+struct lws;
 
 // WebSocket connection state
 typedef struct {

@@ -1,4 +1,5 @@
 #include "ethhook/ingestor.h"
+#include <event2/event.h>
 #include <libwebsockets.h>
 #include "yyjson.h"
 #include <string.h>

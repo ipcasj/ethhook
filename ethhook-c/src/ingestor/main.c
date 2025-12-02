@@ -1,5 +1,6 @@
 #include "ethhook/ingestor.h"
 #include "ethhook/common.h"
+#include <event2/event.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
