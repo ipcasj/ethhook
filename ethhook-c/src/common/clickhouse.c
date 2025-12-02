@@ -85,12 +85,12 @@ eth_error_t clickhouse_client_create(
     clickhouse_client_t **client
 ) {
     if (!config || !client) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
     
     clickhouse_client_t *c = calloc(1, sizeof(clickhouse_client_t));
     if (!c) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
     
     // Copy configuration
@@ -106,7 +106,7 @@ eth_error_t clickhouse_client_create(
     c->connections = calloc(c->pool_size, sizeof(pooled_curl_t));
     if (!c->connections) {
         free(c);
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
     
     pthread_mutex_init(&c->pool_lock, NULL);
@@ -130,7 +130,7 @@ eth_error_t clickhouse_client_create(
     atomic_init(&c->rows_inserted, 0);
     atomic_init(&c->total_latency_ms, 0);
     
-    ETH_LOG_INFO("ClickHouse client created: %s (pool_size=%zu)", 
+    LOG_INFO("ClickHouse client created: %s (pool_size=%zu)", 
                  config->url, c->pool_size);
     
     *client = c;
@@ -176,7 +176,7 @@ static CURL *get_connection(clickhouse_client_t *client) {
     pthread_mutex_unlock(&client->pool_lock);
     
     // No available connections (should not happen with proper pool sizing)
-    ETH_LOG_WARN("No available ClickHouse connections in pool");
+    LOG_WARN("No available ClickHouse connections in pool");
     return NULL;
 }
 
@@ -201,7 +201,7 @@ eth_error_t clickhouse_query(
     clickhouse_result_t **result
 ) {
     if (!client || !query) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
     
     struct timespec start, end;
@@ -268,7 +268,7 @@ eth_error_t clickhouse_query(
     atomic_fetch_add(&client->total_latency_ms, latency_ms);
     
     if (res != CURLE_OK) {
-        ETH_LOG_ERROR("ClickHouse query failed: %s", curl_easy_strerror(res));
+        LOG_ERROR("ClickHouse query failed: %s", curl_easy_strerror(res));
         free(response.data);
         release_connection(client, curl);
         return ETH_ERROR;
@@ -280,7 +280,7 @@ eth_error_t clickhouse_query(
     release_connection(client, curl);
     
     if (http_code != 200) {
-        ETH_LOG_ERROR("ClickHouse returned HTTP %ld: %s", http_code, 
+        LOG_ERROR("ClickHouse returned HTTP %ld: %s", http_code, 
                       response.data ? response.data : "(no response)");
         free(response.data);
         return ETH_ERROR;
@@ -291,7 +291,7 @@ eth_error_t clickhouse_query(
         clickhouse_result_t *r = calloc(1, sizeof(clickhouse_result_t));
         if (!r) {
             free(response.data);
-            return ETH_ERROR_OUT_OF_MEMORY;
+            return ETH_ERROR_MEMORY;
         }
         
         r->data = response.data;
@@ -323,12 +323,12 @@ eth_error_t clickhouse_batch_create(
     clickhouse_batch_t **batch
 ) {
     if (!client || !table_name || !batch) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
     
     clickhouse_batch_t *b = calloc(1, sizeof(clickhouse_batch_t));
     if (!b) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
     
     b->client = client;
@@ -339,7 +339,7 @@ eth_error_t clickhouse_batch_create(
     
     if (!b->items) {
         free(b);
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
     
     pthread_mutex_init(&b->lock, NULL);
@@ -490,7 +490,7 @@ eth_error_t clickhouse_batch_flush(clickhouse_batch_t *batch) {
     
     if (!query) {
         pthread_mutex_unlock(&batch->lock);
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
     
     // Execute batch insert
@@ -501,10 +501,10 @@ eth_error_t clickhouse_batch_flush(clickhouse_batch_t *batch) {
         atomic_fetch_add(&batch->client->batches_flushed, 1);
         atomic_fetch_add(&batch->client->rows_inserted, batch->count);
         
-        ETH_LOG_DEBUG("Flushed %zu rows to ClickHouse table %s", 
+        LOG_DEBUG("Flushed %zu rows to ClickHouse table %s", 
                       batch->count, batch->table_name);
     } else {
-        ETH_LOG_ERROR("Failed to flush batch to ClickHouse");
+        LOG_ERROR("Failed to flush batch to ClickHouse");
     }
     
     // Clear batch
@@ -521,7 +521,7 @@ eth_error_t clickhouse_batch_add_event(
     const clickhouse_event_t *event
 ) {
     if (!batch || !event) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
     
     pthread_mutex_lock(&batch->lock);
@@ -556,7 +556,7 @@ eth_error_t clickhouse_batch_add_event(
     clickhouse_event_t *e = malloc(sizeof(clickhouse_event_t));
     if (!e) {
         pthread_mutex_unlock(&batch->lock);
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
     
     memcpy(e, event, sizeof(clickhouse_event_t));
@@ -586,7 +586,7 @@ eth_error_t clickhouse_batch_add_delivery(
     const clickhouse_delivery_t *delivery
 ) {
     if (!batch || !delivery) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
     
     pthread_mutex_lock(&batch->lock);
@@ -618,7 +618,7 @@ eth_error_t clickhouse_batch_add_delivery(
     clickhouse_delivery_t *d = malloc(sizeof(clickhouse_delivery_t));
     if (!d) {
         pthread_mutex_unlock(&batch->lock);
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
     
     memcpy(d, delivery, sizeof(clickhouse_delivery_t));
@@ -670,7 +670,7 @@ void clickhouse_batch_destroy(clickhouse_batch_t *batch) {
 
 eth_error_t clickhouse_init_schema(clickhouse_client_t *client) {
     if (!client) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
     
     // Create events table
@@ -724,7 +724,7 @@ eth_error_t clickhouse_init_schema(clickhouse_client_t *client) {
         return err;
     }
     
-    ETH_LOG_INFO("ClickHouse schema initialized successfully");
+    LOG_INFO("ClickHouse schema initialized successfully");
     
     return ETH_OK;
 }
