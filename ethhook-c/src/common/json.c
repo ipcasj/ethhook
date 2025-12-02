@@ -45,12 +45,12 @@ struct json_writer {
 
 eth_error_t json_parse(const char *json, size_t len, json_doc_t **doc) {
     if (!json || !doc) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     json_doc_t *new_doc = malloc(sizeof(json_doc_t));
     if (!new_doc) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     yyjson_read_flag flags = YYJSON_READ_ALLOW_COMMENTS | YYJSON_READ_ALLOW_TRAILING_COMMAS;
@@ -59,7 +59,7 @@ eth_error_t json_parse(const char *json, size_t len, json_doc_t **doc) {
     new_doc->doc = yyjson_read_opts((char *)json, len, flags, NULL, &err);
     if (!new_doc->doc) {
         free(new_doc);
-        return ETH_ERROR_INVALID_JSON;
+        return ETH_ERROR_JSON;
     }
 
     *doc = new_doc;
@@ -196,18 +196,18 @@ json_value_t *json_array_get(json_array_t *arr, size_t index) {
 
 eth_error_t json_writer_create(json_writer_t **writer) {
     if (!writer) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     json_writer_t *w = malloc(sizeof(json_writer_t));
     if (!w) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     w->doc = yyjson_mut_doc_new(NULL);
     if (!w->doc) {
         free(w);
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     w->root = NULL;
@@ -229,15 +229,15 @@ void json_writer_free(json_writer_t *writer) {
 
 eth_error_t json_writer_begin_object(json_writer_t *writer) {
     if (!writer) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
     if (writer->stack_depth >= 64) {
-        return ETH_ERROR_BUFFER_OVERFLOW;
+        return ETH_ERROR_MEMORY;
     }
 
     yyjson_mut_val *obj = yyjson_mut_obj(writer->doc);
     if (!obj) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     if (writer->root == NULL) {
@@ -255,7 +255,7 @@ eth_error_t json_writer_begin_object(json_writer_t *writer) {
 
 eth_error_t json_writer_end_object(json_writer_t *writer) {
     if (!writer || writer->stack_depth == 0) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     writer->current = writer->stack[--writer->stack_depth];
@@ -264,15 +264,15 @@ eth_error_t json_writer_end_object(json_writer_t *writer) {
 
 eth_error_t json_writer_begin_array(json_writer_t *writer) {
     if (!writer) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
     if (writer->stack_depth >= 64) {
-        return ETH_ERROR_BUFFER_OVERFLOW;
+        return ETH_ERROR_MEMORY;
     }
 
     yyjson_mut_val *arr = yyjson_mut_arr(writer->doc);
     if (!arr) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     if (writer->root == NULL) {
@@ -290,7 +290,7 @@ eth_error_t json_writer_begin_array(json_writer_t *writer) {
 
 eth_error_t json_writer_end_array(json_writer_t *writer) {
     if (!writer || writer->stack_depth == 0) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     writer->current = writer->stack[--writer->stack_depth];
@@ -306,12 +306,12 @@ eth_error_t json_writer_key(json_writer_t *writer, const char *key) {
 
 eth_error_t json_writer_string(json_writer_t *writer, const char *value) {
     if (!writer || !writer->current) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     yyjson_mut_val *val = yyjson_mut_str(writer->doc, value);
     if (!val) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     if (yyjson_mut_is_arr(writer->current)) {
@@ -323,12 +323,12 @@ eth_error_t json_writer_string(json_writer_t *writer, const char *value) {
 
 eth_error_t json_writer_int(json_writer_t *writer, int64_t value) {
     if (!writer || !writer->current) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     yyjson_mut_val *val = yyjson_mut_sint(writer->doc, value);
     if (!val) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     if (yyjson_mut_is_arr(writer->current)) {
@@ -340,12 +340,12 @@ eth_error_t json_writer_int(json_writer_t *writer, int64_t value) {
 
 eth_error_t json_writer_uint(json_writer_t *writer, uint64_t value) {
     if (!writer || !writer->current) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     yyjson_mut_val *val = yyjson_mut_uint(writer->doc, value);
     if (!val) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     if (yyjson_mut_is_arr(writer->current)) {
@@ -357,12 +357,12 @@ eth_error_t json_writer_uint(json_writer_t *writer, uint64_t value) {
 
 eth_error_t json_writer_bool(json_writer_t *writer, bool value) {
     if (!writer || !writer->current) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     yyjson_mut_val *val = yyjson_mut_bool(writer->doc, value);
     if (!val) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     if (yyjson_mut_is_arr(writer->current)) {
@@ -374,12 +374,12 @@ eth_error_t json_writer_bool(json_writer_t *writer, bool value) {
 
 eth_error_t json_writer_null(json_writer_t *writer) {
     if (!writer || !writer->current) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     yyjson_mut_val *val = yyjson_mut_null(writer->doc);
     if (!val) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     if (yyjson_mut_is_arr(writer->current)) {
@@ -391,13 +391,13 @@ eth_error_t json_writer_null(json_writer_t *writer) {
 
 eth_error_t json_writer_get_string(json_writer_t *writer, char **json, size_t *len) {
     if (!writer || !json || !len) {
-        return ETH_ERROR_INVALID_ARGUMENT;
+        return ETH_ERROR_INVALID_PARAM;
     }
 
     yyjson_write_flag flags = YYJSON_WRITE_PRETTY;
     *json = yyjson_mut_write(writer->doc, flags, len);
     if (!*json) {
-        return ETH_ERROR_OUT_OF_MEMORY;
+        return ETH_ERROR_MEMORY;
     }
 
     return ETH_OK;
