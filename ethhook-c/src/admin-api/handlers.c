@@ -226,12 +226,12 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
              "FORMAT JSONEachRow",
              limit, offset);
     
-    char *response_body = NULL;
-    size_t response_len = 0;
+    clickhouse_result_t *result = NULL;
     
-    eth_error_t err = clickhouse_query(ctx->ch_client, query, &response_body, &response_len);
-    if (err != ETH_OK || !response_body) {
+    eth_error_t err = clickhouse_query(ctx->ch_client, query, &result);
+    if (err != ETH_OK || !result || !result->data) {
         LOG_ERROR("ClickHouse query failed");
+        if (result) clickhouse_result_free(result);
         response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Failed to query events");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
@@ -240,6 +240,9 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_free(resp);
         return ret;
     }
+    
+    char *response_body = result->data;
+    size_t response_len = result->data_len;
     
     // Parse JSONEachRow format into array
     yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
@@ -270,15 +273,15 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
         line = next_line;
     }
     
-    free(response_body);
+    clickhouse_result_free(result);
     
     // Build response
-    yyjson_mut_val *result = yyjson_mut_obj(doc);
-    yyjson_mut_doc_set_root(doc, result);
-    yyjson_mut_obj_add_val(doc, result, "events", events_array);
-    yyjson_mut_obj_add_uint(doc, result, "total", yyjson_mut_arr_size(events_array));
-    yyjson_mut_obj_add_int(doc, result, "limit", limit);
-    yyjson_mut_obj_add_int(doc, result, "offset", offset);
+    yyjson_mut_val *result_obj = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, result_obj);
+    yyjson_mut_obj_add_val(doc, result_obj, "events", events_array);
+    yyjson_mut_obj_add_uint(doc, result_obj, "total", yyjson_mut_arr_size(events_array));
+    yyjson_mut_obj_add_int(doc, result_obj, "limit", limit);
+    yyjson_mut_obj_add_int(doc, result_obj, "offset", offset);
     
     size_t json_len;
     char *json_str = yyjson_mut_write(doc, 0, &json_len);
@@ -330,12 +333,12 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
              "FORMAT JSONEachRow",
              limit, offset);
     
-    char *response_body = NULL;
-    size_t response_len = 0;
+    clickhouse_result_t *result = NULL;
     
-    eth_error_t err = clickhouse_query(ctx->ch_client, query, &response_body, &response_len);
-    if (err != ETH_OK || !response_body) {
+    eth_error_t err = clickhouse_query(ctx->ch_client, query, &result);
+    if (err != ETH_OK || !result || !result->data) {
         LOG_ERROR("ClickHouse query failed");
+        if (result) clickhouse_result_free(result);
         response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Failed to query deliveries");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
@@ -344,6 +347,9 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_free(resp);
         return ret;
     }
+    
+    char *response_body = result->data;
+    size_t response_len = result->data_len;
     
     // Parse JSONEachRow format into array
     yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
@@ -374,15 +380,15 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
         line = next_line;
     }
     
-    free(response_body);
+    clickhouse_result_free(result);
     
     // Build response
-    yyjson_mut_val *result = yyjson_mut_obj(doc);
-    yyjson_mut_doc_set_root(doc, result);
-    yyjson_mut_obj_add_val(doc, result, "deliveries", deliveries_array);
-    yyjson_mut_obj_add_uint(doc, result, "total", yyjson_mut_arr_size(deliveries_array));
-    yyjson_mut_obj_add_int(doc, result, "limit", limit);
-    yyjson_mut_obj_add_int(doc, result, "offset", offset);
+    yyjson_mut_val *result_obj = yyjson_mut_obj(doc);
+    yyjson_mut_doc_set_root(doc, result_obj);
+    yyjson_mut_obj_add_val(doc, result_obj, "deliveries", deliveries_array);
+    yyjson_mut_obj_add_uint(doc, result_obj, "total", yyjson_mut_arr_size(deliveries_array));
+    yyjson_mut_obj_add_int(doc, result_obj, "limit", limit);
+    yyjson_mut_obj_add_int(doc, result_obj, "offset", offset);
     
     size_t json_len;
     char *json_str = yyjson_mut_write(doc, 0, &json_len);
