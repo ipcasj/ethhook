@@ -95,7 +95,7 @@ static void process_event(processor_ctx_t *proc_ctx, yyjson_val *event_obj) {
         ch_event.log_index = event.log_index;
         strncpy(ch_event.contract_address, event.contract_address, sizeof(ch_event.contract_address) - 1);
         ch_event.topics = event.topics;
-        ch_event.topics_count = event.topic_count;
+        ch_event.topics_count = event.num_topics;
         ch_event.data = event.data;
         ch_event.ingested_at_ms = time(NULL) * 1000;
         
@@ -247,10 +247,10 @@ eth_error_t processor_ctx_create(eth_config_t *config, processor_ctx_t **ctx) {
     
     // Initialize ClickHouse client
     clickhouse_config_t ch_config = {
-        .url = config->clickhouse_url,
-        .database = config->database,
-        .user = config->clickhouse_user,
-        .password = config->clickhouse_password,
+        .url = config->database_url,  // ClickHouse HTTP URL
+        .database = "ethhook",       // Database name
+        .user = NULL,                 // Optional: extracted from URL
+        .password = NULL,             // Optional: extracted from URL
         .pool_size = 10,
         .timeout_ms = 30000,
         .enable_compression = true,
@@ -281,7 +281,7 @@ eth_error_t processor_ctx_create(eth_config_t *config, processor_ctx_t **ctx) {
         return err;
     }
     
-    LOG_INFO("ClickHouse batch initialized: size=%u, timeout=%ums", batch_size, timeout_ms);
+    LOG_INFO("ClickHouse batch initialized: capacity=%zu, timeout=%ums", batch_capacity, ch_config.batch_timeout_ms);
     
     // Initialize matcher
     err = matcher_init(proc_ctx->db);
