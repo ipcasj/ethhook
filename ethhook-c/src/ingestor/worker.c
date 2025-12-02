@@ -1,4 +1,5 @@
-#define _POSIX_C_SOURCE 200112L
+#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 #include "ethhook/ingestor.h"
 #include <unistd.h>
 
