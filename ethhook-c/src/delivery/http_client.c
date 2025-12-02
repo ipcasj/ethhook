@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "ethhook/delivery.h"
 #include <curl/curl.h>
 #include <openssl/hmac.h>
@@ -39,6 +40,7 @@ void http_client_cleanup(http_client_t *client) {
 }
 
 // Generate HMAC-SHA256 signature
+__attribute__((unused))
 static char *generate_signature(const char *secret, const char *payload, size_t payload_len) {
     unsigned char hash[32];
     unsigned int hash_len = 32;
