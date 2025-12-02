@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200809L
+#define _GNU_SOURCE
 #include "ethhook/delivery.h"
 #include "ethhook/clickhouse.h"
 #include <hiredis/hiredis.h>
@@ -95,7 +97,19 @@ eth_error_t delivery_ctx_create(eth_config_t *config, delivery_ctx_t **ctx) {
     }
     
     // Initialize ClickHouse client
-    err = clickhouse_client_create(config, &del_ctx->ch_client);
+    clickhouse_config_t ch_config = {
+        .url = config->database_url,
+        .database = "ethhook",
+        .user = NULL,
+        .password = NULL,
+        .pool_size = 10,
+        .timeout_ms = 30000,
+        .enable_compression = true,
+        .batch_size = 1000,
+        .batch_timeout_ms = 1000
+    };
+    
+    err = clickhouse_client_create(&ch_config, &del_ctx->ch_client);
     if (err != ETH_OK) {
         LOG_ERROR("Failed to create ClickHouse client");
         eth_db_close(del_ctx->db);
@@ -105,13 +119,10 @@ eth_error_t delivery_ctx_create(eth_config_t *config, delivery_ctx_t **ctx) {
     }
     
     // Create delivery batch
-    uint32_t batch_size = config->clickhouse.batch_size > 0 ? 
-                         config->clickhouse.batch_size : 1000;
-    uint32_t timeout_ms = config->clickhouse.batch_timeout_ms > 0 ?
-                         config->clickhouse.batch_timeout_ms : 1000;
+    size_t batch_capacity = ch_config.batch_size;
     
     err = clickhouse_batch_create(del_ctx->ch_client, "deliveries", 
-                                  batch_size, timeout_ms, &del_ctx->delivery_batch);
+                                  batch_capacity, &del_ctx->delivery_batch);
     if (err != ETH_OK) {
         LOG_ERROR("Failed to create delivery batch");
         clickhouse_client_destroy(del_ctx->ch_client);
