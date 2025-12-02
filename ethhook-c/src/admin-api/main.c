@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "ethhook/admin_api.h"
 #include "ethhook/common.h"
 #include <signal.h>
