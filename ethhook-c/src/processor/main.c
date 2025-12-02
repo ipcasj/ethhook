@@ -1,6 +1,7 @@
 #include "ethhook/processor.h"
 #include "ethhook/common.h"
 #include <signal.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
