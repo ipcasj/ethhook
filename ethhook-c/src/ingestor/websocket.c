@@ -152,6 +152,9 @@ static struct lws_protocols protocols[] = {
 
 eth_error_t ws_connection_init(ws_connection_t *conn, uint64_t chain_id,
                                 const char *ws_url, const char *redis_host, int redis_port) {
+    (void)redis_host;  // TODO: Will be used for Redis publishing
+    (void)redis_port;  // TODO: Will be used for Redis publishing
+    
     if (!conn || !ws_url) {
         return ETH_ERROR_INVALID_PARAM;
     }
