@@ -33,10 +33,10 @@ typedef struct clickhouse_batch clickhouse_batch_t;
  * ClickHouse client configuration
  */
 typedef struct {
-    char *url;              // HTTP URL (e.g., "http://localhost:8123")
-    char *database;         // Database name
-    char *user;             // Username
-    char *password;         // Password
+    const char *url;        // HTTP URL (e.g., "http://localhost:8123")
+    const char *database;   // Database name
+    const char *user;       // Username
+    const char *password;   // Password
     uint32_t pool_size;     // Connection pool size (default: 10)
     uint32_t timeout_ms;    // Query timeout (default: 30000)
     bool enable_compression; // Enable gzip compression (default: true)

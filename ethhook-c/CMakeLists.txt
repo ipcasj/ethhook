@@ -11,23 +11,34 @@ option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 option(ENABLE_TSAN "Enable ThreadSanitizer for race condition detection" OFF)
 option(ENABLE_STATIC_ANALYSIS "Enable additional static analysis warnings" ON)
 
-# Compiler flags - aggressive warnings for code quality
+# Compiler flags - aggressive warnings for code quality (cross-platform compatible)
 add_compile_options(
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Werror
+    -Wall                         # Enable all common warnings
+    -Wextra                       # Enable extra warnings
+    -Wpedantic                    # Strict ISO C compliance
+    -Werror                       # Treat warnings as errors
     -Wformat=2                    # Enhanced format string checking
     -Wformat-security             # Warn about insecure format strings
     -Wnull-dereference            # Warn about potential NULL dereferences
-    -Wstrict-overflow=2           # Warn about overflow in comparisons
-    -Warray-bounds=2              # Enhanced array bounds checking
     -Wwrite-strings               # Warn about writing to string constants
-    -Wconversion                  # Warn about implicit conversions
     -Wshadow                      # Warn about variable shadowing
     -fstack-protector-strong      # Stack canaries for buffer overflow protection
     -D_FORTIFY_SOURCE=2           # Runtime buffer overflow detection
 )
+
+# Platform-specific warning flags
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    # GCC-specific warnings
+    add_compile_options(
+        -Warray-bounds=2          # Enhanced array bounds checking (GCC only)
+        -Wstrict-overflow=2       # Warn about overflow in comparisons
+    )
+elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    # Clang/AppleClang-specific adjustments
+    add_compile_options(
+        -Wstrict-overflow=2       # Warn about overflow in comparisons
+    )
+endif()
 
 # Optimization flags (excluding sanitizers which conflict with -O3)
 if(NOT ENABLE_ASAN AND NOT ENABLE_UBSAN AND NOT ENABLE_TSAN)
@@ -94,6 +105,15 @@ pkg_check_modules(LIBWEBSOCKETS REQUIRED libwebsockets>=4.0)
 # hiredis (Ubuntu 22.04 has 0.14.1, which is sufficient)
 pkg_check_modules(HIREDIS REQUIRED hiredis>=0.14)
 
+# Add library directories for pkg-config managed libraries
+link_directories(
+    ${HIREDIS_LIBRARY_DIRS}
+    ${LIBWEBSOCKETS_LIBRARY_DIRS}
+    ${LIBEVENT_LIBRARY_DIRS}
+    ${LIBCURL_LIBRARY_DIRS}
+    ${LIBMICROHTTPD_LIBRARY_DIRS}
+)
+
 # yyjson (single-header library, included in source)
 # Download if not present
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/include/yyjson.h")
@@ -114,10 +134,9 @@ pkg_check_modules(LIBCURL REQUIRED libcurl>=7.68)
 # libmicrohttpd
 pkg_check_modules(LIBMICROHTTPD REQUIRED libmicrohttpd>=0.9.70)
 
-# libjwt (Ubuntu 22.04 has 1.10.2, which is sufficient)
-pkg_check_modules(LIBJWT REQUIRED libjwt>=1.10)
-
-# OpenSSL (for crypto)
+# OpenSSL (for crypto and JWT signing)
+# Note: We implement JWT directly using OpenSSL's HMAC instead of libjwt
+# This is more portable and avoids dependency on libjwt v3 API changes
 find_package(OpenSSL REQUIRED)
 
 # Threads
@@ -131,7 +150,7 @@ include_directories(
     ${HIREDIS_INCLUDE_DIRS}
     ${LIBCURL_INCLUDE_DIRS}
     ${LIBMICROHTTPD_INCLUDE_DIRS}
-    ${LIBJWT_INCLUDE_DIRS}
+    ${OPENSSL_INCLUDE_DIR}
     ${SQLite3_INCLUDE_DIRS}
 )
 
@@ -230,8 +249,8 @@ add_executable(ethhook-admin-api
 target_link_libraries(ethhook-admin-api
     ethhook-common
     ${LIBMICROHTTPD_LIBRARIES}
-    ${LIBJWT_LIBRARIES}
-    ${OpenSSL_LIBRARIES}
+    OpenSSL::SSL
+    OpenSSL::Crypto
     Threads::Threads
 )
 

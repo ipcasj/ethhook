@@ -55,9 +55,9 @@ static char *generate_signature(const char *secret, const char *payload, size_t 
     }
     
     for (uint32_t i = 0; i < hash_len && (i * 2) < 64; i++) {
-        snprintf(&hex[i * 2], 3, \"%02x\", hash[i]); // 3 bytes: 2 hex digits + null
+        snprintf(&hex[i * 2], 3, "%02x", hash[i]); // 3 bytes: 2 hex digits + null
     }
-    hex[64] = '\\0';
+    hex[64] = '\0';
     
     return hex;
 }

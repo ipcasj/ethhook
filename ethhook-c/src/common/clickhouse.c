@@ -7,6 +7,7 @@
 #define _GNU_SOURCE
 #include "ethhook/clickhouse.h"
 #include "ethhook/common.h"
+#include <inttypes.h>
 #include <curl/curl.h>
 #include <pthread.h>
 #include <stdatomic.h>
@@ -260,8 +261,8 @@ eth_error_t clickhouse_query(
     curl_slist_free_all(headers);
     
     clock_gettime(CLOCK_MONOTONIC, &end);
-    uint64_t latency_ms = (end.tv_sec - start.tv_sec) * 1000 + 
-                          (end.tv_nsec - start.tv_nsec) / 1000000;
+    uint64_t latency_ms = (uint64_t)(end.tv_sec - start.tv_sec) * 1000ULL + 
+                          (uint64_t)((end.tv_nsec - start.tv_nsec) / 1000000);
     
     // Update metrics
     atomic_fetch_add(&client->queries_executed, 1);
@@ -359,11 +360,16 @@ static char *build_events_insert_query(
     char *query = malloc(buf_size);
     if (!query) return NULL;
     
-    size_t offset = snprintf(query, buf_size,
+    int ret = snprintf(query, buf_size,
         "INSERT INTO %s (id, endpoint_id, application_id, chain_id, "
         "block_number, block_hash, transaction_hash, log_index, "
         "contract_address, topics, data, ingested_at, processed_at) FORMAT JSONEachRow\n",
         table_name);
+    if (ret < 0) {
+        free(query);
+        return NULL;
+    }
+    size_t offset = (size_t)ret;
     
     for (size_t i = 0; i < count; i++) {
         clickhouse_event_t *e = events[i];
@@ -371,8 +377,9 @@ static char *build_events_insert_query(
         // Build topics array (safe bounded string building)
         char topics_json[4096];
         size_t topics_offset = 0;
-        topics_offset += snprintf(topics_json + topics_offset, 
-                                  sizeof(topics_json) - topics_offset, "[");
+        ret = snprintf(topics_json + topics_offset, 
+                       sizeof(topics_json) - topics_offset, "[");
+        if (ret > 0) topics_offset += (size_t)ret;
         
         for (size_t t = 0; t < e->topics_count && topics_offset < sizeof(topics_json) - 10; t++) {
             int written = snprintf(topics_json + topics_offset, 
@@ -386,23 +393,24 @@ static char *build_events_insert_query(
         }
         
         if (topics_offset < sizeof(topics_json) - 2) {
-            topics_offset += snprintf(topics_json + topics_offset, 
-                                      sizeof(topics_json) - topics_offset, "]");
+            ret = snprintf(topics_json + topics_offset, 
+                           sizeof(topics_json) - topics_offset, "]");
+            if (ret > 0) topics_offset += (size_t)ret;
         }
         
         // Append row as JSON
         int written = snprintf(query + offset, buf_size - offset,
             "{\"id\":\"%s\",\"endpoint_id\":\"%s\",\"application_id\":\"%s\","
-            "\"chain_id\":%lu,\"block_number\":%lu,\"block_hash\":\"%s\","
+            "\"chain_id\":%" PRIu64 ",\"block_number\":%" PRIu64 ",\"block_hash\":\"%s\","
             "\"transaction_hash\":\"%s\",\"log_index\":%u,\"contract_address\":\"%s\","
-            "\"topics\":%s,\"data\":\"%s\",\"ingested_at\":%lu,\"processed_at\":%lu}\n",
+            "\"topics\":%s,\"data\":\"%s\",\"ingested_at\":%" PRIu64 ",\"processed_at\":%" PRIu64 "}\n",
             e->id, e->endpoint_id, e->application_id,
             e->chain_id, e->block_number, e->block_hash,
             e->transaction_hash, e->log_index, e->contract_address,
             topics_json, e->data ? e->data : "",
             e->ingested_at_ms, e->processed_at_ms);
         
-        if (written < 0 || offset + written >= buf_size) {
+        if (written < 0 || offset + (size_t)written >= buf_size) {
             // Buffer too small, reallocate
             buf_size *= 2;
             char *new_query = realloc(query, buf_size);
@@ -415,7 +423,7 @@ static char *build_events_insert_query(
             continue;
         }
         
-        offset += written;
+        offset += (size_t)written;
     }
     
     return query;
@@ -431,11 +439,16 @@ static char *build_deliveries_insert_query(
     char *query = malloc(buf_size);
     if (!query) return NULL;
     
-    size_t offset = snprintf(query, buf_size,
+    int ret = snprintf(query, buf_size,
         "INSERT INTO %s (id, event_id, endpoint_id, url, status, "
         "attempt_count, http_status_code, error_message, delivered_at, next_retry_at) "
         "FORMAT JSONEachRow\n",
         table_name);
+    if (ret < 0) {
+        free(query);
+        return NULL;
+    }
+    size_t offset = (size_t)ret;
     
     for (size_t i = 0; i < count; i++) {
         clickhouse_delivery_t *d = deliveries[i];
@@ -450,13 +463,13 @@ static char *build_deliveries_insert_query(
             "{\"id\":\"%s\",\"event_id\":\"%s\",\"endpoint_id\":\"%s\","
             "\"url\":\"%s\",\"status\":\"%s\",\"attempt_count\":%u,"
             "\"http_status_code\":%d,\"error_message\":%s,"
-            "\"delivered_at\":%lu,\"next_retry_at\":%lu}\n",
+            "\"delivered_at\":%" PRIu64 ",\"next_retry_at\":%" PRIu64 "}\n",
             d->id, d->event_id, d->endpoint_id,
             d->url, d->status, d->attempt_count,
             d->http_status_code, error_json,
             d->delivered_at_ms, d->next_retry_at_ms);
         
-        if (written < 0 || offset + written >= buf_size) {
+        if (written < 0 || offset + (size_t)written >= buf_size) {
             buf_size *= 2;
             char *new_query = realloc(query, buf_size);
             if (!new_query) {
@@ -468,7 +481,7 @@ static char *build_deliveries_insert_query(
             continue;
         }
         
-        offset += written;
+        offset += (size_t)written;
     }
     
     return query;
@@ -546,8 +559,8 @@ eth_error_t clickhouse_batch_add_event(
     } else {
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
-        uint64_t elapsed_ms = (now.tv_sec - batch->last_flush.tv_sec) * 1000 +
-                              (now.tv_nsec - batch->last_flush.tv_nsec) / 1000000;
+        uint64_t elapsed_ms = (uint64_t)(now.tv_sec - batch->last_flush.tv_sec) * 1000ULL +
+                              (uint64_t)((now.tv_nsec - batch->last_flush.tv_nsec) / 1000000);
         if (elapsed_ms >= batch->timeout_ms) {
             should_flush = true;
         }
@@ -611,8 +624,8 @@ eth_error_t clickhouse_batch_add_delivery(
     } else {
         struct timespec now;
         clock_gettime(CLOCK_MONOTONIC, &now);
-        uint64_t elapsed_ms = (now.tv_sec - batch->last_flush.tv_sec) * 1000 +
-                              (now.tv_nsec - batch->last_flush.tv_nsec) / 1000000;
+        uint64_t elapsed_ms = (uint64_t)(now.tv_sec - batch->last_flush.tv_sec) * 1000ULL +
+                              (uint64_t)((now.tv_nsec - batch->last_flush.tv_nsec) / 1000000);
         if (elapsed_ms >= batch->timeout_ms) {
             should_flush = true;
         }

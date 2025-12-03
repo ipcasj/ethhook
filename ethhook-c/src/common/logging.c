@@ -45,6 +45,8 @@ void eth_log(eth_log_level_t level, const char *fmt, ...) {
     }
     
     // Log to syslog
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
     vsyslog(syslog_level, fmt, args);
     va_end(args);
     
@@ -57,6 +59,7 @@ void eth_log(eth_log_level_t level, const char *fmt, ...) {
     
     fprintf(stderr, "[%s] %s: ", time_buf, level_str);
     vfprintf(stderr, fmt, args);
+#pragma GCC diagnostic pop
     fprintf(stderr, "\n");
     va_end(args);
 }

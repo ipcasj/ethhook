@@ -1,6 +1,10 @@
 #include "ethhook/ingestor.h"
 #include <hiredis/hiredis.h>
+// Suppress unused function warnings from hiredis headers
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #include <hiredis/adapters/libevent.h>
+#pragma GCC diagnostic pop
 #include "yyjson.h"
 
 // TODO: Implement async Redis publisher using hiredis-libevent

@@ -45,7 +45,7 @@ void *eth_arena_alloc(eth_arena_t *arena, size_t size) {
     }
     
     // Align to 8 bytes
-    size = (size + 7) & ~7;
+    size = (size + 7) & ~((size_t)7);
     
     pthread_mutex_lock(&arena->lock);
     

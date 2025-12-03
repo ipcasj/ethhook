@@ -16,14 +16,14 @@ void circuit_breaker_init(circuit_breaker_t *cb, const uint32_t failure_threshol
 static uint64_t get_time_ms(void) {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
+    return (uint64_t)ts.tv_sec * 1000ULL + (uint64_t)(ts.tv_nsec / 1000000);
 }
 
 bool circuit_breaker_allow(circuit_breaker_t *cb) {
-    cb_state_t state = atomic_load(&cb->state);
+    int state = atomic_load(&cb->state);
     uint64_t now = get_time_ms();
     
-    switch (state) {
+    switch ((cb_state_t)state) {
         case CB_STATE_CLOSED:
             return true;
             
@@ -51,9 +51,9 @@ bool circuit_breaker_allow(circuit_breaker_t *cb) {
 }
 
 void circuit_breaker_success(circuit_breaker_t *cb) {
-    cb_state_t state = atomic_load(&cb->state);
+    int state = atomic_load(&cb->state);
     
-    if (state == CB_STATE_HALF_OPEN) {
+    if ((cb_state_t)state == CB_STATE_HALF_OPEN) {
         uint64_t success = atomic_fetch_add(&cb->success_count, 1) + 1;
         if (success >= cb->half_open_max_calls) {
             // Transition to closed
@@ -61,24 +61,24 @@ void circuit_breaker_success(circuit_breaker_t *cb) {
             atomic_store(&cb->failure_count, 0);
             atomic_store(&cb->success_count, 0);
         }
-    } else if (state == CB_STATE_CLOSED) {
+    } else if ((cb_state_t)state == CB_STATE_CLOSED) {
         // Reset failure count on success
         atomic_store(&cb->failure_count, 0);
     }
 }
 
 void circuit_breaker_failure(circuit_breaker_t *cb) {
-    cb_state_t state = atomic_load(&cb->state);
+    int state = atomic_load(&cb->state);
     uint64_t now = get_time_ms();
     
     atomic_store(&cb->last_failure_time, now);
     
-    if (state == CB_STATE_HALF_OPEN) {
+    if ((cb_state_t)state == CB_STATE_HALF_OPEN) {
         // Immediate transition to open
         atomic_store(&cb->state, CB_STATE_OPEN);
         atomic_store(&cb->failure_count, 0);
         atomic_store(&cb->success_count, 0);
-    } else if (state == CB_STATE_CLOSED) {
+    } else if ((cb_state_t)state == CB_STATE_CLOSED) {
         uint64_t failures = atomic_fetch_add(&cb->failure_count, 1) + 1;
         if (failures >= cb->failure_threshold) {
             // Transition to open
