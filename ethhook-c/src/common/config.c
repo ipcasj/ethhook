@@ -32,6 +32,12 @@ eth_error_t eth_config_load(const char *config_file, eth_config_t **config) {
             continue;
         }
         
+        // Validate line length to prevent truncation
+        size_t line_len = strlen(line);
+        if (line_len > 0 && line[line_len - 1] != '\n' && !feof(fp)) {
+            LOG_WARN("Config line too long (>1024 chars), may be truncated");
+        }
+        
         // Simple key=value parsing
         char *equals = strchr(line, '=');
         if (!equals) {

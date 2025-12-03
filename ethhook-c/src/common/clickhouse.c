@@ -368,15 +368,27 @@ static char *build_events_insert_query(
     for (size_t i = 0; i < count; i++) {
         clickhouse_event_t *e = events[i];
         
-        // Build topics array
-        char topics_json[4096] = "[";
-        for (size_t t = 0; t < e->topics_count; t++) {
-            char topic_escaped[256];
-            snprintf(topic_escaped, sizeof(topic_escaped), "\"%s\"", e->topics[t]);
-            strcat(topics_json, topic_escaped);
-            if (t < e->topics_count - 1) strcat(topics_json, ",");
+        // Build topics array (safe bounded string building)
+        char topics_json[4096];
+        size_t topics_offset = 0;
+        topics_offset += snprintf(topics_json + topics_offset, 
+                                  sizeof(topics_json) - topics_offset, "[");
+        
+        for (size_t t = 0; t < e->topics_count && topics_offset < sizeof(topics_json) - 10; t++) {
+            int written = snprintf(topics_json + topics_offset, 
+                                   sizeof(topics_json) - topics_offset, 
+                                   "\"%s\"%s", 
+                                   e->topics[t],
+                                   (t < e->topics_count - 1) ? "," : "");
+            if (written > 0) {
+                topics_offset += (size_t)written;
+            }
         }
-        strcat(topics_json, "]");
+        
+        if (topics_offset < sizeof(topics_json) - 2) {
+            topics_offset += snprintf(topics_json + topics_offset, 
+                                      sizeof(topics_json) - topics_offset, "]");
+        }
         
         // Append row as JSON
         int written = snprintf(query + offset, buf_size - offset,
@@ -430,10 +442,8 @@ static char *build_deliveries_insert_query(
         
         char error_json[256] = "null";
         if (d->error_message) {
-            // Escape quotes
-            char escaped[256];
-            snprintf(escaped, sizeof(escaped), "\"%s\"", d->error_message);
-            strcpy(error_json, escaped);
+            // Escape quotes (safe bounded copy)
+            snprintf(error_json, sizeof(error_json), "\"%s\"", d->error_message);
         }
         
         int written = snprintf(query + offset, buf_size - offset,

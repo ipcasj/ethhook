@@ -5,22 +5,78 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-# Compiler flags
+# Modern C development options
+option(ENABLE_ASAN "Enable AddressSanitizer for memory error detection" OFF)
+option(ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
+option(ENABLE_TSAN "Enable ThreadSanitizer for race condition detection" OFF)
+option(ENABLE_STATIC_ANALYSIS "Enable additional static analysis warnings" ON)
+
+# Compiler flags - aggressive warnings for code quality
 add_compile_options(
     -Wall
     -Wextra
     -Wpedantic
     -Werror
-    -O3
-    -march=native
-    -fno-strict-aliasing
+    -Wformat=2                    # Enhanced format string checking
+    -Wformat-security             # Warn about insecure format strings
+    -Wnull-dereference            # Warn about potential NULL dereferences
+    -Wstrict-overflow=2           # Warn about overflow in comparisons
+    -Warray-bounds=2              # Enhanced array bounds checking
+    -Wwrite-strings               # Warn about writing to string constants
+    -Wconversion                  # Warn about implicit conversions
+    -Wshadow                      # Warn about variable shadowing
+    -fstack-protector-strong      # Stack canaries for buffer overflow protection
+    -D_FORTIFY_SOURCE=2           # Runtime buffer overflow detection
 )
 
-# Enable LTO for release builds
-include(CheckIPOSupported)
-check_ipo_supported(RESULT IPO_SUPPORTED)
-if(IPO_SUPPORTED)
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+# Optimization flags (excluding sanitizers which conflict with -O3)
+if(NOT ENABLE_ASAN AND NOT ENABLE_UBSAN AND NOT ENABLE_TSAN)
+    add_compile_options(
+        -O3
+        -march=native
+        -fno-strict-aliasing
+    )
+else()
+    add_compile_options(
+        -O1                       # Moderate optimization for sanitizers
+        -g                        # Debug symbols for better error reports
+        -fno-omit-frame-pointer   # Keep frame pointers for stack traces
+        -fno-optimize-sibling-calls
+    )
+endif()
+
+# AddressSanitizer - detects memory errors (use-after-free, buffer overflows, leaks)
+if(ENABLE_ASAN)
+    message(STATUS "AddressSanitizer enabled")
+    add_compile_options(-fsanitize=address)
+    add_link_options(-fsanitize=address)
+endif()
+
+# UndefinedBehaviorSanitizer - detects undefined behavior
+if(ENABLE_UBSAN)
+    message(STATUS "UndefinedBehaviorSanitizer enabled")
+    add_compile_options(-fsanitize=undefined)
+    add_link_options(-fsanitize=undefined)
+endif()
+
+# ThreadSanitizer - detects data races (cannot combine with ASAN)
+if(ENABLE_TSAN)
+    if(ENABLE_ASAN)
+        message(FATAL_ERROR "ThreadSanitizer and AddressSanitizer cannot be used together")
+    endif()
+    message(STATUS "ThreadSanitizer enabled")
+    add_compile_options(-fsanitize=thread)
+    add_link_options(-fsanitize=thread)
+endif()
+
+# Enable LTO for release builds (when not using sanitizers)
+if(NOT ENABLE_ASAN AND NOT ENABLE_UBSAN AND NOT ENABLE_TSAN)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT IPO_SUPPORTED)
+    if(IPO_SUPPORTED)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+        message(STATUS "Link-time optimization (LTO) enabled")
+    endif()
 endif()
 
 # Find or fetch dependencies
@@ -197,3 +253,110 @@ if(BUILD_TESTS)
         add_subdirectory(tests)
     endif()
 endif()
+
+# =============================================================================
+# Modern C Development Tooling
+# =============================================================================
+
+# Static Analysis with cppcheck
+find_program(CPPCHECK_EXECUTABLE NAMES cppcheck)
+if(CPPCHECK_EXECUTABLE)
+    message(STATUS "cppcheck found: ${CPPCHECK_EXECUTABLE}")
+    add_custom_target(cppcheck
+        COMMAND ${CPPCHECK_EXECUTABLE}
+            --enable=all
+            --suppress=missingIncludeSystem
+            --suppress=unmatchedSuppression
+            --inline-suppr
+            --error-exitcode=1
+            --std=c17
+            -I ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/src
+        COMMENT "Running cppcheck static analysis"
+        VERBATIM
+    )
+else()
+    message(STATUS "cppcheck not found - install with: sudo apt-get install cppcheck")
+endif()
+
+# Code formatting with clang-format
+find_program(CLANG_FORMAT_EXECUTABLE NAMES clang-format clang-format-14)
+if(CLANG_FORMAT_EXECUTABLE)
+    message(STATUS "clang-format found: ${CLANG_FORMAT_EXECUTABLE}")
+    
+    file(GLOB_RECURSE ALL_SOURCE_FILES
+        ${CMAKE_SOURCE_DIR}/src/*.c
+        ${CMAKE_SOURCE_DIR}/src/*.h
+        ${CMAKE_SOURCE_DIR}/include/*.h
+    )
+    
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT_EXECUTABLE}
+            -i
+            -style=file
+            ${ALL_SOURCE_FILES}
+        COMMENT "Formatting code with clang-format"
+        VERBATIM
+    )
+    
+    add_custom_target(format-check
+        COMMAND ${CLANG_FORMAT_EXECUTABLE}
+            --dry-run
+            --Werror
+            -style=file
+            ${ALL_SOURCE_FILES}
+        COMMENT "Checking code formatting"
+        VERBATIM
+    )
+else()
+    message(STATUS "clang-format not found - install with: sudo apt-get install clang-format")
+endif()
+
+# Clang static analyzer
+find_program(CLANG_ANALYZER NAMES scan-build scan-build-14)
+if(CLANG_ANALYZER)
+    message(STATUS "scan-build found: ${CLANG_ANALYZER}")
+    add_custom_target(analyze
+        COMMAND ${CLANG_ANALYZER}
+            -o ${CMAKE_BINARY_DIR}/scan-build-report
+            --status-bugs
+            cmake --build ${CMAKE_BINARY_DIR} --clean-first
+        COMMENT "Running Clang static analyzer"
+        VERBATIM
+    )
+else()
+    message(STATUS "scan-build not found - install with: sudo apt-get install clang-tools")
+endif()
+
+# Memory leak detection with Valgrind
+find_program(VALGRIND_EXECUTABLE NAMES valgrind)
+if(VALGRIND_EXECUTABLE AND BUILD_TESTS)
+    message(STATUS "valgrind found: ${VALGRIND_EXECUTABLE}")
+    add_custom_target(memcheck
+        COMMAND ${VALGRIND_EXECUTABLE}
+            --leak-check=full
+            --show-leak-kinds=all
+            --track-origins=yes
+            --verbose
+            --error-exitcode=1
+            ${CMAKE_BINARY_DIR}/ethhook-admin-api --help
+        COMMENT "Running Valgrind memory check"
+        VERBATIM
+    )
+else()
+    message(STATUS "valgrind not found or tests disabled - install with: sudo apt-get install valgrind")
+endif()
+
+# Print build configuration summary
+message(STATUS "")
+message(STATUS "=== EthHook C Build Configuration ===")
+message(STATUS "C Standard: C${CMAKE_C_STANDARD}")
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "AddressSanitizer: ${ENABLE_ASAN}")
+message(STATUS "UndefinedBehaviorSanitizer: ${ENABLE_UBSAN}")
+message(STATUS "ThreadSanitizer: ${ENABLE_TSAN}")
+message(STATUS "Link-Time Optimization: ${IPO_SUPPORTED}")
+message(STATUS "Static Analysis Available: ${CPPCHECK_EXECUTABLE}")
+message(STATUS "Code Formatting Available: ${CLANG_FORMAT_EXECUTABLE}")
+message(STATUS "=====================================")
+message(STATUS "")

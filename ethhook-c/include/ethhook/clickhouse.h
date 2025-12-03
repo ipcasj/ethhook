@@ -75,6 +75,12 @@ typedef struct {
     uint64_t processed_at_ms; // Unix timestamp in milliseconds
 } clickhouse_event_t;
 
+// Compile-time safety checks
+_Static_assert(sizeof(clickhouse_event_t) > 0, "clickhouse_event_t must have non-zero size");
+_Static_assert(sizeof(((clickhouse_event_t*)0)->id) == 37, "UUID must be 36 chars + null");
+_Static_assert(sizeof(((clickhouse_event_t*)0)->block_hash) == 67, "Block hash must be 66 chars + null");
+_Static_assert(sizeof(((clickhouse_event_t*)0)->contract_address) == 43, "Address must be 42 chars + null");
+
 /**
  * Delivery structure for batch inserts
  */
@@ -91,9 +97,13 @@ typedef struct {
     uint64_t next_retry_at_ms; // Unix timestamp in milliseconds
 } clickhouse_delivery_t;
 
+// Compile-time safety checks
+_Static_assert(sizeof(clickhouse_delivery_t) > 0, "clickhouse_delivery_t must have non-zero size");
+_Static_assert(sizeof(((clickhouse_delivery_t*)0)->url) == 512, "URL buffer must be 512 bytes");
+_Static_assert(sizeof(((clickhouse_delivery_t*)0)->status) == 32, "Status buffer must be 32 bytes");
+
 /**
  * Initialize ClickHouse client
- * 
  * Creates connection pool and initializes libcurl.
  * Thread-safe.
  * 

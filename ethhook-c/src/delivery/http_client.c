@@ -48,16 +48,16 @@ static char *generate_signature(const char *secret, const char *payload, size_t 
     HMAC(EVP_sha256(), secret, strlen(secret),
          (unsigned char *)payload, payload_len, hash, &hash_len);
     
-    // Convert to hex string
+    // Convert to hex string (safe bounded formatting)
     char *hex = malloc(65); // 32 * 2 + 1
     if (!hex) {
         return NULL;
     }
     
-    for (unsigned int i = 0; i < hash_len; i++) {
-        sprintf(&hex[i * 2], "%02x", hash[i]);
+    for (uint32_t i = 0; i < hash_len && (i * 2) < 64; i++) {
+        snprintf(&hex[i * 2], 3, \"%02x\", hash[i]); // 3 bytes: 2 hex digits + null
     }
-    hex[64] = '\0';
+    hex[64] = '\\0';
     
     return hex;
 }

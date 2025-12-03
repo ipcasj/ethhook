@@ -3,7 +3,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-void circuit_breaker_init(circuit_breaker_t *cb, uint32_t failure_threshold, uint32_t timeout_ms) {
+void circuit_breaker_init(circuit_breaker_t *cb, const uint32_t failure_threshold, const uint32_t timeout_ms) {
     atomic_init(&cb->state, CB_STATE_CLOSED);
     atomic_init(&cb->failure_count, 0);
     atomic_init(&cb->success_count, 0);
@@ -87,6 +87,6 @@ void circuit_breaker_failure(circuit_breaker_t *cb) {
     }
 }
 
-cb_state_t circuit_breaker_state(circuit_breaker_t *cb) {
-    return atomic_load(&cb->state);
+cb_state_t circuit_breaker_state(const circuit_breaker_t *cb) {
+    return (cb_state_t)atomic_load((atomic_int *)&cb->state);
 }

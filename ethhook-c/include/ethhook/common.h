@@ -59,7 +59,7 @@ typedef struct {
     
     // Redis
     char *redis_host;
-    int redis_port;
+    int32_t redis_port;
     char *redis_password;
     
     // Chains
@@ -74,26 +74,26 @@ typedef struct {
     // Service-specific
     union {
         struct {
-            int worker_threads;
-            int reconnect_delay_ms;
-            int max_reconnect_attempts;
+            int32_t worker_threads;
+            int32_t reconnect_delay_ms;
+            int32_t max_reconnect_attempts;
         } ingestor;
         
         struct {
-            int worker_threads;
-            int batch_size;
+            int32_t worker_threads;
+            int32_t batch_size;
         } processor;
         
         struct {
-            int worker_threads;
-            int max_retries;
-            int timeout_ms;
+            int32_t worker_threads;
+            int32_t max_retries;
+            int32_t timeout_ms;
         } delivery;
         
         struct {
-            int port;
+            int32_t port;
             char *jwt_secret;
-            int jwt_expiry_hours;
+            int32_t jwt_expiry_hours;
         } admin_api;
     };
 } eth_config_t;
@@ -127,11 +127,11 @@ typedef struct {
     uint32_t half_open_max_calls;
 } circuit_breaker_t;
 
-void circuit_breaker_init(circuit_breaker_t *cb, uint32_t failure_threshold, uint32_t timeout_ms);
+void circuit_breaker_init(circuit_breaker_t *cb, const uint32_t failure_threshold, const uint32_t timeout_ms);
 bool circuit_breaker_allow(circuit_breaker_t *cb);
 void circuit_breaker_success(circuit_breaker_t *cb);
 void circuit_breaker_failure(circuit_breaker_t *cb);
-cb_state_t circuit_breaker_state(circuit_breaker_t *cb);
+cb_state_t circuit_breaker_state(const circuit_breaker_t *cb);
 
 // Database functions
 typedef struct eth_db eth_db_t;

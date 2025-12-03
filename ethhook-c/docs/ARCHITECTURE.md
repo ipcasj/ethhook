@@ -13,12 +13,14 @@ EthHook C is a microservices-based system for capturing Ethereum blockchain even
 **Purpose**: Connect to Ethereum nodes via WebSocket and ingest real-time events.
 
 **Threading Model**:
+
 - One worker thread per blockchain chain
 - Each thread runs its own libevent event loop
 - Non-blocking I/O throughout
 
 **Data Flow**:
-```
+
+```text
 WebSocket Connection
     ↓ (libwebsockets callbacks)
 JSON Event Parsing
@@ -31,6 +33,7 @@ Redis Streams
 ```
 
 **Resilience**:
+
 - Circuit breaker per connection (5 failures → 30s timeout)
 - Exponential backoff for reconnection
 - Graceful degradation on node failure
@@ -40,17 +43,20 @@ Redis Streams
 **Purpose**: Match incoming events against registered endpoints and queue deliveries.
 
 **Threading Model**:
+
 - Main thread: Redis consumer (XREAD)
 - Worker pool: Endpoint matching and filtering
 - libevent for async Redis operations
 
 **Matching Algorithm**:
+
 1. Query endpoints by chain_id (SQLite B-tree index)
 2. Filter by contract address (exact match, case-insensitive)
 3. Filter by topics (array matching with wildcards)
 4. Generate delivery requests for matches
 
 **Database Schema** (SQLite):
+
 ```sql
 CREATE TABLE endpoints (
     id TEXT PRIMARY KEY,
@@ -70,11 +76,13 @@ CREATE INDEX idx_endpoints_chain ON endpoints(chain_id) WHERE enabled = 1;
 **Purpose**: Deliver event notifications to webhook URLs with retry logic.
 
 **Threading Model**:
+
 - Worker pool (default 8 threads)
 - Each worker: libcurl for HTTP POST
 - Event loop: Redis consumer + timer events
 
 **Retry Policy**:
+
 - Base delay: 1 second
 - Max delay: 60 seconds
 - Backoff multiplier: 2.0
@@ -82,18 +90,21 @@ CREATE INDEX idx_endpoints_chain ON endpoints(chain_id) WHERE enabled = 1;
 - Max retries: 5
 
 **Formula**:
-```
+
+```text
 delay = min(base_delay * (multiplier ^ attempt), max_delay)
 delay = delay * (1.0 + jitter)
 ```
 
 **Circuit Breaker**:
+
 - Per-endpoint circuit breaker
 - Threshold: 5 consecutive failures
 - Timeout: 30 seconds
 - Half-open: 3 test requests
 
 **Webhook Format**:
+
 ```http
 POST /webhook HTTP/1.1
 Host: your-app.com
@@ -117,17 +128,21 @@ X-EthHook-Signature: sha256=<hmac>
 **Purpose**: REST API for managing users, applications, endpoints.
 
 **Threading Model**:
+
+- libmicrohttpd for HTTP server
 - MHD_USE_THREAD_PER_CONNECTION
 - One thread per HTTP connection
 - SQLite with WAL mode for concurrency
 
 **Authentication**:
+
 - JWT tokens (HS256)
 - Authorization header: `Bearer <token>`
 - Claims: user_id, is_admin, exp, iat
 
 **Endpoints**:
-```
+
+```text
 POST /api/auth/login
 GET  /api/users (admin only)
 GET  /api/applications
@@ -143,6 +158,7 @@ GET  /api/deliveries
 ### Memory Management
 
 **Arena Allocators**:
+
 ```c
 typedef struct arena_block {
     size_t size;
@@ -166,7 +182,8 @@ struct eth_arena {
 ### Circuit Breaker
 
 **State Machine**:
-```
+
+```text
         +--------+
         | CLOSED | <-- Normal operation
         +--------+
@@ -188,6 +205,7 @@ struct eth_arena {
 ```
 
 **Implementation**:
+
 ```c
 typedef struct {
     atomic_int state;
@@ -202,6 +220,7 @@ typedef struct {
 ### Concurrency
 
 **Atomics** (C11 stdatomic.h):
+
 ```c
 // Metrics without locks
 atomic_uint_fast64_t events_received;
@@ -209,6 +228,7 @@ atomic_fetch_add(&events_received, 1);
 ```
 
 **Mutexes**:
+
 ```c
 // Arena allocator
 pthread_mutex_lock(&arena->lock);
@@ -217,6 +237,7 @@ pthread_mutex_unlock(&arena->lock);
 ```
 
 **Event Loops** (libevent):
+
 ```c
 struct event_base *base = event_base_new();
 event_base_dispatch(base); // Run until stopped
@@ -226,6 +247,7 @@ event_base_loopbreak(base); // Stop from signal handler
 ### Error Handling
 
 **Error Propagation**:
+
 ```c
 eth_error_t function() {
     if (error_condition) {
@@ -243,6 +265,7 @@ if (err != ETH_OK) {
 ```
 
 **Logging**:
+
 ```c
 LOG_DEBUG("Verbose information");
 LOG_INFO("Normal operation");
@@ -259,6 +282,7 @@ LOG_ERROR("Error occurred");
 ### Service Configuration
 
 **Ingestor**:
+
 ```toml
 [ingestor]
 worker_threads = 4
@@ -267,6 +291,7 @@ max_reconnect_attempts = 10
 ```
 
 **Processor**:
+
 ```toml
 [processor]
 worker_threads = 4
@@ -274,6 +299,7 @@ batch_size = 100
 ```
 
 **Delivery**:
+
 ```toml
 [delivery]
 worker_threads = 8
@@ -282,6 +308,7 @@ timeout_ms = 30000
 ```
 
 **Admin API**:
+
 ```toml
 [admin_api]
 port = 3000
@@ -294,18 +321,21 @@ jwt_expiry_hours = 24
 ### Benchmarks
 
 **Event Ingestion**:
+
 - Throughput: ~10,000 events/sec
 - Latency (p50): <1ms
 - Latency (p99): <5ms
 - CPU: ~10% per chain
 
 **Event Processing**:
+
 - Throughput: ~5,000 matches/sec
 - Latency (p50): <2ms
 - Latency (p99): <10ms
 - CPU: ~20% (4 workers)
 
 **Webhook Delivery**:
+
 - Throughput: ~1,000 deliveries/sec
 - Latency (p50): ~50ms (network dependent)
 - CPU: ~30% (8 workers)
@@ -313,11 +343,13 @@ jwt_expiry_hours = 24
 ### Resource Usage
 
 **Memory**:
+
 - Base: ~5MB per service
 - Per-event: ~1KB (arena allocated)
 - SQLite: ~10MB for 1M endpoints
 
 **Disk**:
+
 - Binary size: ~2MB per service
 - SQLite: ~100KB + data
 - Redis: ~1KB per event in stream
