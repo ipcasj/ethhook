@@ -170,12 +170,28 @@ jobs:
           ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             cd ~/ethhook
             
+            # CRITICAL: Stop and remove ALL containers first
+            echo "Stopping all EthHook containers..."
+            docker compose -f docker-compose.prod.yml down || true
+            
+            # Remove any orphaned containers
+            docker ps -a | grep ethhook | awk '{print $1}' | xargs -r docker rm -f || true
+            
             # Remove ALL ethhook images to prevent any caching
             echo "Removing all ethhook images..."
             docker images | grep ethhook | awk '{print $3}' | xargs -r docker rmi -f || true
             
             # Also remove any untagged images that might be used as cache
             docker image prune -f
+            
+            # Final verification: NO ethhook images should exist
+            REMAINING=$(docker images | grep -c ethhook || true)
+            if [ "$REMAINING" -ne 0 ]; then
+              echo "❌ Warning: $REMAINING ethhook images still present!"
+              docker images | grep ethhook
+            else
+              echo "✅ All ethhook images successfully removed"
+            fi
             
             # Build C admin-api image locally with verbose output
             echo "Building C admin-api image..."
@@ -184,6 +200,19 @@ jobs:
             if [ $? -ne 0 ]; then
               echo "❌ Admin API build failed!"
               cat /tmp/admin-api-build.log
+              exit 1
+            fi
+            
+            # Verify build logs show C compilation (not Rust)
+            if grep -q "CMakeLists.txt" /tmp/admin-api-build.log; then
+              echo "✅ Build logs confirm CMake compilation (C implementation)"
+            else
+              echo "⚠️  Warning: CMakeLists.txt not found in build logs!"
+            fi
+            
+            if grep -q "cargo build" /tmp/admin-api-build.log; then
+              echo "❌ ERROR: Build logs show Rust compilation!"
+              echo "This means the wrong Dockerfile is being used!"
               exit 1
             fi
             
