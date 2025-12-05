@@ -193,6 +193,43 @@ jobs:
               echo "✅ All ethhook images successfully removed"
             fi
             
+            # VERIFY: Check docker-compose.prod.yml has correct configuration
+            echo "Verifying docker-compose.prod.yml configuration..."
+            if grep -A 3 "admin-api:" docker-compose.prod.yml | grep -q "context: ethhook-c"; then
+              echo "✅ Context is set to: ethhook-c"
+            else
+              echo "❌ Context is NOT set correctly!"
+              grep -A 5 "admin-api:" docker-compose.prod.yml
+              exit 1
+            fi
+            
+            if grep -A 3 "admin-api:" docker-compose.prod.yml | grep -q "dockerfile: ./docker/Dockerfile.admin-api"; then
+              echo "✅ Dockerfile path is: ./docker/Dockerfile.admin-api"
+            else
+              echo "❌ Dockerfile path is NOT set correctly!"
+              grep -A 5 "admin-api:" docker-compose.prod.yml
+              exit 1
+            fi
+            
+            # VERIFY: Check which Dockerfile will be used
+            echo "Verifying Dockerfile exists..."
+            echo "Full path should be: $(pwd)/ethhook-c/docker/Dockerfile.admin-api"
+            
+            if [ -f "ethhook-c/docker/Dockerfile.admin-api" ]; then
+              echo "✅ C Dockerfile exists at correct path"
+              echo "First line: $(head -1 ethhook-c/docker/Dockerfile.admin-api)"
+              if head -5 ethhook-c/docker/Dockerfile.admin-api | grep -q "alpine"; then
+                echo "✅ Confirmed: C Dockerfile (Alpine-based)"
+              else
+                echo "⚠️  Unexpected Dockerfile content!"
+              fi
+            else
+              echo "❌ C Dockerfile NOT FOUND at ethhook-c/docker/Dockerfile.admin-api!"
+              echo "Directory contents:"
+              ls -la ethhook-c/docker/ || echo "Directory doesn't exist!"
+              exit 1
+            fi
+            
             # Build C admin-api image locally with verbose output
             echo "Building C admin-api image..."
             docker compose -f docker-compose.prod.yml build --no-cache --progress=plain admin-api 2>&1 | tee /tmp/admin-api-build.log
