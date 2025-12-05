@@ -37,7 +37,11 @@ RUN addgroup -g 1000 ethhook && \
 WORKDIR /app
 
 COPY --from=builder /build/build/ethhook-admin-api /app/
-COPY config/admin-api.toml /app/config.toml
+
+# Create a minimal config file - app uses environment variables primarily
+RUN echo '[admin_api]' > /app/config.toml && \
+    echo 'port = 3000' >> /app/config.toml && \
+    echo 'jwt_expiry_hours = 24' >> /app/config.toml
 
 USER ethhook
 
