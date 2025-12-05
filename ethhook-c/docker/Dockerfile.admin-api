@@ -11,7 +11,8 @@ RUN apk add --no-cache \
     libjwt-dev \
     openssl-dev \
     sqlite-dev \
-    libevent-dev
+    libevent-dev \
+    libwebsockets-dev
 
 WORKDIR /build
 
@@ -31,7 +32,8 @@ RUN apk add --no-cache \
     libjwt \
     openssl \
     sqlite-libs \
-    libevent
+    libevent \
+    libwebsockets
 
 RUN addgroup -g 1000 ethhook && \
     adduser -D -u 1000 -G ethhook ethhook
