@@ -12,7 +12,9 @@ RUN apk add --no-cache \
     openssl-dev \
     sqlite-dev \
     libevent-dev \
-    libwebsockets-dev
+    libwebsockets-dev \
+    hiredis-dev \
+    curl-dev
 
 WORKDIR /build
 
@@ -33,7 +35,9 @@ RUN apk add --no-cache \
     openssl \
     sqlite-libs \
     libevent \
-    libwebsockets
+    libwebsockets \
+    hiredis \
+    libcurl
 
 RUN addgroup -g 1000 ethhook && \
     adduser -D -u 1000 -G ethhook ethhook
