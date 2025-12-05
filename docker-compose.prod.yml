@@ -71,10 +71,10 @@ services:
 
   admin-api:
     image: ghcr.io/ipcasj/ethhook-admin-api:latest
-    pull_policy: never  # Never pull - always build locally
+    pull_policy: never # Never pull - always build locally
     build:
-      context: ./ethhook-c
-      dockerfile: docker/Dockerfile.admin-api
+      context: ethhook-c
+      dockerfile: ./docker/Dockerfile.admin-api
     container_name: ethhook-admin-api
     environment:
       - RUST_LOG=info
