@@ -276,24 +276,43 @@ jobs:
         if: steps.check-config.outputs.skip == 'false'
         run: |
           echo "Waiting for services to be fully ready..."
-          sleep 10
+          
+          # Retry logic for admin API health check
+          MAX_RETRIES=30
+          RETRY_DELAY=5
+          RETRY_COUNT=0
+          
+          echo "Checking admin API (will retry up to $MAX_RETRIES times)..."
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            ADMIN_API_HEALTH=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:3000/health 2>/dev/null || echo "failed")
+            
+            if [ "$ADMIN_API_HEALTH" != "failed" ]; then
+              echo "✅ Admin API is healthy: $ADMIN_API_HEALTH"
+              break
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES - Admin API not ready yet, waiting ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            else
+              echo "❌ Admin API health check failed after $MAX_RETRIES attempts (port 3000)"
+              echo ""
+              echo "=== Admin API Logs (last 50 lines) ==="
+              ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "docker logs ethhook-admin-api --tail=50 2>&1"
+              echo ""
+              echo "=== Docker Container Status ==="
+              ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "docker ps -a | grep ethhook"
+              exit 1
+            fi
+          done
 
-          # Check admin API health (port 3000)
-          echo "Checking admin API..."
-          ADMIN_API_HEALTH=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:3000/health || echo "failed")
-          if [ "$ADMIN_API_HEALTH" = "failed" ]; then
-            echo "❌ Admin API health check failed (port 3000)"
-            ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} "docker logs ethhook-admin-api --tail=50"
-            exit 1
-          else
-            echo "✅ Admin API is healthy: $ADMIN_API_HEALTH"
-          fi
-
-          # Check pipeline health (port 8080)
+          # Check pipeline health (optional - non-blocking)
+          echo ""
           echo "Checking pipeline service..."
-          PIPELINE_HEALTH=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:8080/health || echo "failed")
+          PIPELINE_HEALTH=$(curl -f -s http://${{ secrets.DROPLET_HOST }}:8080/health 2>/dev/null || echo "failed")
           if [ "$PIPELINE_HEALTH" = "failed" ]; then
-            echo "⚠️  Pipeline health check failed (port 8080) - may still be starting"
+            echo "⚠️  Pipeline health check failed (port 8080) - may still be starting or not exposed"
           else
             echo "✅ Pipeline is healthy: $PIPELINE_HEALTH"
           fi
