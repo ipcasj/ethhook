@@ -78,6 +78,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 ### Aggressive Compiler Warnings
 
 **Common Flags** (GCC & Clang):
+
 ```cmake
 -Wall -Wextra -Wpedantic -Werror
 -Wformat=2 -Wformat-security
@@ -86,6 +87,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 ```
 
 **Platform-Specific Flags**:
+
 - **GCC**: `-Warray-bounds=2 -Wstrict-overflow=2`
 - **Clang**: `-Wstrict-overflow=2` (removed `-Warray-bounds=2` - not supported)
 
@@ -99,6 +101,7 @@ endif()
 ```
 
 **Binary Size Reduction**:
+
 - macOS arm64: 30-40% reduction with LTO
 - Linux x86_64: 25-35% reduction
 
@@ -111,6 +114,7 @@ endif()
 **Problem**: Implicit conversions between signed/unsigned types
 
 **Solution**: Explicit casts with proper types
+
 ```c
 // Before
 uint64_t now_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
@@ -125,6 +129,7 @@ uint64_t now_ms = (uint64_t)ts.tv_sec * 1000ULL +
 **Problem**: `%lu` for `uint64_t` not portable across platforms
 
 **Solution**: Use `PRIu64` from `<inttypes.h>`
+
 ```c
 // Before
 snprintf(buf, size, "chain_id: %lu", chain_id);
@@ -138,6 +143,7 @@ snprintf(buf, size, "chain_id: %" PRIu64, chain_id);
 **Problem**: `atomic_compare_exchange_strong()` expects `int *`, not `cb_state_t *`
 
 **Solution**: Use `int` for atomic storage, cast to enum when needed
+
 ```c
 // Before
 cb_state_t state = atomic_load(&breaker->state);
@@ -152,6 +158,7 @@ cb_state_t cb_state = (cb_state_t)state;
 **Problem**: String literals assigned to `char *` discard `const`
 
 **Solution**: Change struct fields to `const char *`
+
 ```c
 // Before
 typedef struct {
@@ -182,6 +189,7 @@ typedef struct {
 ### Problem
 
 **libjwt v3.x API Incompatibility:**
+
 - Version 3.x is a complete API overhaul (builder/checker pattern)
 - Old code used v1.x API (`jwt_new()`, `jwt_add_grant()`, etc.)
 - Migrating to v3 would require rewriting all JWT code
@@ -189,6 +197,7 @@ typedef struct {
 ### Investigation
 
 Researched 5 JWT C libraries:
+
 1. **libjwt** (700+ stars): v3.x breaking changes
 2. **l8w8jwt** (300+ stars): Modern, lightweight
 3. **jose** (200+ stars): Enterprise JOSE implementation
@@ -200,6 +209,7 @@ Researched 5 JWT C libraries:
 **Implemented JWT directly using OpenSSL (~150 lines):**
 
 #### Benefits
+
 - ✅ No external JWT library dependency
 - ✅ Full control over implementation
 - ✅ Uses existing OpenSSL dependency
@@ -212,6 +222,7 @@ Researched 5 JWT C libraries:
 **File**: `src/admin-api/auth.c`
 
 **Functions**:
+
 1. `base64url_encode()` - Converts binary to base64url (RFC 4648)
 2. `base64url_decode()` - Decodes base64url to binary
 3. `jwt_create()` - Creates signed JWT tokens
@@ -220,6 +231,7 @@ Researched 5 JWT C libraries:
 **Algorithm**: HS256 (HMAC-SHA256)
 
 **Token Structure**: `header.payload.signature`
+
 ```json
 // Header
 {"alg":"HS256","typ":"JWT"}
@@ -233,13 +245,14 @@ Researched 5 JWT C libraries:
 ### JWT Testing Results
 
 ✅ **All 5 tests passed:**
+
 1. Token creation
 2. Valid token verification
 3. Wrong secret rejection
 4. Tampered token detection
 5. Non-admin token handling
 
-```
+```text
 === JWT Implementation Test ===
 
 Test 1: Creating JWT token...
@@ -267,7 +280,7 @@ User ID: regular_user, Is Admin: 0
 
 ### macOS (AppleClang 17.0.0, arm64)
 
-```
+```text
 [ 32%] Built target ethhook-common
 [ 48%] Built target ethhook-processor
 [ 64%] Built target ethhook-delivery
@@ -276,6 +289,7 @@ User ID: regular_user, Is Admin: 0
 ```
 
 **Binary Sizes:**
+
 - `ethhook-admin-api`: 323KB
 - `ethhook-ingestor`: 303KB
 - `ethhook-processor`: 306KB
@@ -283,7 +297,7 @@ User ID: regular_user, Is Admin: 0
 
 ### Linux (GCC 11.4.0, x86_64)
 
-```
+```text
 [ 32%] Built target ethhook-common
 [ 74%] Built target ethhook-processor
 [ 80%] Built target ethhook-delivery
@@ -292,6 +306,7 @@ User ID: regular_user, Is Admin: 0
 ```
 
 **Binary Sizes:**
+
 - `ethhook-admin-api`: 150KB
 - `ethhook-ingestor`: 144KB
 - `ethhook-processor`: 146KB

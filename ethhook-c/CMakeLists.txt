@@ -23,8 +23,12 @@ add_compile_options(
     -Wwrite-strings               # Warn about writing to string constants
     -Wshadow                      # Warn about variable shadowing
     -fstack-protector-strong      # Stack canaries for buffer overflow protection
-    -D_FORTIFY_SOURCE=2           # Runtime buffer overflow detection
 )
+
+# _FORTIFY_SOURCE conflicts with sanitizers, only enable for non-sanitizer builds
+if(NOT ENABLE_ASAN AND NOT ENABLE_UBSAN AND NOT ENABLE_TSAN)
+    add_compile_options(-D_FORTIFY_SOURCE=2)  # Runtime buffer overflow detection
+endif()
 
 # Platform-specific warning flags
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
@@ -105,7 +109,14 @@ pkg_check_modules(LIBWEBSOCKETS REQUIRED libwebsockets>=4.0)
 # hiredis (Ubuntu 22.04 has 0.14.1, which is sufficient)
 pkg_check_modules(HIREDIS REQUIRED hiredis>=0.14)
 
+# libcurl
+pkg_check_modules(LIBCURL REQUIRED libcurl>=7.68)
+
+# libmicrohttpd
+pkg_check_modules(LIBMICROHTTPD REQUIRED libmicrohttpd>=0.9.70)
+
 # Add library directories for pkg-config managed libraries
+# MUST be after all pkg_check_modules calls
 link_directories(
     ${HIREDIS_LIBRARY_DIRS}
     ${LIBWEBSOCKETS_LIBRARY_DIRS}
@@ -127,12 +138,6 @@ if(NOT EXISTS "${CMAKE_SOURCE_DIR}/include/yyjson.h")
         "${CMAKE_SOURCE_DIR}/src/common/yyjson.c"
         SHOW_PROGRESS)
 endif()
-
-# libcurl
-pkg_check_modules(LIBCURL REQUIRED libcurl>=7.68)
-
-# libmicrohttpd
-pkg_check_modules(LIBMICROHTTPD REQUIRED libmicrohttpd>=0.9.70)
 
 # OpenSSL (for crypto and JWT signing)
 # Note: We implement JWT directly using OpenSSL's HMAC instead of libjwt
