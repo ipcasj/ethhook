@@ -73,8 +73,8 @@ services:
     image: ghcr.io/ipcasj/ethhook-admin-api:latest
     pull_policy: missing
     build:
-      context: .
-      dockerfile: crates/admin-api/Dockerfile
+      context: ./ethhook-c
+      dockerfile: docker/Dockerfile.admin-api
     container_name: ethhook-admin-api
     environment:
       - RUST_LOG=info
