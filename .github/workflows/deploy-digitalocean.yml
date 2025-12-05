@@ -170,9 +170,20 @@ jobs:
           ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             cd ~/ethhook
             
+            # Remove old admin-api image to force rebuild
+            echo "Removing old admin-api image..."
+            docker rmi ghcr.io/ipcasj/ethhook-admin-api:latest || true
+            
             # Build images locally on server (no registry needed)
             echo "Building Docker images on server..."
-            docker compose -f docker-compose.prod.yml build pipeline admin-api ui demo-webhook-receiver
+            docker compose -f docker-compose.prod.yml build --no-cache admin-api
+            
+            if [ $? -ne 0 ]; then
+              echo "❌ Admin API build failed!"
+              exit 1
+            fi
+            
+            docker compose -f docker-compose.prod.yml build pipeline ui demo-webhook-receiver
             
             echo "✅ Docker images built successfully on server"
           EOF
