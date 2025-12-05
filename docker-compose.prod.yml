@@ -71,7 +71,7 @@ services:
 
   admin-api:
     image: ghcr.io/ipcasj/ethhook-admin-api:latest
-    pull_policy: missing
+    pull_policy: build
     build:
       context: ./ethhook-c
       dockerfile: docker/Dockerfile.admin-api
