@@ -10,7 +10,8 @@ RUN apk add --no-cache \
     libmicrohttpd-dev \
     libjwt-dev \
     openssl-dev \
-    sqlite-dev
+    sqlite-dev \
+    libevent-dev
 
 WORKDIR /build
 
@@ -29,7 +30,8 @@ RUN apk add --no-cache \
     libmicrohttpd \
     libjwt \
     openssl \
-    sqlite-libs
+    sqlite-libs \
+    libevent
 
 RUN addgroup -g 1000 ethhook && \
     adduser -D -u 1000 -G ethhook ethhook
