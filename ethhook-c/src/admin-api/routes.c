@@ -55,7 +55,16 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
     req_ctx = (request_ctx_t *)*con_cls;
     
     // Route to appropriate handler
-    if (strcmp(url, "/api/auth/login") == 0) {
+    if (strcmp(url, "/health") == 0) {
+        // Health check endpoint - returns 200 OK with simple JSON response
+        const char *health_response = "{\"status\":\"ok\"}";
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            strlen(health_response), (void *)health_response, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        return ret;
+    } else if (strcmp(url, "/api/auth/login") == 0) {
         return handle_login(connection, req_ctx, method, upload_data, upload_data_size);
     } else if (strcmp(url, "/api/users") == 0) {
         return handle_users(connection, req_ctx, method, upload_data, upload_data_size);
