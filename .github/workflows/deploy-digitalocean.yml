@@ -150,32 +150,31 @@ jobs:
 
           echo "✅ Production environment configured"
 
-      - name: Build and push Docker images
-        if: steps.check-config.outputs.skip == 'false'
-        run: |
-          # Login to GitHub Container Registry
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      # Disabled: Using direct deployment instead of Docker registry
+      # - name: Build and push Docker images
+      #   if: steps.check-config.outputs.skip == 'false'
+      #   run: |
+      #     # Login to GitHub Container Registry
+      #     echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      #
+      #     # Build and push images
+      #     echo "Building and pushing Docker images..."
+      #     docker compose -f docker-compose.prod.yml build pipeline admin-api ui demo-webhook-receiver
+      #     docker compose -f docker-compose.prod.yml push pipeline admin-api ui demo-webhook-receiver
+      #
+      #     echo "✅ Docker images built and pushed"
 
-          # Build and push images
-          echo "Building and pushing Docker images..."
-          docker compose -f docker-compose.prod.yml build pipeline admin-api ui demo-webhook-receiver
-          docker compose -f docker-compose.prod.yml push pipeline admin-api ui demo-webhook-receiver
-
-          echo "✅ Docker images built and pushed"
-
-      - name: Pull latest images on server
+      - name: Build images on server directly
         if: steps.check-config.outputs.skip == 'false'
         run: |
           ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             cd ~/ethhook
             
-            # Login to GitHub Container Registry
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Build images locally on server (no registry needed)
+            echo "Building Docker images on server..."
+            docker compose -f docker-compose.prod.yml build pipeline admin-api ui demo-webhook-receiver
             
-            # Pull latest images
-            docker compose -f docker-compose.prod.yml pull pipeline admin-api ui demo-webhook-receiver
-            
-            echo "✅ Latest images pulled successfully"
+            echo "✅ Docker images built successfully on server"
           EOF
 
       - name: Deploy services
