@@ -59,8 +59,25 @@ jobs:
             else
               echo "✅ Directory exists"
               cd ~/ethhook
-              git pull origin main
-              echo "✅ Repository updated"
+              
+              # CRITICAL: Reset any local changes that might block pull
+              echo "Resetting local changes..."
+              git fetch origin
+              git reset --hard origin/main
+              echo "✅ Repository force-updated to origin/main"
+              
+              # Verify we're on the latest commit
+              LOCAL_COMMIT=$(git rev-parse HEAD)
+              REMOTE_COMMIT=$(git rev-parse origin/main)
+              
+              if [ "$LOCAL_COMMIT" = "$REMOTE_COMMIT" ]; then
+                echo "✅ Local matches remote: $LOCAL_COMMIT"
+              else
+                echo "❌ Commit mismatch!"
+                echo "Local:  $LOCAL_COMMIT"
+                echo "Remote: $REMOTE_COMMIT"
+                exit 1
+              fi
             fi
           EOF
 
@@ -194,22 +211,51 @@ jobs:
             fi
             
             # VERIFY: Check docker-compose.prod.yml has correct configuration
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "Verifying docker-compose.prod.yml configuration..."
-            if grep -A 3 "admin-api:" docker-compose.prod.yml | grep -q "context: ethhook-c"; then
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Show current git commit
+            echo "Current commit: $(git rev-parse --short HEAD)"
+            echo "Commit message: $(git log -1 --pretty=%B | head -1)"
+            echo ""
+            
+            # Show the actual admin-api configuration
+            echo "Current admin-api configuration in docker-compose.prod.yml:"
+            grep -A 8 "^  admin-api:" docker-compose.prod.yml | head -9
+            echo ""
+            
+            # Verify context
+            if grep -A 8 "^  admin-api:" docker-compose.prod.yml | grep -q "context: ethhook-c"; then
               echo "✅ Context is set to: ethhook-c"
             else
               echo "❌ Context is NOT set correctly!"
-              grep -A 5 "admin-api:" docker-compose.prod.yml
+              echo "Expected: 'context: ethhook-c'"
+              echo "Got:"
+              grep -A 8 "^  admin-api:" docker-compose.prod.yml | grep "context:"
               exit 1
             fi
             
-            if grep -A 3 "admin-api:" docker-compose.prod.yml | grep -q "dockerfile: ./docker/Dockerfile.admin-api"; then
+            # Verify dockerfile path
+            if grep -A 8 "^  admin-api:" docker-compose.prod.yml | grep -q "dockerfile: ./docker/Dockerfile.admin-api"; then
               echo "✅ Dockerfile path is: ./docker/Dockerfile.admin-api"
             else
               echo "❌ Dockerfile path is NOT set correctly!"
-              grep -A 5 "admin-api:" docker-compose.prod.yml
+              echo "Expected: 'dockerfile: ./docker/Dockerfile.admin-api'"
+              echo "Got:"
+              grep -A 8 "^  admin-api:" docker-compose.prod.yml | grep "dockerfile:"
               exit 1
             fi
+            
+            # Verify pull_policy
+            if grep -A 8 "^  admin-api:" docker-compose.prod.yml | grep -q "pull_policy: never"; then
+              echo "✅ Pull policy is: never"
+            else
+              echo "⚠️  Pull policy is NOT 'never' (might use cached/registry image)"
+              grep -A 8 "^  admin-api:" docker-compose.prod.yml | grep "pull_policy:"
+            fi
+            
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             
             # VERIFY: Check which Dockerfile will be used
             echo "Verifying Dockerfile exists..."
