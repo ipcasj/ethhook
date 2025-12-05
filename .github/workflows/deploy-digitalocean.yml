@@ -170,22 +170,46 @@ jobs:
           ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
             cd ~/ethhook
             
-            # Remove old admin-api image to force rebuild
-            echo "Removing old admin-api image..."
-            docker rmi ghcr.io/ipcasj/ethhook-admin-api:latest || true
+            # Remove ALL ethhook images to prevent any caching
+            echo "Removing all ethhook images..."
+            docker images | grep ethhook | awk '{print $3}' | xargs -r docker rmi -f || true
             
-            # Build images locally on server (no registry needed)
-            echo "Building Docker images on server..."
-            docker compose -f docker-compose.prod.yml build --no-cache admin-api
+            # Also remove any untagged images that might be used as cache
+            docker image prune -f
+            
+            # Build C admin-api image locally with verbose output
+            echo "Building C admin-api image..."
+            docker compose -f docker-compose.prod.yml build --no-cache --progress=plain admin-api 2>&1 | tee /tmp/admin-api-build.log
             
             if [ $? -ne 0 ]; then
               echo "❌ Admin API build failed!"
+              cat /tmp/admin-api-build.log
               exit 1
             fi
             
+            # Verify the image was actually created
+            if ! docker images | grep -q "ethhook-admin-api"; then
+              echo "❌ Admin API image not found after build!"
+              docker images
+              exit 1
+            fi
+            
+            # Get image creation time to verify it's fresh
+            IMAGE_CREATED=$(docker images ghcr.io/ipcasj/ethhook-admin-api:latest --format "{{.CreatedAt}}")
+            echo "✅ Admin API image created: $IMAGE_CREATED"
+            
+            # Verify it's the C implementation by checking image size (should be ~50MB, not 500MB for Rust)
+            IMAGE_SIZE=$(docker images ghcr.io/ipcasj/ethhook-admin-api:latest --format "{{.Size}}")
+            echo "Image size: $IMAGE_SIZE"
+            if [[ "$IMAGE_SIZE" =~ "GB" ]] || [[ "$IMAGE_SIZE" =~ [5-9][0-9][0-9]MB ]]; then
+              echo "⚠️  Warning: Image seems too large for C implementation!"
+              echo "Expected: ~50MB, Got: $IMAGE_SIZE"
+            fi
+            
+            # Build other services
             docker compose -f docker-compose.prod.yml build pipeline ui demo-webhook-receiver
             
-            echo "✅ Docker images built successfully on server"
+            echo "✅ All images built successfully"
           EOF
 
       - name: Deploy services
