@@ -3,6 +3,7 @@
 #include <hiredis/hiredis.h>
 #include <hiredis/adapters/libevent.h>
 #include <event2/event.h>
+#include <limits.h>
 #include "yyjson.h"
 #include <pthread.h>
 #include <stdlib.h>
