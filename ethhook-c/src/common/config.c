@@ -84,6 +84,29 @@ eth_error_t eth_config_load(const char *config_file, eth_config_t **config) {
         cfg->database_url = strdup(env_db);
     }
     
+    // ClickHouse configuration
+    const char *env_ch_url = getenv("CLICKHOUSE_URL");
+    if (env_ch_url) {
+        cfg->clickhouse_url = strdup(env_ch_url);
+    }
+    
+    const char *env_ch_db = getenv("CLICKHOUSE_DATABASE");
+    if (env_ch_db) {
+        cfg->clickhouse_database = strdup(env_ch_db);
+    } else if (!cfg->clickhouse_database) {
+        cfg->clickhouse_database = strdup("ethhook");
+    }
+    
+    const char *env_ch_user = getenv("CLICKHOUSE_USER");
+    if (env_ch_user) {
+        cfg->clickhouse_user = strdup(env_ch_user);
+    }
+    
+    const char *env_ch_password = getenv("CLICKHOUSE_PASSWORD");
+    if (env_ch_password) {
+        cfg->clickhouse_password = strdup(env_ch_password);
+    }
+    
     const char *env_redis_host = getenv("REDIS_HOST");
     if (env_redis_host) {
         free(cfg->redis_host);
@@ -116,6 +139,10 @@ void eth_config_free(eth_config_t *config) {
     }
     
     free(config->database_url);
+    free(config->clickhouse_url);
+    free(config->clickhouse_database);
+    free(config->clickhouse_user);
+    free(config->clickhouse_password);
     free(config->redis_host);
     free(config->redis_password);
     

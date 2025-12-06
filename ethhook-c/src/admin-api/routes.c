@@ -118,24 +118,30 @@ eth_error_t admin_api_ctx_create(eth_config_t *config, admin_api_ctx_t **ctx) {
         return err;
     }
     
-    // Initialize ClickHouse client
-    clickhouse_config_t ch_config = {
-        .url = config->database_url,
-        .database = "ethhook",
-        .user = NULL,
-        .password = NULL,
-        .pool_size = 10,
-        .timeout_ms = 30000,
-        .enable_compression = true,
-        .batch_size = 1000,
-        .batch_timeout_ms = 1000
-    };
-    err = clickhouse_client_create(&ch_config, &api_ctx->ch_client);
-    if (err != ETH_OK) {
-        LOG_ERROR("Failed to create ClickHouse client");
-        eth_db_close(api_ctx->db);
-        free(api_ctx);
-        return err;
+    // Initialize ClickHouse client (optional - only if URL configured)
+    if (config->clickhouse_url) {
+        LOG_INFO("Initializing ClickHouse client: %s", config->clickhouse_url);
+        clickhouse_config_t ch_config = {
+            .url = config->clickhouse_url,
+            .database = config->clickhouse_database ? config->clickhouse_database : "ethhook",
+            .user = config->clickhouse_user,
+            .password = config->clickhouse_password,
+            .pool_size = 10,
+            .timeout_ms = 30000,
+            .enable_compression = true,
+            .batch_size = 1000,
+            .batch_timeout_ms = 1000
+        };
+        err = clickhouse_client_create(&ch_config, &api_ctx->ch_client);
+        if (err != ETH_OK) {
+            LOG_WARN("Failed to create ClickHouse client (non-fatal, continuing without analytics)");
+            api_ctx->ch_client = NULL;
+        } else {
+            LOG_INFO("ClickHouse client initialized successfully");
+        }
+    } else {
+        LOG_INFO("ClickHouse URL not configured, skipping analytics initialization");
+        api_ctx->ch_client = NULL;
     }
     
     LOG_INFO("ClickHouse client initialized for admin API");

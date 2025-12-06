@@ -54,8 +54,14 @@ void eth_log(eth_log_level_t level, const char *fmt, ...);
 
 // Configuration
 typedef struct {
-    // Database
+    // Database (SQLite)
     char *database_url;
+    
+    // ClickHouse
+    char *clickhouse_url;
+    char *clickhouse_database;
+    char *clickhouse_user;
+    char *clickhouse_password;
     
     // Redis
     char *redis_host;
