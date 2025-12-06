@@ -64,12 +64,14 @@ jobs:
               
               # Allow EthHook service ports
               sudo ufw allow 3000/tcp comment 'EthHook Admin API'
+              sudo ufw allow 3001/tcp comment 'Grafana'
               sudo ufw allow 3002/tcp comment 'EthHook UI'
               sudo ufw allow 8000/tcp comment 'Demo Webhook Receiver'
               sudo ufw allow 8080/tcp comment 'EthHook Pipeline Health'
               sudo ufw allow 8123/tcp comment 'ClickHouse HTTP'
               sudo ufw allow 9000/tcp comment 'ClickHouse Native'
-              sudo ufw allow 9090/tcp comment 'Prometheus Metrics'
+              sudo ufw allow 9090/tcp comment 'Pipeline Metrics'
+              sudo ufw allow 9092/tcp comment 'Prometheus'
               
               # Enable UFW if not already enabled
               sudo ufw --force enable
@@ -85,12 +87,14 @@ jobs:
                 sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
                 sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
                 sudo iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 3001 -j ACCEPT
                 sudo iptables -A INPUT -p tcp --dport 3002 -j ACCEPT
                 sudo iptables -A INPUT -p tcp --dport 8000 -j ACCEPT
                 sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
                 sudo iptables -A INPUT -p tcp --dport 8123 -j ACCEPT
                 sudo iptables -A INPUT -p tcp --dport 9000 -j ACCEPT
                 sudo iptables -A INPUT -p tcp --dport 9090 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 9092 -j ACCEPT
                 
                 # Save iptables rules
                 if command -v netfilter-persistent >/dev/null 2>&1; then

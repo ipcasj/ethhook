@@ -169,41 +169,41 @@ services:
       start_period: 10s
 
   # =============================================================================
-  # MONITORING SERVICES (Optional - Configure prometheus.yml before enabling)
+  # MONITORING SERVICES
   # =============================================================================
-  # prometheus:
-  #   image: prom/prometheus:latest
-  #   container_name: ethhook-prometheus
-  #   ports:
-  #     - "9092:9090"
-  #   volumes:
-  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-  #     - prometheus_data:/prometheus
-  #   networks:
-  #     - ethhook-network
-  #   command:
-  #     - "--config.file=/etc/prometheus/prometheus.yml"
-  #     - "--storage.tsdb.path=/prometheus"
-  #   restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ethhook-prometheus
+    ports:
+      - "9092:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - ethhook-network
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    restart: unless-stopped
 
-  # grafana:
-  #   image: grafana/grafana:latest
-  #   container_name: ethhook-grafana
-  #   ports:
-  #     - "3001:3000"
-  #   environment:
-  #     - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
-  #     - GF_USERS_ALLOW_SIGN_UP=false
-  #   volumes:
-  #     - grafana_data:/var/lib/grafana
-  #     - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-  #     - ./monitoring/grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
-  #     - ./monitoring/grafana/dashboards:/etc/dashboards
-  #   networks:
-  #     - ethhook-network
-  #   depends_on:
-  #     - prometheus
-  #   restart: unless-stopped
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ethhook-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./monitoring/grafana/dashboards:/etc/dashboards
+    networks:
+      - ethhook-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
 
 networks:
   ethhook-network:
@@ -212,5 +212,5 @@ networks:
 volumes:
   clickhouse_data: # ClickHouse database for events/deliveries
   admin_data: # Shared SQLite database for config (used by both admin-api and pipeline)
-  # prometheus_data:
-  # grafana_data:
+  prometheus_data: # Prometheus time-series data
+  grafana_data: # Grafana dashboards and settings
