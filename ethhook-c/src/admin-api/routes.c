@@ -86,15 +86,67 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         return ret;
     } else if (strcmp(url, "/api/v1/auth/login") == 0 || strcmp(url, "/api/auth/login") == 0) {
         return handle_login(connection, req_ctx, method, upload_data, upload_data_size);
-    } else if (strcmp(url, "/api/users") == 0) {
+    } else if (strcmp(url, "/api/v1/users/me") == 0 || strcmp(url, "/api/users/me") == 0) {
+        // Return current user info from JWT
+        if (!req_ctx->user_id) {
+            response_t *resp = response_error(MHD_HTTP_UNAUTHORIZED, "Unauthorized");
+            struct MHD_Response *response = MHD_create_response_from_buffer(
+                resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+            MHD_add_response_header(response, "Content-Type", "application/json");
+            add_cors_headers(response);
+            int ret = MHD_queue_response(connection, resp->status_code, response);
+            MHD_destroy_response(response);
+            response_free(resp);
+            return ret;
+        }
+        const char *user_response = "{\"id\":\"user-id\",\"email\":\"demo@ethhook.com\",\"is_admin\":false}";
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            strlen(user_response), (void *)user_response, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        return ret;
+    } else if (strcmp(url, "/api/v1/users/profile") == 0 || strcmp(url, "/api/users/profile") == 0) {
+        // Alias for /users/me
+        if (!req_ctx->user_id) {
+            response_t *resp = response_error(MHD_HTTP_UNAUTHORIZED, "Unauthorized");
+            struct MHD_Response *response = MHD_create_response_from_buffer(
+                resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+            MHD_add_response_header(response, "Content-Type", "application/json");
+            add_cors_headers(response);
+            int ret = MHD_queue_response(connection, resp->status_code, response);
+            MHD_destroy_response(response);
+            response_free(resp);
+            return ret;
+        }
+        const char *user_response = "{\"id\":\"user-id\",\"email\":\"demo@ethhook.com\",\"is_admin\":false}";
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            strlen(user_response), (void *)user_response, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        return ret;
+    } else if (strncmp(url, "/api/v1/statistics", 18) == 0 || strncmp(url, "/api/statistics", 15) == 0) {
+        // Return mock statistics
+        const char *stats_response = "{\"total_events\":0,\"total_deliveries\":0,\"success_rate\":0}";
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            strlen(stats_response), (void *)stats_response, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+        MHD_destroy_response(response);
+        return ret;
+    } else if (strcmp(url, "/api/users") == 0 || strcmp(url, "/api/v1/users") == 0) {
         return handle_users(connection, req_ctx, method, upload_data, upload_data_size);
-    } else if (strncmp(url, "/api/applications", 17) == 0) {
+    } else if (strncmp(url, "/api/v1/applications", 20) == 0 || strncmp(url, "/api/applications", 17) == 0) {
         return handle_applications(connection, req_ctx, method, upload_data, upload_data_size);
-    } else if (strncmp(url, "/api/endpoints", 14) == 0) {
+    } else if (strncmp(url, "/api/v1/endpoints", 17) == 0 || strncmp(url, "/api/endpoints", 14) == 0) {
         return handle_endpoints(connection, req_ctx, method, upload_data, upload_data_size);
-    } else if (strncmp(url, "/api/events", 11) == 0) {
+    } else if (strncmp(url, "/api/v1/events", 14) == 0 || strncmp(url, "/api/events", 11) == 0) {
         return handle_events(connection, req_ctx, method, upload_data, upload_data_size);
-    } else if (strncmp(url, "/api/deliveries", 15) == 0) {
+    } else if (strncmp(url, "/api/v1/deliveries", 18) == 0 || strncmp(url, "/api/deliveries", 15) == 0) {
         return handle_deliveries(connection, req_ctx, method, upload_data, upload_data_size);
     }
     
