@@ -45,6 +45,69 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.DROPLET_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Configure firewall rules
+        if: steps.check-config.outputs.skip == 'false'
+        run: |
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
+            echo "🔥 Configuring firewall rules..."
+            
+            # Check if UFW is installed and active
+            if command -v ufw >/dev/null 2>&1; then
+              echo "UFW firewall detected"
+              
+              # Allow SSH (important - don't lock yourself out!)
+              sudo ufw allow 22/tcp comment 'SSH'
+              
+              # Allow HTTP/HTTPS
+              sudo ufw allow 80/tcp comment 'HTTP'
+              sudo ufw allow 443/tcp comment 'HTTPS'
+              
+              # Allow EthHook service ports
+              sudo ufw allow 3000/tcp comment 'EthHook Admin API'
+              sudo ufw allow 3002/tcp comment 'EthHook UI'
+              sudo ufw allow 8000/tcp comment 'Demo Webhook Receiver'
+              sudo ufw allow 8080/tcp comment 'EthHook Pipeline Health'
+              sudo ufw allow 8123/tcp comment 'ClickHouse HTTP'
+              sudo ufw allow 9000/tcp comment 'ClickHouse Native'
+              sudo ufw allow 9090/tcp comment 'Prometheus Metrics'
+              
+              # Enable UFW if not already enabled
+              sudo ufw --force enable
+              
+              echo "✅ UFW rules configured:"
+              sudo ufw status numbered
+            else
+              echo "⚠️  UFW not installed, checking iptables..."
+              
+              # If using iptables directly, allow the ports
+              if command -v iptables >/dev/null 2>&1; then
+                sudo iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 3000 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 3002 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 8000 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 8080 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 8123 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 9000 -j ACCEPT
+                sudo iptables -A INPUT -p tcp --dport 9090 -j ACCEPT
+                
+                # Save iptables rules
+                if command -v netfilter-persistent >/dev/null 2>&1; then
+                  sudo netfilter-persistent save
+                elif [ -f /etc/debian_version ]; then
+                  sudo iptables-save > /etc/iptables/rules.v4
+                fi
+                
+                echo "✅ iptables rules configured"
+              else
+                echo "⚠️  No firewall detected - ports should be open by default"
+              fi
+            fi
+            
+            echo "✅ Firewall configuration complete"
+          EOF
+
       - name: Setup project directory on server
         if: steps.check-config.outputs.skip == 'false'
         run: |
