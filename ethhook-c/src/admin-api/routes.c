@@ -12,7 +12,7 @@ struct admin_api_ctx {
 };
 
 // Add CORS headers to response
-static void add_cors_headers(struct MHD_Response *response) {
+void add_cors_headers(struct MHD_Response *response) {
     MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
     MHD_add_response_header(response, "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     MHD_add_response_header(response, "Access-Control-Allow-Headers", "Content-Type, Authorization");
