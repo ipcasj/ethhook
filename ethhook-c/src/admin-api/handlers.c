@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "ethhook/admin_api.h"
 #include "ethhook/clickhouse.h"
 #include <sqlite3.h>
