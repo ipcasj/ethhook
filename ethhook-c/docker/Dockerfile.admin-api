@@ -51,6 +51,10 @@ RUN echo '[admin_api]' > /app/config.toml && \
     echo 'port = 3000' >> /app/config.toml && \
     echo 'jwt_expiry_hours = 24' >> /app/config.toml
 
+# Create data directory for SQLite database
+RUN mkdir -p /data && \
+    chown -R ethhook:ethhook /data
+
 USER ethhook
 
 EXPOSE 3000
