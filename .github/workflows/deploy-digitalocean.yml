@@ -482,6 +482,33 @@ jobs:
             echo "✅ Health checks completed successfully"
           EOF
 
+      - name: Seed database with demo users
+        if: steps.check-config.outputs.skip == 'false'
+        run: |
+          ssh ${{ secrets.DROPLET_USER }}@${{ secrets.DROPLET_HOST }} << 'EOF'
+            cd ~/ethhook
+            
+            echo "🌱 Seeding database with demo users..."
+            
+            # Check if bcrypt is installed in admin-api container
+            if ! docker exec ethhook-admin-api python3 -c "import bcrypt" 2>/dev/null; then
+              echo "Installing bcrypt in admin-api container..."
+              docker exec ethhook-admin-api apk add --no-cache py3-bcrypt 2>/dev/null || \
+              docker exec ethhook-admin-api pip3 install bcrypt 2>/dev/null || \
+              echo "⚠️  Could not install bcrypt, trying alternative method..."
+            fi
+            
+            # Copy seed script and run it inside the container
+            docker cp ethhook-c/scripts/seed_database.py ethhook-admin-api:/tmp/seed_database.py
+            docker exec ethhook-admin-api python3 /tmp/seed_database.py /data/config.db
+            
+            if [ $? -eq 0 ]; then
+              echo "✅ Database seeded successfully"
+            else
+              echo "⚠️  Database seeding failed (may already have users)"
+            fi
+          EOF
+
       - name: Cleanup old Docker images
         if: steps.check-config.outputs.skip == 'false'
         run: |
