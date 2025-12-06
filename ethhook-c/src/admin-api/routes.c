@@ -11,6 +11,14 @@ struct admin_api_ctx {
     struct MHD_Daemon *daemon;
 };
 
+// Add CORS headers to response
+static void add_cors_headers(struct MHD_Response *response) {
+    MHD_add_response_header(response, "Access-Control-Allow-Origin", "*");
+    MHD_add_response_header(response, "Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    MHD_add_response_header(response, "Access-Control-Allow-Headers", "Content-Type, Authorization");
+    MHD_add_response_header(response, "Access-Control-Max-Age", "86400");
+}
+
 // Request router
 static enum MHD_Result route_request(void *cls, struct MHD_Connection *connection,
                         const char *url, const char *method,
@@ -54,6 +62,15 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
     
     req_ctx = (request_ctx_t *)*con_cls;
     
+    // Handle OPTIONS preflight requests (CORS)
+    if (strcmp(method, "OPTIONS") == 0) {
+        struct MHD_Response *response = MHD_create_response_from_buffer(0, NULL, MHD_RESPMEM_PERSISTENT);
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, MHD_HTTP_NO_CONTENT, response);
+        MHD_destroy_response(response);
+        return ret;
+    }
+    
     // Route to appropriate handler
     if (strcmp(url, "/health") == 0) {
         // Health check endpoint - returns 200 OK with simple JSON response
@@ -61,6 +78,7 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         struct MHD_Response *response = MHD_create_response_from_buffer(
             strlen(health_response), (void *)health_response, MHD_RESPMEM_MUST_COPY);
         MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
         MHD_destroy_response(response);
         return ret;
@@ -82,6 +100,8 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
     response_t *resp = response_error(MHD_HTTP_NOT_FOUND, "Not found");
     struct MHD_Response *response = MHD_create_response_from_buffer(
         resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+    MHD_add_response_header(response, "Content-Type", "application/json");
+    add_cors_headers(response);
     int ret = MHD_queue_response(connection, resp->status_code, response);
     MHD_destroy_response(response);
     response_free(resp);

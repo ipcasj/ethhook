@@ -50,6 +50,9 @@ response_t *response_json(int status_code, const char *json);
 response_t *response_error(int status_code, const char *message);
 void response_free(response_t *resp);
 
+// CORS helper
+void add_cors_headers(struct MHD_Response *response);
+
 // Admin API server
 typedef struct admin_api_ctx admin_api_ctx_t;
 

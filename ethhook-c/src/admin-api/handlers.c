@@ -16,6 +16,8 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_t *resp = response_error(MHD_HTTP_METHOD_NOT_ALLOWED, "Method not allowed");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -42,6 +44,7 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
     struct MHD_Response *response = MHD_create_response_from_buffer(
         json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
+    add_cors_headers(response);
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     
@@ -57,6 +60,8 @@ int handle_users(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_t *resp = response_error(MHD_HTTP_FORBIDDEN, "Admin access required");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -67,6 +72,8 @@ int handle_users(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_t *resp = response_error(MHD_HTTP_METHOD_NOT_ALLOWED, "Method not allowed");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -83,6 +90,8 @@ int handle_users(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Database error");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -122,6 +131,7 @@ int handle_users(struct MHD_Connection *connection, request_ctx_t *ctx,
     struct MHD_Response *response = MHD_create_response_from_buffer(
         json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
+    add_cors_headers(response);
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     
@@ -137,6 +147,8 @@ int handle_applications(struct MHD_Connection *connection, request_ctx_t *ctx __
         response_t *resp = response_error(MHD_HTTP_METHOD_NOT_ALLOWED, "Method not allowed");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -158,6 +170,7 @@ int handle_applications(struct MHD_Connection *connection, request_ctx_t *ctx __
     struct MHD_Response *response = MHD_create_response_from_buffer(
         json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
+    add_cors_headers(response);
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     
@@ -183,6 +196,7 @@ int handle_endpoints(struct MHD_Connection *connection, request_ctx_t *ctx,
     struct MHD_Response *response = MHD_create_response_from_buffer(
         json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
+    add_cors_headers(response);
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     
@@ -198,6 +212,8 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_t *resp = response_error(MHD_HTTP_METHOD_NOT_ALLOWED, "Method not allowed");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -235,6 +251,8 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Failed to query events");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -289,6 +307,7 @@ int handle_events(struct MHD_Connection *connection, request_ctx_t *ctx,
     struct MHD_Response *response = MHD_create_response_from_buffer(
         json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
+    add_cors_headers(response);
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     
@@ -304,6 +323,8 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_t *resp = response_error(MHD_HTTP_METHOD_NOT_ALLOWED, "Method not allowed");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -341,6 +362,8 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
         response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Failed to query deliveries");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
         int ret = MHD_queue_response(connection, resp->status_code, response);
         MHD_destroy_response(response);
         response_free(resp);
@@ -395,6 +418,7 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
     struct MHD_Response *response = MHD_create_response_from_buffer(
         json_len, json_str, MHD_RESPMEM_MUST_FREE);
     MHD_add_response_header(response, "Content-Type", "application/json");
+    add_cors_headers(response);
     int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);
     
