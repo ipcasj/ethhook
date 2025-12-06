@@ -46,18 +46,28 @@ WORKDIR /app
 
 COPY --from=builder /build/build/ethhook-admin-api /app/
 
+# Copy entrypoint script
+COPY docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Create a minimal config file - app uses environment variables primarily
 RUN echo '[admin_api]' > /app/config.toml && \
     echo 'port = 3000' >> /app/config.toml && \
     echo 'jwt_expiry_hours = 24' >> /app/config.toml
 
-# Create data directory for SQLite database
+# Create data directory for SQLite database with proper permissions
+# Note: Docker volume mounts will replace this directory, but the app will
+# create it at runtime if missing (see database.c ensure_parent_directory)
 RUN mkdir -p /data && \
-    chown -R ethhook:ethhook /data
+    chown -R ethhook:ethhook /data && \
+    chmod 755 /data
+
+# Set volume mount point
+VOLUME ["/data"]
 
 USER ethhook
 
 EXPOSE 3000
 
-ENTRYPOINT ["/app/ethhook-admin-api"]
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["/app/config.toml"]
