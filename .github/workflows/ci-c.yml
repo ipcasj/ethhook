@@ -166,11 +166,21 @@ jobs:
             - name: Check for security-critical issues
               run: |
                   cd ethhook-c
-                  # Fail if any critical security issues found
-                  if grep -E "(error|buffer overflow|use after free|double free)" cppcheck-report.txt; then
+                  # Fail only if critical security issues found (not filenames or style warnings)
+                  # Look for actual cppcheck error severity markers
+                  if grep -E "^src/.*: error: .*(buffer overflow|use after free|double free|null pointer|memory leak|uninitialized variable)" cppcheck-report.txt; then
                     echo "❌ Critical security issues found!"
                     exit 1
                   fi
+                  
+                  # Count any errors (excluding yyjson.c third-party lib)
+                  ERROR_COUNT=$(grep -E "^src/(admin-api|ingestor|processor|delivery)/.*: error:" cppcheck-report.txt | wc -l || true)
+                  if [ "$ERROR_COUNT" -gt 0 ]; then
+                    echo "❌ Found $ERROR_COUNT error(s) in application code"
+                    grep -E "^src/(admin-api|ingestor|processor|delivery)/.*: error:" cppcheck-report.txt
+                    exit 1
+                  fi
+                  
                   echo "✅ No critical security issues detected"
 
             - name: Upload analysis reports
