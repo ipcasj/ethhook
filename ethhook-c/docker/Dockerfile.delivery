@@ -39,7 +39,12 @@ RUN addgroup -g 1000 ethhook && \
 WORKDIR /app
 
 COPY --from=builder /build/build/ethhook-delivery /app/
-COPY config/delivery.toml /app/config.toml
+
+# Generate minimal config
+RUN echo '[delivery]' > /app/config.toml && \
+    echo 'worker_threads = 10' >> /app/config.toml && \
+    echo 'retry_max_attempts = 5' >> /app/config.toml && \
+    echo 'timeout_seconds = 30' >> /app/config.toml
 
 USER ethhook
 

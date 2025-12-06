@@ -37,7 +37,11 @@ RUN addgroup -g 1000 ethhook && \
 WORKDIR /app
 
 COPY --from=builder /build/build/ethhook-processor /app/
-COPY config/processor.toml /app/config.toml
+
+# Generate minimal config
+RUN echo '[processor]' > /app/config.toml && \
+    echo 'worker_threads = 10' >> /app/config.toml && \
+    echo 'batch_size = 100' >> /app/config.toml
 
 USER ethhook
 

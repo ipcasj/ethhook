@@ -47,8 +47,10 @@ WORKDIR /app
 # Copy binary
 COPY --from=builder /build/build/ethhook-ingestor /app/
 
-# Copy config
-COPY config/ingestor.toml /app/config.toml
+# Generate minimal config
+RUN echo '[ingestor]' > /app/config.toml && \
+    echo 'worker_threads = 10' >> /app/config.toml && \
+    echo 'batch_size = 100' >> /app/config.toml
 
 USER ethhook
 
