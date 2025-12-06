@@ -7,12 +7,15 @@ RUN apk add --no-cache \
     cmake \
     git \
     pkgconfig \
+    jansson-dev \
+    libmicrohttpd-dev \
+    libjwt-dev \
+    openssl-dev \
+    sqlite-dev \
     libevent-dev \
     libwebsockets-dev \
     hiredis-dev \
-    jansson-dev \
-    openssl-dev \
-    sqlite-dev
+    curl-dev
 
 WORKDIR /build
 
@@ -31,12 +34,15 @@ FROM alpine:3.19
 
 # Install runtime dependencies
 RUN apk add --no-cache \
+    jansson \
+    libmicrohttpd \
+    libjwt \
+    openssl \
+    sqlite-libs \
     libevent \
     libwebsockets \
     hiredis \
-    jansson \
-    openssl \
-    sqlite-libs
+    libcurl
 
 # Create user
 RUN addgroup -g 1000 ethhook && \

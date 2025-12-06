@@ -6,12 +6,15 @@ RUN apk add --no-cache \
     cmake \
     git \
     pkgconfig \
-    libevent-dev \
-    hiredis-dev \
     jansson-dev \
-    curl-dev \
+    libmicrohttpd-dev \
+    libjwt-dev \
     openssl-dev \
-    sqlite-dev
+    sqlite-dev \
+    libevent-dev \
+    libwebsockets-dev \
+    hiredis-dev \
+    curl-dev
 
 WORKDIR /build
 
@@ -26,12 +29,15 @@ RUN mkdir build && cd build && \
 FROM alpine:3.19
 
 RUN apk add --no-cache \
-    libevent \
-    hiredis \
     jansson \
-    libcurl \
+    libmicrohttpd \
+    libjwt \
     openssl \
-    sqlite-libs
+    sqlite-libs \
+    libevent \
+    libwebsockets \
+    hiredis \
+    libcurl
 
 RUN addgroup -g 1000 ethhook && \
     adduser -D -u 1000 -G ethhook ethhook
