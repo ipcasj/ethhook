@@ -50,15 +50,126 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
         return ret;
     }
     
-    // TODO: Validate credentials and generate JWT token
-    yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
-    yyjson_mut_val *result = yyjson_mut_obj(doc);
-    yyjson_mut_doc_set_root(doc, result);
-    yyjson_mut_obj_add_str(doc, result, "token", "dummy-jwt-token");
+    // Parse JSON body
+    yyjson_doc *req_doc = yyjson_read(ctx->post_data, ctx->post_data_size, 0);
+    if (!req_doc) {
+        response_t *resp = response_error(MHD_HTTP_BAD_REQUEST, "Invalid JSON");
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, resp->status_code, response);
+        MHD_destroy_response(response);
+        response_free(resp);
+        return ret;
+    }
+    
+    yyjson_val *root = yyjson_doc_get_root(req_doc);
+    const char *email = yyjson_get_str(yyjson_obj_get(root, "email"));
+    const char *password = yyjson_get_str(yyjson_obj_get(root, "password"));
+    
+    if (!email || !password) {
+        yyjson_doc_free(req_doc);
+        response_t *resp = response_error(MHD_HTTP_BAD_REQUEST, "Missing email or password");
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, resp->status_code, response);
+        MHD_destroy_response(response);
+        response_free(resp);
+        return ret;
+    }
+    
+    // Query database for user by email or username
+    sqlite3 *db_handle = eth_db_get_handle(ctx->db);
+    sqlite3_stmt *stmt = NULL;
+    const char *query = "SELECT id, password_hash, is_admin FROM users WHERE username = ? OR email = ?";
+    
+    if (sqlite3_prepare_v2(db_handle, query, -1, &stmt, NULL) != SQLITE_OK) {
+        yyjson_doc_free(req_doc);
+        response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Database error");
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, resp->status_code, response);
+        MHD_destroy_response(response);
+        response_free(resp);
+        return ret;
+    }
+    
+    sqlite3_bind_text(stmt, 1, email, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, email, -1, SQLITE_STATIC);
+    
+    int step_result = sqlite3_step(stmt);
+    if (step_result != SQLITE_ROW) {
+        sqlite3_finalize(stmt);
+        yyjson_doc_free(req_doc);
+        response_t *resp = response_error(MHD_HTTP_UNAUTHORIZED, "Invalid credentials");
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, resp->status_code, response);
+        MHD_destroy_response(response);
+        response_free(resp);
+        return ret;
+    }
+    
+    const char *user_id = (const char *)sqlite3_column_text(stmt, 0);
+    const char *password_hash = (const char *)sqlite3_column_text(stmt, 1);
+    int is_admin = sqlite3_column_int(stmt, 2);
+    
+    // Copy user_id before finalizing statement
+    char *user_id_copy = strdup(user_id);
+    
+    // Verify password
+    bool password_valid = bcrypt_verify(password, password_hash);
+    
+    sqlite3_finalize(stmt);
+    yyjson_doc_free(req_doc);
+    
+    if (!password_valid) {
+        free(user_id_copy);
+        response_t *resp = response_error(MHD_HTTP_UNAUTHORIZED, "Invalid credentials");
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, resp->status_code, response);
+        MHD_destroy_response(response);
+        response_free(resp);
+        return ret;
+    }
+    
+    // Generate JWT token
+    char *token = jwt_create(user_id_copy, is_admin != 0, ctx->jwt_secret, 24);
+    free(user_id_copy);
+    
+    if (!token) {
+        response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Failed to generate token");
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, resp->status_code, response);
+        MHD_destroy_response(response);
+        response_free(resp);
+        return ret;
+    }
+    
+    // Build response with token
+    yyjson_mut_doc *resp_doc = yyjson_mut_doc_new(NULL);
+    yyjson_mut_val *result = yyjson_mut_obj(resp_doc);
+    yyjson_mut_doc_set_root(resp_doc, result);
+    yyjson_mut_obj_add_str(resp_doc, result, "token", token);
+    
+    free(token);
     
     size_t json_len;
-    char *json_str = yyjson_mut_write(doc, 0, &json_len);
-    yyjson_mut_doc_free(doc);
+    char *json_str = yyjson_mut_write(resp_doc, 0, &json_len);
+    yyjson_mut_doc_free(resp_doc);
     
     struct MHD_Response *response = MHD_create_response_from_buffer(
         json_len, json_str, MHD_RESPMEM_MUST_FREE);

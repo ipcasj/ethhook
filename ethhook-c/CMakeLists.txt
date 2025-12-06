@@ -249,6 +249,7 @@ add_executable(ethhook-admin-api
     src/admin-api/auth.c
     src/admin-api/routes.c
     src/admin-api/json_response.c
+    src/admin-api/bcrypt.c
 )
 
 target_link_libraries(ethhook-admin-api
@@ -257,6 +258,7 @@ target_link_libraries(ethhook-admin-api
     OpenSSL::SSL
     OpenSSL::Crypto
     Threads::Threads
+    crypt
 )
 
 # Install targets

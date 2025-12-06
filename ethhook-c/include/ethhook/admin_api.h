@@ -47,6 +47,9 @@ int handle_deliveries(struct MHD_Connection *connection, request_ctx_t *ctx,
 char *jwt_create(const char *user_id, bool is_admin, const char *secret, int expiry_hours);
 eth_error_t jwt_verify(const char *token, const char *secret, char **user_id, bool *is_admin);
 
+// Password verification
+bool bcrypt_verify(const char *password, const char *hash);
+
 // JSON response helpers
 response_t *response_json(int status_code, const char *json);
 response_t *response_error(int status_code, const char *message);

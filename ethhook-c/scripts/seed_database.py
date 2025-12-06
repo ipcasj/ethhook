@@ -10,76 +10,88 @@ import uuid
 import sys
 from datetime import datetime
 
+
 def create_demo_users(db_path):
     """Create demo users in the database"""
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    
+
     # Check if users table exists
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
     if not cursor.fetchone():
         print("❌ Error: users table doesn't exist. Database not initialized.")
         conn.close()
         return False
-    
+
     users_to_create = [
         {
-            'email': 'demo@ethhook.com',
-            'username': 'demo',
-            'password': 'demo123',
-            'is_admin': 0
+            "email": "demo@ethhook.com",
+            "username": "demo",
+            "password": "demo123",
+            "is_admin": 0,
         },
         {
-            'email': 'admin@ethhook.io',
-            'username': 'admin',
-            'password': 'SecureAdmin123!',
-            'is_admin': 1
-        }
+            "email": "admin@ethhook.io",
+            "username": "admin",
+            "password": "SecureAdmin123!",
+            "is_admin": 1,
+        },
     ]
-    
+
     for user_data in users_to_create:
         # Check if user already exists
-        cursor.execute("SELECT id FROM users WHERE email = ?", (user_data['email'],))
+        cursor.execute("SELECT id FROM users WHERE email = ?", (user_data["email"],))
         existing = cursor.fetchone()
-        
+
         if existing:
             print(f"⚠️  User {user_data['email']} already exists, skipping...")
             continue
-        
+
         # Generate user ID
         user_id = str(uuid.uuid4())
-        
+
         # Hash password using bcrypt
         password_hash = bcrypt.hashpw(
-            user_data['password'].encode('utf-8'),
-            bcrypt.gensalt()
-        ).decode('utf-8')
-        
+            user_data["password"].encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
+
         # Get current timestamp in Unix epoch (seconds)
         created_at = int(datetime.now().timestamp())
-        
+
         # Insert user
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO users (id, username, password_hash, is_admin, created_at)
             VALUES (?, ?, ?, ?, ?)
-        """, (user_id, user_data['username'], password_hash, user_data['is_admin'], created_at))
-        
-        admin_status = "👑 Admin" if user_data['is_admin'] else "👤 User"
-        print(f"✅ Created {admin_status}: {user_data['email']} (password: {user_data['password']})")
-    
+        """,
+            (
+                user_id,
+                user_data["username"],
+                password_hash,
+                user_data["is_admin"],
+                created_at,
+            ),
+        )
+
+        admin_status = "👑 Admin" if user_data["is_admin"] else "👤 User"
+        print(
+            f"✅ Created {admin_status}: {user_data['email']} (password: {user_data['password']})"
+        )
+
     conn.commit()
     conn.close()
     return True
+
 
 def main():
     if len(sys.argv) > 1:
         db_path = sys.argv[1]
     else:
         db_path = "/data/config.db"
-    
+
     print(f"🔧 Seeding database: {db_path}")
     print()
-    
+
     try:
         if create_demo_users(db_path):
             print()
@@ -102,8 +114,10 @@ def main():
     except Exception as e:
         print(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

@@ -3,6 +3,8 @@
 #include "ethhook/clickhouse.h"
 #include <stdlib.h>
 #include <string.h>
+#include <sqlite3.h>
+#include "yyjson.h"
 
 struct admin_api_ctx {
     eth_config_t *config;
@@ -99,16 +101,66 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
             response_free(resp);
             return ret;
         }
-        const char *user_response = "{\"id\":\"user-id\",\"email\":\"demo@ethhook.com\",\"is_admin\":false}";
+        
+        // Query database for user info
+        sqlite3 *db_handle = eth_db_get_handle(req_ctx->db);
+        sqlite3_stmt *stmt = NULL;
+        const char *query = "SELECT id, username, is_admin, created_at FROM users WHERE id = ?";
+        
+        if (sqlite3_prepare_v2(db_handle, query, -1, &stmt, NULL) != SQLITE_OK) {
+            response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Database error");
+            struct MHD_Response *response = MHD_create_response_from_buffer(
+                resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+            MHD_add_response_header(response, "Content-Type", "application/json");
+            add_cors_headers(response);
+            int ret = MHD_queue_response(connection, resp->status_code, response);
+            MHD_destroy_response(response);
+            response_free(resp);
+            return ret;
+        }
+        
+        sqlite3_bind_text(stmt, 1, req_ctx->user_id, -1, SQLITE_STATIC);
+        
+        if (sqlite3_step(stmt) != SQLITE_ROW) {
+            sqlite3_finalize(stmt);
+            response_t *resp = response_error(MHD_HTTP_NOT_FOUND, "User not found");
+            struct MHD_Response *response = MHD_create_response_from_buffer(
+                resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+            MHD_add_response_header(response, "Content-Type", "application/json");
+            add_cors_headers(response);
+            int ret = MHD_queue_response(connection, resp->status_code, response);
+            MHD_destroy_response(response);
+            response_free(resp);
+            return ret;
+        }
+        
+        const char *user_id = (const char *)sqlite3_column_text(stmt, 0);
+        const char *username = (const char *)sqlite3_column_text(stmt, 1);
+        int is_admin = sqlite3_column_int(stmt, 2);
+        
+        // Build JSON response
+        yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+        yyjson_mut_val *obj = yyjson_mut_obj(doc);
+        yyjson_mut_doc_set_root(doc, obj);
+        yyjson_mut_obj_add_str(doc, obj, "id", user_id);
+        yyjson_mut_obj_add_str(doc, obj, "email", username);
+        yyjson_mut_obj_add_bool(doc, obj, "is_admin", is_admin != 0);
+        
+        sqlite3_finalize(stmt);
+        
+        size_t json_len;
+        char *json_str = yyjson_mut_write(doc, 0, &json_len);
+        yyjson_mut_doc_free(doc);
+        
         struct MHD_Response *response = MHD_create_response_from_buffer(
-            strlen(user_response), (void *)user_response, MHD_RESPMEM_MUST_COPY);
+            json_len, json_str, MHD_RESPMEM_MUST_FREE);
         MHD_add_response_header(response, "Content-Type", "application/json");
         add_cors_headers(response);
         int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
         MHD_destroy_response(response);
         return ret;
     } else if (strcmp(url, "/api/v1/users/profile") == 0 || strcmp(url, "/api/users/profile") == 0) {
-        // Alias for /users/me
+        // Alias for /users/me - redirect to same logic
         if (!req_ctx->user_id) {
             response_t *resp = response_error(MHD_HTTP_UNAUTHORIZED, "Unauthorized");
             struct MHD_Response *response = MHD_create_response_from_buffer(
@@ -120,9 +172,59 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
             response_free(resp);
             return ret;
         }
-        const char *user_response = "{\"id\":\"user-id\",\"email\":\"demo@ethhook.com\",\"is_admin\":false}";
+        
+        // Query database for user info (same as /users/me)
+        sqlite3 *db_handle = eth_db_get_handle(req_ctx->db);
+        sqlite3_stmt *stmt = NULL;
+        const char *query = "SELECT id, username, is_admin, created_at FROM users WHERE id = ?";
+        
+        if (sqlite3_prepare_v2(db_handle, query, -1, &stmt, NULL) != SQLITE_OK) {
+            response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Database error");
+            struct MHD_Response *response = MHD_create_response_from_buffer(
+                resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+            MHD_add_response_header(response, "Content-Type", "application/json");
+            add_cors_headers(response);
+            int ret = MHD_queue_response(connection, resp->status_code, response);
+            MHD_destroy_response(response);
+            response_free(resp);
+            return ret;
+        }
+        
+        sqlite3_bind_text(stmt, 1, req_ctx->user_id, -1, SQLITE_STATIC);
+        
+        if (sqlite3_step(stmt) != SQLITE_ROW) {
+            sqlite3_finalize(stmt);
+            response_t *resp = response_error(MHD_HTTP_NOT_FOUND, "User not found");
+            struct MHD_Response *response = MHD_create_response_from_buffer(
+                resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+            MHD_add_response_header(response, "Content-Type", "application/json");
+            add_cors_headers(response);
+            int ret = MHD_queue_response(connection, resp->status_code, response);
+            MHD_destroy_response(response);
+            response_free(resp);
+            return ret;
+        }
+        
+        const char *user_id = (const char *)sqlite3_column_text(stmt, 0);
+        const char *username = (const char *)sqlite3_column_text(stmt, 1);
+        int is_admin = sqlite3_column_int(stmt, 2);
+        
+        // Build JSON response
+        yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+        yyjson_mut_val *obj = yyjson_mut_obj(doc);
+        yyjson_mut_doc_set_root(doc, obj);
+        yyjson_mut_obj_add_str(doc, obj, "id", user_id);
+        yyjson_mut_obj_add_str(doc, obj, "email", username);
+        yyjson_mut_obj_add_bool(doc, obj, "is_admin", is_admin != 0);
+        
+        sqlite3_finalize(stmt);
+        
+        size_t json_len;
+        char *json_str = yyjson_mut_write(doc, 0, &json_len);
+        yyjson_mut_doc_free(doc);
+        
         struct MHD_Response *response = MHD_create_response_from_buffer(
-            strlen(user_response), (void *)user_response, MHD_RESPMEM_MUST_COPY);
+            json_len, json_str, MHD_RESPMEM_MUST_FREE);
         MHD_add_response_header(response, "Content-Type", "application/json");
         add_cors_headers(response);
         int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
