@@ -41,6 +41,8 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         req_ctx->jwt_secret = ctx->config->admin_api.jwt_secret;
         req_ctx->user_id = NULL;
         req_ctx->is_admin = false;
+        req_ctx->post_data = NULL;
+        req_ctx->post_data_size = 0;
         
         // Check for Authorization header
         const char *auth_header = MHD_lookup_connection_value(connection, MHD_HEADER_KIND, "Authorization");
@@ -82,7 +84,7 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         int ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
         MHD_destroy_response(response);
         return ret;
-    } else if (strcmp(url, "/api/auth/login") == 0) {
+    } else if (strcmp(url, "/api/v1/auth/login") == 0 || strcmp(url, "/api/auth/login") == 0) {
         return handle_login(connection, req_ctx, method, upload_data, upload_data_size);
     } else if (strcmp(url, "/api/users") == 0) {
         return handle_users(connection, req_ctx, method, upload_data, upload_data_size);
@@ -119,8 +121,10 @@ static void request_completed(void *cls, struct MHD_Connection *connection,
     request_ctx_t *req_ctx = (request_ctx_t *)*con_cls;
     if (req_ctx) {
         free(req_ctx->user_id);
+        free(req_ctx->post_data);
         free(req_ctx);
     }
+    *con_cls = NULL;
 }
 
 eth_error_t admin_api_ctx_create(eth_config_t *config, admin_api_ctx_t **ctx) {

@@ -9,9 +9,7 @@
 extern sqlite3 *eth_db_get_handle(eth_db_t *db);
 
 int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
-                 const char *method, const char *upload_data __attribute__((unused)), size_t *upload_data_size) {
-    (void)ctx;
-    
+                 const char *method, const char *upload_data, size_t *upload_data_size) {
     if (strcmp(method, "POST") != 0) {
         response_t *resp = response_error(MHD_HTTP_METHOD_NOT_ALLOWED, "Method not allowed");
         struct MHD_Response *response = MHD_create_response_from_buffer(
@@ -24,11 +22,32 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
         return ret;
     }
     
-    // Parse request body
+    // Accumulate POST data
     if (*upload_data_size > 0) {
-        // TODO: Parse JSON body with email/password
+        size_t new_size = ctx->post_data_size + *upload_data_size;
+        char *new_data = realloc(ctx->post_data, new_size + 1);
+        if (!new_data) {
+            return MHD_NO;
+        }
+        memcpy(new_data + ctx->post_data_size, upload_data, *upload_data_size);
+        new_data[new_size] = '\0';
+        ctx->post_data = new_data;
+        ctx->post_data_size = new_size;
         *upload_data_size = 0;
         return MHD_YES;
+    }
+    
+    // Process accumulated data
+    if (!ctx->post_data) {
+        response_t *resp = response_error(MHD_HTTP_BAD_REQUEST, "No request body");
+        struct MHD_Response *response = MHD_create_response_from_buffer(
+            resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+        MHD_add_response_header(response, "Content-Type", "application/json");
+        add_cors_headers(response);
+        int ret = MHD_queue_response(connection, resp->status_code, response);
+        MHD_destroy_response(response);
+        response_free(resp);
+        return ret;
     }
     
     // TODO: Validate credentials and generate JWT token

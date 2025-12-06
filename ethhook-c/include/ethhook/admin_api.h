@@ -12,6 +12,8 @@ typedef struct {
     const char *jwt_secret;
     char *user_id;
     bool is_admin;
+    char *post_data;
+    size_t post_data_size;
 } request_ctx_t;
 
 // Response builder
