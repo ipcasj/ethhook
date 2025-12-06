@@ -1,0 +1,28 @@
+[package]
+name = "benchmarks"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[[bin]]
+name = "jwt_bench_rust"
+path = "jwt_bench.rs"
+
+[[bin]]
+name = "json_bench_rust"
+path = "json_bench.rs"
+
+[[bin]]
+name = "memory_bench_rust"
+path = "memory_bench.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+jsonwebtoken = "9.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

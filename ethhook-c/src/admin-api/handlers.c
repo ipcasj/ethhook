@@ -81,10 +81,10 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
         return ret;
     }
     
-    // Query database for user by email or username
+    // Query database for user by email only
     sqlite3 *db_handle = eth_db_get_handle(ctx->db);
     sqlite3_stmt *stmt = NULL;
-    const char *query = "SELECT id, password_hash, is_admin FROM users WHERE username = ? OR email = ?";
+    const char *query = "SELECT id, password_hash, is_admin FROM users WHERE username = ?";
     
     if (sqlite3_prepare_v2(db_handle, query, -1, &stmt, NULL) != SQLITE_OK) {
         yyjson_doc_free(req_doc);
@@ -100,7 +100,6 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
     }
     
     sqlite3_bind_text(stmt, 1, email, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, email, -1, SQLITE_STATIC);
     
     int step_result = sqlite3_step(stmt);
     if (step_result != SQLITE_ROW) {

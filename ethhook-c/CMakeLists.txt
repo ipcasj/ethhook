@@ -258,7 +258,6 @@ target_link_libraries(ethhook-admin-api
     OpenSSL::SSL
     OpenSSL::Crypto
     Threads::Threads
-    crypt
 )
 
 # Install targets

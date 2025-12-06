@@ -14,7 +14,7 @@ jobs:
   lint:
     name: Lint and Format Check (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
     steps:
       - uses: actions/checkout@v4
 
@@ -50,7 +50,7 @@ jobs:
   test:
     name: Test Suite (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
 
     services:
       redis:
@@ -107,7 +107,7 @@ jobs:
   build:
     name: Build All Services (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
     strategy:
       matrix:
         target:
@@ -154,7 +154,7 @@ jobs:
   sqlx-check:
     name: Verify SQLx Offline Mode (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
 
     steps:
       - uses: actions/checkout@v4
@@ -204,7 +204,7 @@ jobs:
   security-audit:
     name: Security Audit (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
     steps:
       - uses: actions/checkout@v4
 
@@ -232,7 +232,7 @@ jobs:
   coverage:
     name: Code Coverage (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
 
     services:
       redis:
@@ -283,7 +283,7 @@ jobs:
   ui-tests:
     name: UI Tests (Next.js) (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
 
     steps:
       - uses: actions/checkout@v4
@@ -323,7 +323,7 @@ jobs:
   playwright-e2e:
     name: Playwright E2E Tests (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
 
     services:
       redis:
@@ -394,7 +394,7 @@ jobs:
   docker-build:
     name: Docker Build Test (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
 
     steps:
       - uses: actions/checkout@v4
@@ -421,7 +421,7 @@ jobs:
   docker-push:
     name: Build and Push Docker Images (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
     permissions:
       contents: read
       packages: write
@@ -504,7 +504,7 @@ jobs:
   summary:
     name: CI Summary (Disabled)
     runs-on: ubuntu-latest
-    if: false  # Disable this job
+    if: false # Disable this job
 
     steps:
       - name: Check job results

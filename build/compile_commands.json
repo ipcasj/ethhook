@@ -1,0 +1,164 @@
+[
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/config.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/config.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/config.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/config.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/error.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/error.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/error.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/error.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/logging.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/logging.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/logging.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/logging.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/arena.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/arena.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/arena.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/arena.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/circuit_breaker.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/circuit_breaker.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/circuit_breaker.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/circuit_breaker.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/database.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/database.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/database.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/database.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/clickhouse.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/clickhouse.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/clickhouse.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/clickhouse.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/yyjson.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/yyjson.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/yyjson.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/yyjson.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-common.dir/src/common/json.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/common/json.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/common/json.c",
+  "output": "CMakeFiles/ethhook-common.dir/src/common/json.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-ingestor.dir/src/ingestor/main.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/ingestor/main.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/ingestor/main.c",
+  "output": "CMakeFiles/ethhook-ingestor.dir/src/ingestor/main.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-ingestor.dir/src/ingestor/websocket.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/ingestor/websocket.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/ingestor/websocket.c",
+  "output": "CMakeFiles/ethhook-ingestor.dir/src/ingestor/websocket.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-ingestor.dir/src/ingestor/worker.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/ingestor/worker.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/ingestor/worker.c",
+  "output": "CMakeFiles/ethhook-ingestor.dir/src/ingestor/worker.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-ingestor.dir/src/ingestor/redis_publisher.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/ingestor/redis_publisher.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/ingestor/redis_publisher.c",
+  "output": "CMakeFiles/ethhook-ingestor.dir/src/ingestor/redis_publisher.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-processor.dir/src/processor/main.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/processor/main.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/processor/main.c",
+  "output": "CMakeFiles/ethhook-processor.dir/src/processor/main.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-processor.dir/src/processor/redis_consumer.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/processor/redis_consumer.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/processor/redis_consumer.c",
+  "output": "CMakeFiles/ethhook-processor.dir/src/processor/redis_consumer.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-processor.dir/src/processor/matcher.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/processor/matcher.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/processor/matcher.c",
+  "output": "CMakeFiles/ethhook-processor.dir/src/processor/matcher.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-processor.dir/src/processor/filter.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/processor/filter.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/processor/filter.c",
+  "output": "CMakeFiles/ethhook-processor.dir/src/processor/filter.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-delivery.dir/src/delivery/main.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/delivery/main.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/delivery/main.c",
+  "output": "CMakeFiles/ethhook-delivery.dir/src/delivery/main.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-delivery.dir/src/delivery/http_client.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/delivery/http_client.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/delivery/http_client.c",
+  "output": "CMakeFiles/ethhook-delivery.dir/src/delivery/http_client.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-delivery.dir/src/delivery/retry.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/delivery/retry.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/delivery/retry.c",
+  "output": "CMakeFiles/ethhook-delivery.dir/src/delivery/retry.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -I/opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-delivery.dir/src/delivery/worker.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/delivery/worker.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/delivery/worker.c",
+  "output": "CMakeFiles/ethhook-delivery.dir/src/delivery/worker.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -isystem /opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-admin-api.dir/src/admin-api/main.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/main.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/main.c",
+  "output": "CMakeFiles/ethhook-admin-api.dir/src/admin-api/main.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -isystem /opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-admin-api.dir/src/admin-api/handlers.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/handlers.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/handlers.c",
+  "output": "CMakeFiles/ethhook-admin-api.dir/src/admin-api/handlers.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -isystem /opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-admin-api.dir/src/admin-api/auth.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/auth.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/auth.c",
+  "output": "CMakeFiles/ethhook-admin-api.dir/src/admin-api/auth.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -isystem /opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-admin-api.dir/src/admin-api/routes.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/routes.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/routes.c",
+  "output": "CMakeFiles/ethhook-admin-api.dir/src/admin-api/routes.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -isystem /opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-admin-api.dir/src/admin-api/json_response.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/json_response.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/json_response.c",
+  "output": "CMakeFiles/ethhook-admin-api.dir/src/admin-api/json_response.c.o"
+},
+{
+  "directory": "/Users/igor/rust_projects/capstone0/build",
+  "command": "/usr/bin/clang  -I/Users/igor/rust_projects/capstone0/ethhook-c/include -I/opt/homebrew/Cellar/libevent/2.1.12_1/include -I/opt/homebrew/Cellar/libwebsockets/4.5.2/include -I/opt/homebrew/Cellar/hiredis/1.3.0/include/hiredis -I/opt/homebrew/Cellar/hiredis/1.3.0/include -I/opt/homebrew/Cellar/libmicrohttpd/1.0.2/include -isystem /opt/homebrew/Cellar/openssl@3/3.6.0/include -g -std=c17 -arch arm64 -Wall -Wextra -Wpedantic -Werror -Wformat=2 -Wformat-security -Wnull-dereference -Wwrite-strings -Wshadow -fstack-protector-strong -D_FORTIFY_SOURCE=2 -Wstrict-overflow=2 -O3 -march=native -fno-strict-aliasing -o CMakeFiles/ethhook-admin-api.dir/src/admin-api/bcrypt.c.o -c /Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/bcrypt.c",
+  "file": "/Users/igor/rust_projects/capstone0/ethhook-c/src/admin-api/bcrypt.c",
+  "output": "CMakeFiles/ethhook-admin-api.dir/src/admin-api/bcrypt.c.o"
+}
+]

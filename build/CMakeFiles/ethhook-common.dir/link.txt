@@ -1,0 +1,2 @@
+/usr/bin/ar qc libethhook-common.a "CMakeFiles/ethhook-common.dir/src/common/config.c.o" "CMakeFiles/ethhook-common.dir/src/common/error.c.o" "CMakeFiles/ethhook-common.dir/src/common/logging.c.o" "CMakeFiles/ethhook-common.dir/src/common/arena.c.o" "CMakeFiles/ethhook-common.dir/src/common/circuit_breaker.c.o" "CMakeFiles/ethhook-common.dir/src/common/database.c.o" "CMakeFiles/ethhook-common.dir/src/common/clickhouse.c.o" "CMakeFiles/ethhook-common.dir/src/common/yyjson.c.o" "CMakeFiles/ethhook-common.dir/src/common/json.c.o"
+/usr/bin/ranlib libethhook-common.a

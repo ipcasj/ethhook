@@ -14,8 +14,7 @@ RUN apk add --no-cache \
     libevent-dev \
     libwebsockets-dev \
     hiredis-dev \
-    curl-dev \
-    libxcrypt-dev
+    curl-dev
 
 WORKDIR /build
 
@@ -41,8 +40,7 @@ RUN apk add --no-cache \
     libcurl \
     python3 \
     py3-pip \
-    py3-bcrypt \
-    libxcrypt
+    py3-bcrypt
 
 RUN addgroup -g 1000 ethhook && \
     adduser -D -u 1000 -G ethhook ethhook

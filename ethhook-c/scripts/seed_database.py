@@ -26,21 +26,19 @@ def create_demo_users(db_path):
     users_to_create = [
         {
             "email": "demo@ethhook.com",
-            "username": "demo",
             "password": "demo123",
             "is_admin": 0,
         },
         {
             "email": "admin@ethhook.io",
-            "username": "admin",
             "password": "SecureAdmin123!",
             "is_admin": 1,
         },
     ]
 
     for user_data in users_to_create:
-        # Check if user already exists
-        cursor.execute("SELECT id FROM users WHERE email = ?", (user_data["email"],))
+        # Check if user already exists (username field stores email)
+        cursor.execute("SELECT id FROM users WHERE username = ?", (user_data["email"],))
         existing = cursor.fetchone()
 
         if existing:
@@ -58,7 +56,7 @@ def create_demo_users(db_path):
         # Get current timestamp in Unix epoch (seconds)
         created_at = int(datetime.now().timestamp())
 
-        # Insert user
+        # Insert user (username field stores email address)
         cursor.execute(
             """
             INSERT INTO users (id, username, password_hash, is_admin, created_at)
@@ -66,7 +64,7 @@ def create_demo_users(db_path):
         """,
             (
                 user_id,
-                user_data["username"],
+                user_data["email"],  # Store email in username field
                 password_hash,
                 user_data["is_admin"],
                 created_at,

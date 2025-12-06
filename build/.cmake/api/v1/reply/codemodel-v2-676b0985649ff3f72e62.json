@@ -1,0 +1,187 @@
+{
+	"configurations" : 
+	[
+		{
+			"abstractTargets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "OpenSSL::Crypto::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-OpenSSL__Crypto-Debug-6a41df9d05f309cc61e4.json",
+					"name" : "OpenSSL::Crypto",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "OpenSSL::SSL::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-OpenSSL__SSL-Debug-cdae4ce1abcd275e92b4.json",
+					"name" : "OpenSSL::SSL",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "OpenSSL::applink::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-OpenSSL__applink-Debug-be84f9630af99a347b9f.json",
+					"name" : "OpenSSL::applink",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "SQLite::SQLite3::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-SQLite__SQLite3-Debug-644e1147224fb1318267.json",
+					"name" : "SQLite::SQLite3",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "Threads::Threads::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-Threads__Threads-Debug-03e50391220ebd765610.json",
+					"name" : "Threads::Threads",
+					"projectIndex" : 0
+				}
+			],
+			"directories" : 
+			[
+				{
+					"abstractTargetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					],
+					"build" : ".",
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-7c6d6a47d5007432a5c7.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.20"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"abstractTargetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "ethhook",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "analyze::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-analyze-Debug-eaadfc485db87cf90cb9.json",
+					"name" : "analyze",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "cppcheck::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cppcheck-Debug-dc202a6089c819ed5f81.json",
+					"name" : "cppcheck",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ethhook-admin-api::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ethhook-admin-api-Debug-9f8be825cb957d9a9fc5.json",
+					"name" : "ethhook-admin-api",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ethhook-common::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ethhook-common-Debug-0651e33a9d1431ecba2e.json",
+					"name" : "ethhook-common",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ethhook-delivery::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ethhook-delivery-Debug-aba33d912951e2779b43.json",
+					"name" : "ethhook-delivery",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ethhook-ingestor::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ethhook-ingestor-Debug-b64ef494cc239bab86ee.json",
+					"name" : "ethhook-ingestor",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ethhook-processor::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ethhook-processor-Debug-b2ec1eb8251ca675ec6a.json",
+					"name" : "ethhook-processor",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "format::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-format-Debug-4e791307e56085936e82.json",
+					"name" : "format",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "format-check::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-format-check-Debug-51fd8fc430c39155a2a7.json",
+					"name" : "format-check",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/Users/igor/rust_projects/capstone0/build",
+		"source" : "/Users/igor/rust_projects/capstone0/ethhook-c"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	}
+}
