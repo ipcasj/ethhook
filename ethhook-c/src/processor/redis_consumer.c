@@ -4,6 +4,9 @@
 #include <hiredis/adapters/libevent.h>
 #include <event2/event.h>
 #include <limits.h>
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 #include "yyjson.h"
 #include <pthread.h>
 #include <stdlib.h>
