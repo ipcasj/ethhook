@@ -276,9 +276,18 @@ jobs:
               exit 1
             fi
             
+            # Verify Dockerfile has /data directory creation
+            echo "Checking Dockerfile content..."
+            if grep -q "mkdir -p /data" ethhook-c/docker/Dockerfile.admin-api; then
+              echo "✅ Dockerfile contains /data directory creation"
+            else
+              echo "❌ Dockerfile missing /data directory creation!"
+              exit 1
+            fi
+            
             # Build C admin-api image locally with verbose output
             echo "Building C admin-api image..."
-            docker compose -f docker-compose.prod.yml build --no-cache --progress=plain admin-api 2>&1 | tee /tmp/admin-api-build.log
+            docker compose -f docker-compose.prod.yml build --no-cache --pull --progress=plain admin-api 2>&1 | tee /tmp/admin-api-build.log
             
             if [ $? -ne 0 ]; then
               echo "❌ Admin API build failed!"
