@@ -66,6 +66,7 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
               required
+              autoComplete="email"
               className="h-11"
               data-testid="email-input"
             />
@@ -75,11 +76,12 @@ export default function LoginPage() {
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
               required
+              autoComplete="current-password"
               className="h-11"
               data-testid="password-input"
             />
