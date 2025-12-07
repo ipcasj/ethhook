@@ -198,8 +198,8 @@ export default function EventsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Events</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-3xl font-bold text-slate-900">Events</h1>
+          <p className="text-slate-600 mt-1">
             View all webhook delivery events and their status
           </p>
         </div>

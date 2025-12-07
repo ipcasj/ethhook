@@ -123,15 +123,14 @@ export default function ApplicationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Applications</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <h1 className="text-3xl font-bold text-slate-900">Applications</h1>
+          <p className="text-slate-600 mt-1">
             Manage your webhook applications
           </p>
         </div>
         <Button 
           onClick={() => setIsCreateOpen(true)} 
           data-testid="create-app-button"
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-indigo-500/30"
         >
           <Plus className="w-4 h-4 mr-2" />
           Create Application
@@ -156,7 +155,7 @@ export default function ApplicationsPage() {
                 Create your first application to start receiving webhook events
               </p>
               <Button 
-                className="mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-indigo-500/30" 
+                className="mt-4" 
                 onClick={() => setIsCreateOpen(true)}
               >
                 <Plus className="w-4 h-4 mr-2" />

@@ -98,7 +98,7 @@ export default function DashboardPage() {
     <div className="space-y-3 sm:space-y-4 px-2 sm:px-0">
       {/* Page header - Compact on mobile */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
           Dashboard
         </h1>
         <p className="text-slate-600 mt-1 text-sm sm:text-base">
@@ -122,13 +122,13 @@ export default function DashboardPage() {
       {/* Quick actions - Responsive */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <Link href="/dashboard/applications" className="flex-1 sm:flex-initial">
-          <Button className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-indigo-500/30 text-sm sm:text-base">
+          <Button className="w-full sm:w-auto text-sm sm:text-base">
             <Plus className="w-4 h-4 mr-2" />
             Create Application
           </Button>
         </Link>
         <Link href="/dashboard/endpoints" className="flex-1 sm:flex-initial">
-          <Button variant="outline" className="w-full sm:w-auto border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-sm sm:text-base">
+          <Button variant="outline" className="w-full sm:w-auto text-sm sm:text-base">
             <Plus className="w-4 h-4 mr-2" />
             Add Endpoint
           </Button>
@@ -213,11 +213,11 @@ export default function DashboardPage() {
       {isAdmin && <AlchemyCUWidget />}
 
       {/* Analytics Section - Compact Horizontal Bar - Responsive */}
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+      <Card className="bg-white shadow-sm">
         <CardHeader className="pb-2 pt-3 px-3 sm:px-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <CardTitle className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-indigo-600" />
+              <BarChart3 className="w-4 h-4 text-blue-600" />
               Analytics
             </CardTitle>
             <div className="flex gap-1">
@@ -225,7 +225,7 @@ export default function DashboardPage() {
                 size="sm"
                 variant={timeRange === '24h' ? 'default' : 'outline'}
                 onClick={() => setTimeRange('24h')}
-                className={timeRange === '24h' ? 'bg-indigo-600 hover:bg-indigo-700 h-6 px-2 text-xs' : 'h-6 px-2 text-xs'}
+                className="h-6 px-2 text-xs"
               >
                 24h
               </Button>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                 size="sm"
                 variant={timeRange === '7d' ? 'default' : 'outline'}
                 onClick={() => setTimeRange('7d')}
-                className={timeRange === '7d' ? 'bg-indigo-600 hover:bg-indigo-700 h-6 px-2 text-xs' : 'h-6 px-2 text-xs'}
+                className="h-6 px-2 text-xs"
               >
                 7d
               </Button>
@@ -241,7 +241,7 @@ export default function DashboardPage() {
                 size="sm"
                 variant={timeRange === '30d' ? 'default' : 'outline'}
                 onClick={() => setTimeRange('30d')}
-                className={timeRange === '30d' ? 'bg-indigo-600 hover:bg-indigo-700 h-6 px-2 text-xs' : 'h-6 px-2 text-xs'}
+                className="h-6 px-2 text-xs"
               >
                 30d
               </Button>
@@ -252,7 +252,7 @@ export default function DashboardPage() {
           {/* Horizontal Trend Analytics - Responsive Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
             {/* Peak Events Hour/Day */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-2 border border-blue-100">
+            <div className="bg-slate-50 rounded-lg p-2 border border-slate-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-slate-700">Peak Activity</span>
                 <TrendingUp className="w-3 h-3 text-blue-600" />
@@ -268,10 +268,10 @@ export default function DashboardPage() {
             </div>
 
             {/* Delivery Rate */}
-            <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-lg p-2 border border-purple-100">
+            <div className="bg-slate-50 rounded-lg p-2 border border-slate-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-slate-700">Delivery Rate</span>
-                <Box className="w-3 h-3 text-purple-600" />
+                <Box className="w-3 h-3 text-blue-600" />
               </div>
               <div className="text-lg font-bold text-slate-900">
                 {timeseriesLoading ? '...' : 
@@ -284,10 +284,10 @@ export default function DashboardPage() {
             </div>
 
             {/* Best Success Rate */}
-            <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg p-2 border border-emerald-100">
+            <div className="bg-green-50 rounded-lg p-2 border border-green-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-slate-700">Best Period</span>
-                <CheckCircle className="w-3 h-3 text-emerald-600" />
+                <CheckCircle className="w-3 h-3 text-green-600" />
               </div>
               <div className="text-lg font-bold text-slate-900">
                 {timeseriesLoading ? '...' : 
@@ -300,10 +300,10 @@ export default function DashboardPage() {
             </div>
 
             {/* Fastest Response */}
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg p-2 border border-amber-100">
+            <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-slate-700">Fastest</span>
-                <Zap className="w-3 h-3 text-amber-600" />
+                <Zap className="w-3 h-3 text-yellow-600" />
               </div>
               <div className="text-lg font-bold text-slate-900">
                 {timeseriesLoading ? '...' : 
@@ -316,7 +316,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Top Chain */}
-            <div className="bg-gradient-to-br from-slate-50 to-gray-50 rounded-lg p-2 border border-slate-200">
+            <div className="bg-slate-50 rounded-lg p-2 border border-slate-200">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-slate-700">Top Chain</span>
                 <Activity className="w-3 h-3 text-slate-600" />
@@ -343,7 +343,7 @@ export default function DashboardPage() {
       {/* Analytics Charts - Compact Side by Side - Responsive Grid */}
       <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
         {/* Timeseries Chart - Compact Version */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-white shadow-sm">
           <CardHeader className="pb-2 pt-3">
             <CardTitle className="text-sm font-semibold text-slate-900">Events Over Time</CardTitle>
             <CardDescription className="text-xs text-slate-600">Event volume for {timeRange}</CardDescription>
@@ -400,7 +400,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Chain Distribution Pie Chart - Compact Version */}
-        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+        <Card className="bg-white shadow-sm">
           <CardHeader className="pb-2 pt-3">
             <CardTitle className="text-sm font-semibold text-slate-900">Events by Chain</CardTitle>
             <CardDescription className="text-xs text-slate-600">Distribution across networks</CardDescription>
@@ -462,7 +462,7 @@ export default function DashboardPage() {
       <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-5">
         {/* Left Column (40%): Recent Events Table */}
         <div className="lg:col-span-2">
-          <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+          <Card className="bg-white shadow-sm">
             <CardHeader>
               <CardTitle className="text-slate-900">Recent Events</CardTitle>
               <CardDescription className="text-slate-600">Latest 15 webhook events</CardDescription>
@@ -614,7 +614,7 @@ function AlchemyCUWidget() {
   };
 
   return (
-    <Card className={`${colors.bg} backdrop-blur-sm border-2 ${colors.border} shadow-lg`}>
+    <Card className={`${colors.bg} border-2 ${colors.border} shadow-sm`}>
       <CardHeader className="pb-2 pt-3 px-3 sm:px-6">
         <div className="flex items-center justify-between">
           <CardTitle className={`text-sm font-semibold ${colors.text} flex items-center gap-2`}>
@@ -651,10 +651,10 @@ function AlchemyCUWidget() {
             <div
               className={`h-full transition-all duration-500 ${
                 cuStats.alert_level === 'critical'
-                  ? 'bg-gradient-to-r from-rose-500 to-rose-600'
+                  ? 'bg-red-600'
                   : cuStats.alert_level === 'warning'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600'
-                  : 'bg-gradient-to-r from-emerald-500 to-emerald-600'
+                  ? 'bg-yellow-600'
+                  : 'bg-green-600'
               }`}
               style={{ width: `${Math.min(cuStats.usage_percent, 100)}%` }}
             />

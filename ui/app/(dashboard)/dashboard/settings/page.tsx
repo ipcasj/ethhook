@@ -20,7 +20,7 @@ export default function SettingsPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold text-slate-900">
           Settings
         </h1>
         <p className="text-slate-600 mt-1">
@@ -29,7 +29,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Profile Information Card */}
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+      <Card className="bg-white shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserCircle className="w-5 h-5 text-blue-600" />
@@ -100,7 +100,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Account Information Card */}
-      <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+      <Card className="bg-white shadow-sm">
         <CardHeader>
           <CardTitle>Account Information</CardTitle>
           <CardDescription>Additional details about your account</CardDescription>

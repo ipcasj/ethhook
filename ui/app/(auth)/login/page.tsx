@@ -90,7 +90,7 @@ export default function LoginPage() {
         <CardFooter className="flex flex-col space-y-4 pt-6">
           <Button
             type="submit"
-            className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="w-full h-11"
             disabled={isLoading}
             data-testid="login-submit-button"
           >

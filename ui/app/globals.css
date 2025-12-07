@@ -44,38 +44,74 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.5rem;
+  
+  /* Professional Financial App Color Palette */
+  /* Page backgrounds - Neutral slate for professional feel */
+  --background: 248 250 252; /* slate-50: #f8fafc */
+  --foreground: 15 23 42; /* slate-900: #0f172a */
+  
+  /* Card backgrounds - Pure white for content */
+  --card: 255 255 255; /* white: #ffffff */
+  --card-foreground: 15 23 42; /* slate-900: #0f172a */
+  
+  /* Popover backgrounds */
+  --popover: 255 255 255; /* white: #ffffff */
+  --popover-foreground: 15 23 42; /* slate-900: #0f172a */
+  
+  /* Primary brand color - Professional blue */
+  --primary: 37 99 235; /* blue-600: #2563eb */
+  --primary-foreground: 255 255 255; /* white */
+  
+  /* Secondary colors - Subtle slate */
+  --secondary: 241 245 249; /* slate-100: #f1f5f9 */
+  --secondary-foreground: 15 23 42; /* slate-900: #0f172a */
+  
+  /* Muted elements */
+  --muted: 241 245 249; /* slate-100: #f1f5f9 */
+  --muted-foreground: 100 116 139; /* slate-500: #64748b */
+  
+  /* Accent colors */
+  --accent: 241 245 249; /* slate-100: #f1f5f9 */
+  --accent-foreground: 15 23 42; /* slate-900: #0f172a */
+  
+  /* Semantic colors */
+  --destructive: 220 38 38; /* red-600: #dc2626 */
+  --destructive-foreground: 255 255 255; /* white */
+  
+  --success: 22 163 74; /* green-600: #16a34a */
+  --success-foreground: 255 255 255; /* white */
+  --success-light: 220 252 231; /* green-100: #dcfce7 */
+  
+  --warning: 202 138 4; /* yellow-600: #ca8a04 */
+  --warning-foreground: 255 255 255; /* white */
+  --warning-light: 254 249 195; /* yellow-100: #fef9c3 */
+  
+  --info: 37 99 235; /* blue-600: #2563eb */
+  --info-foreground: 255 255 255; /* white */
+  --info-light: 219 234 254; /* blue-100: #dbeafe */
+  
+  /* Borders and inputs */
+  --border: 226 232 240; /* slate-200: #e2e8f0 */
+  --input: 226 232 240; /* slate-200: #e2e8f0 */
+  --ring: 37 99 235; /* blue-600: #2563eb */
+  
+  /* Chart colors - Professional palette */
+  --chart-1: 37 99 235; /* blue-600 */
+  --chart-2: 22 163 74; /* green-600 */
+  --chart-3: 202 138 4; /* yellow-600 */
+  --chart-4: 147 51 234; /* purple-600 */
+  --chart-5: 236 72 153; /* pink-600 */
+  
+  /* Sidebar colors */
+  --sidebar: 255 255 255; /* white */
+  --sidebar-foreground: 15 23 42; /* slate-900 */
+  --sidebar-primary: 37 99 235; /* blue-600 */
+  --sidebar-primary-foreground: 255 255 255; /* white */
+  --sidebar-accent: 241 245 249; /* slate-100 */
+  --sidebar-accent-foreground: 15 23 42; /* slate-900 */
+  --sidebar-border: 226 232 240; /* slate-200 */
+  --sidebar-ring: 37 99 235; /* blue-600 */
 }
 
 .dark {
