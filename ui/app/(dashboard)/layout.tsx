@@ -144,15 +144,17 @@ export default function DashboardLayout({
             {user && (
               <div className="flex items-center gap-3 px-3 py-2 bg-indigo-50 rounded-lg">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center text-white font-semibold">
-                  {user.name.charAt(0).toUpperCase()}
+                  {user.email?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-900 truncate">
-                    {user.name}
-                  </p>
-                  <p className="text-xs text-slate-600 truncate">
                     {user.email}
                   </p>
+                  {user.is_admin && (
+                    <p className="text-xs text-indigo-600 font-medium">
+                      Admin
+                    </p>
+                  )}
                 </div>
               </div>
             )}
