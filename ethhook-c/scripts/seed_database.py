@@ -37,8 +37,8 @@ def create_demo_users(db_path):
     ]
 
     for user_data in users_to_create:
-        # Check if user already exists (username field stores email)
-        cursor.execute("SELECT id FROM users WHERE username = ?", (user_data["email"],))
+        # Check if user already exists
+        cursor.execute("SELECT id FROM users WHERE email = ?", (user_data["email"],))
         existing = cursor.fetchone()
 
         if existing:
@@ -56,15 +56,15 @@ def create_demo_users(db_path):
         # Get current timestamp in Unix epoch (seconds)
         created_at = int(datetime.now().timestamp())
 
-        # Insert user (username field stores email address)
+        # Insert user using email column
         cursor.execute(
             """
-            INSERT INTO users (id, username, password_hash, is_admin, created_at)
+            INSERT INTO users (id, email, password_hash, is_admin, created_at)
             VALUES (?, ?, ?, ?, ?)
         """,
             (
                 user_id,
-                user_data["email"],  # Store email in username field
+                user_data["email"],
                 password_hash,
                 user_data["is_admin"],
                 created_at,

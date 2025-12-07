@@ -85,7 +85,7 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
     // Query database for user by email only
     sqlite3 *db_handle = eth_db_get_handle(ctx->db);
     sqlite3_stmt *stmt = NULL;
-    const char *query = "SELECT id, password_hash, is_admin FROM users WHERE username = ?";
+    const char *query = "SELECT id, password_hash, is_admin FROM users WHERE email = ?";
     
     if (sqlite3_prepare_v2(db_handle, query, -1, &stmt, NULL) != SQLITE_OK) {
         yyjson_doc_free(req_doc);

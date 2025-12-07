@@ -109,7 +109,7 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         // Query database for user info
         sqlite3 *db_handle = eth_db_get_handle(req_ctx->db);
         sqlite3_stmt *stmt = NULL;
-        const char *query = "SELECT id, username, is_admin, created_at FROM users WHERE id = ?";
+        const char *query = "SELECT id, email, is_admin, created_at FROM users WHERE id = ?";
         
         if (sqlite3_prepare_v2(db_handle, query, -1, &stmt, NULL) != SQLITE_OK) {
             response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Database error");
@@ -139,7 +139,7 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         }
         
         const char *user_id = (const char *)sqlite3_column_text(stmt, 0);
-        const char *username = (const char *)sqlite3_column_text(stmt, 1);
+        const char *email = (const char *)sqlite3_column_text(stmt, 1);
         int is_admin = sqlite3_column_int(stmt, 2);
         
         // Build JSON response
@@ -147,7 +147,7 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         yyjson_mut_val *obj = yyjson_mut_obj(doc);
         yyjson_mut_doc_set_root(doc, obj);
         yyjson_mut_obj_add_str(doc, obj, "id", user_id);
-        yyjson_mut_obj_add_str(doc, obj, "email", username);
+        yyjson_mut_obj_add_str(doc, obj, "email", email);
         yyjson_mut_obj_add_bool(doc, obj, "is_admin", is_admin != 0);
         
         sqlite3_finalize(stmt);
@@ -180,7 +180,7 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         // Query database for user info (same as /users/me)
         sqlite3 *db_handle = eth_db_get_handle(req_ctx->db);
         sqlite3_stmt *stmt = NULL;
-        const char *query = "SELECT id, username, is_admin, created_at FROM users WHERE id = ?";
+        const char *query = "SELECT id, email, is_admin, created_at FROM users WHERE id = ?";
         
         if (sqlite3_prepare_v2(db_handle, query, -1, &stmt, NULL) != SQLITE_OK) {
             response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Database error");
@@ -210,7 +210,7 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         }
         
         const char *user_id = (const char *)sqlite3_column_text(stmt, 0);
-        const char *username = (const char *)sqlite3_column_text(stmt, 1);
+        const char *email = (const char *)sqlite3_column_text(stmt, 1);
         int is_admin = sqlite3_column_int(stmt, 2);
         
         // Build JSON response
@@ -218,7 +218,7 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         yyjson_mut_val *obj = yyjson_mut_obj(doc);
         yyjson_mut_doc_set_root(doc, obj);
         yyjson_mut_obj_add_str(doc, obj, "id", user_id);
-        yyjson_mut_obj_add_str(doc, obj, "email", username);
+        yyjson_mut_obj_add_str(doc, obj, "email", email);
         yyjson_mut_obj_add_bool(doc, obj, "is_admin", is_admin != 0);
         
         sqlite3_finalize(stmt);
