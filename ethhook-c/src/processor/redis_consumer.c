@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "ethhook/processor.h"
 #include "ethhook/clickhouse.h"
 #include <hiredis/hiredis.h>

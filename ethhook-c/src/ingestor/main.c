@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "ethhook/ingestor.h"
 #include "ethhook/common.h"
 #include <event2/event.h>

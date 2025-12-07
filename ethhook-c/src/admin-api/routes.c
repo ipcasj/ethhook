@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "ethhook/admin_api.h"
 #include "ethhook/common.h"
 #include "ethhook/clickhouse.h"
@@ -5,6 +6,9 @@
 #include <string.h>
 #include <sqlite3.h>
 #include "yyjson.h"
+
+// Helper to get SQLite handle
+extern sqlite3 *eth_db_get_handle(eth_db_t *db);
 
 struct admin_api_ctx {
     eth_config_t *config;
