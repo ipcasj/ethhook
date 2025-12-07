@@ -121,10 +121,11 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
     const char *password_hash = (const char *)sqlite3_column_text(stmt, 1);
     int is_admin = sqlite3_column_int(stmt, 2);
     
-    // Copy user_id before finalizing statement
+    // Copy user_id and email before finalizing statement
     char *user_id_copy = strdup(user_id);
+    char *email_copy = strdup(email);
     
-    // Verify password
+    // Verify password using bcrypt
     bool password_valid = bcrypt_verify(password, password_hash);
     
     sqlite3_finalize(stmt);
@@ -132,6 +133,7 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
     
     if (!password_valid) {
         free(user_id_copy);
+        free(email_copy);
         response_t *resp = response_error(MHD_HTTP_UNAUTHORIZED, "Invalid credentials");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
@@ -145,9 +147,10 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
     
     // Generate JWT token
     char *token = jwt_create(user_id_copy, is_admin != 0, ctx->jwt_secret, 24);
-    free(user_id_copy);
     
     if (!token) {
+        free(user_id_copy);
+        free(email_copy);
         response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Failed to generate token");
         struct MHD_Response *response = MHD_create_response_from_buffer(
             resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
@@ -159,13 +162,22 @@ int handle_login(struct MHD_Connection *connection, request_ctx_t *ctx,
         return ret;
     }
     
-    // Build response with token
+    // Build response with token and user object
     yyjson_mut_doc *resp_doc = yyjson_mut_doc_new(NULL);
     yyjson_mut_val *result = yyjson_mut_obj(resp_doc);
     yyjson_mut_doc_set_root(resp_doc, result);
     yyjson_mut_obj_add_str(resp_doc, result, "token", token);
     
+    // Add user object
+    yyjson_mut_val *user_obj = yyjson_mut_obj(resp_doc);
+    yyjson_mut_obj_add_str(resp_doc, user_obj, "id", user_id_copy);
+    yyjson_mut_obj_add_str(resp_doc, user_obj, "email", email_copy);
+    yyjson_mut_obj_add_bool(resp_doc, user_obj, "is_admin", is_admin != 0);
+    yyjson_mut_obj_add_val(resp_doc, result, "user", user_obj);
+    
     free(token);
+    free(user_id_copy);
+    free(email_copy);
     
     size_t json_len;
     char *json_str = yyjson_mut_write(resp_doc, 0, &json_len);
