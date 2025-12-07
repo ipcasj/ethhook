@@ -142,21 +142,27 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         const char *email = (const char *)sqlite3_column_text(stmt, 1);
         int is_admin = sqlite3_column_int(stmt, 2);
         
+        // Copy strings before finalizing statement
+        char *user_id_copy = strdup(user_id);
+        char *email_copy = strdup(email);
+        
+        sqlite3_finalize(stmt);
+        
         // Build JSON response
         yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
         yyjson_mut_val *obj = yyjson_mut_obj(doc);
         yyjson_mut_doc_set_root(doc, obj);
-        yyjson_mut_obj_add_str(doc, obj, "id", user_id);
-        yyjson_mut_obj_add_str(doc, obj, "email", email);
+        yyjson_mut_obj_add_str(doc, obj, "id", user_id_copy);
+        yyjson_mut_obj_add_str(doc, obj, "email", email_copy);
         yyjson_mut_obj_add_bool(doc, obj, "is_admin", is_admin != 0);
-        
-        sqlite3_finalize(stmt);
         
         size_t json_len = 0;
         char *json_str = yyjson_mut_write(doc, 0, &json_len);
         
         if (!json_str || json_len == 0) {
             yyjson_mut_doc_free(doc);
+            free(user_id_copy);
+            free(email_copy);
             response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Failed to generate response");
             struct MHD_Response *response = MHD_create_response_from_buffer(
                 resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
@@ -169,6 +175,8 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         }
         
         yyjson_mut_doc_free(doc);
+        free(user_id_copy);
+        free(email_copy);
         
         struct MHD_Response *response = MHD_create_response_from_buffer(
             json_len, json_str, MHD_RESPMEM_MUST_FREE);
