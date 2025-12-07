@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/Users/igor/rust_projects/capstone0/ethhook-c/build-sanitizers/cmake_install.cmake"
-	],
-	"Parallel" : false
-}
