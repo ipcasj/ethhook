@@ -152,8 +152,22 @@ static enum MHD_Result route_request(void *cls, struct MHD_Connection *connectio
         
         sqlite3_finalize(stmt);
         
-        size_t json_len;
+        size_t json_len = 0;
         char *json_str = yyjson_mut_write(doc, 0, &json_len);
+        
+        if (!json_str || json_len == 0) {
+            yyjson_mut_doc_free(doc);
+            response_t *resp = response_error(MHD_HTTP_INTERNAL_SERVER_ERROR, "Failed to generate response");
+            struct MHD_Response *response = MHD_create_response_from_buffer(
+                resp->body_len, resp->body, MHD_RESPMEM_MUST_COPY);
+            MHD_add_response_header(response, "Content-Type", "application/json");
+            add_cors_headers(response);
+            int ret = MHD_queue_response(connection, resp->status_code, response);
+            MHD_destroy_response(response);
+            response_free(resp);
+            return ret;
+        }
+        
         yyjson_mut_doc_free(doc);
         
         struct MHD_Response *response = MHD_create_response_from_buffer(
